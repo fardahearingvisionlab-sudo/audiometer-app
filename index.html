@@ -2072,6 +2072,23 @@ canvas#rightChart, canvas#leftChart {
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- LAYAR AKTIVASI LISENSI (FULL SCREEN BLOKER) -->
+    <!-- ========================================== -->
+    <div id="licenseScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(15, 23, 42, 0.95); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px);">
+        <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: sans-serif;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
+            <h2 style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 22px;">Aktivasi Perangkat</h2>
+            <p style="color: #475569; font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Aplikasi belum diaktivasi untuk komputer ini. Silakan masukkan Kunci Lisensi yang valid untuk melanjutkan.</p>
+            
+            <input type="text" id="keyInput" placeholder="Masukkan Kunci Lisensi..." style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; font-size: 16px; text-align: center; outline: none; transition: border-color 0.3s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
+            
+            <button onclick="activateLicense()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.3s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Aktivasi Sistem</button>
+            
+            <p id="licenseMsg" style="margin-top: 16px; margin-bottom: 0; font-size: 14px; font-weight: 600; min-height: 20px;"></p>
+        </div>
+    </div>
+
     <div id="vraRewardLeft" class="vra-reward" style="left: 28%;">🧸🎉</div>
     <div id="vraRewardRight" class="vra-reward" style="right: 5%;">🧸🎉</div>
 
