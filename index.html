@@ -1903,8 +1903,11 @@ canvas#rightChart, canvas#leftChart {
                           </div>
                           <div style="display: flex; gap: 6px;">
                               <button type="button" class="win-btn" onclick="closeCalibrationModal()" style="padding: 5px 12px; font-size: 10px;">Close Setup</button>
+                              
+                              <!-- Tombol Restore Cloud -->
+                              <button type="button" class="win-btn" onclick="restoreCalibrationFromCloud()" style="background: #f59e0b; color: white; font-weight: bold; padding: 5px 14px; border-color: #d97706; font-size: 10px;">🔄 Restore dari Cloud</button>
+                              
                               <button type="button" class="win-btn" onclick="saveCurrentCalibration()" style="background: #0284c7; color: white; font-weight: bold; padding: 5px 16px; border-color: #0369a1; font-size: 10px;">Store Calibration</button>
-                              <!-- Tambahkan tombol ini di sebelah tombol Store Calibration -->
                               <button type="button" class="win-btn" onclick="exportCalibrationReport()" style="background: #16a34a; color: white; font-weight: bold; padding: 5px 14px; border-color: #15803d; font-size: 10px;">🖨️ Cetak Sertifikat & Sheet</button>
                           </div>
                       </div>
@@ -1912,182 +1915,165 @@ canvas#rightChart, canvas#leftChart {
                   </div>
               </div>
                   
-                  <div id="changePasswordModal" class="modal" style="z-index: 100000;"><div class="modal-content" style="width: 350px;"><h3 style="color: var(--win-blue); margin-bottom: 4px;">🔒 Change Admin PIN</h3><div style="display: grid; grid-template-columns: 110px 1fr; gap: 6px; align-items: center; margin-top: 4px;"><label>Current PIN:</label><input type="password" id="oldPinInput"><label>New PIN:</label><input type="password" id="newPinInput"><label>Confirm PIN:</label><input type="password" id="confirmPinInput"></div><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button class="win-btn" onclick="submitChangePassword()" style="background: #e0f2fe; font-weight: bold; color: var(--win-blue);">Update PIN</button><button class="win-btn" onclick="closeChangePasswordModal()">Cancel</button></div></div></div>
+              <div id="changePasswordModal" class="modal" style="z-index: 100000;"><div class="modal-content" style="width: 350px;"><h3 style="color: var(--win-blue); margin-bottom: 4px;">🔒 Change Admin PIN</h3><div style="display: grid; grid-template-columns: 110px 1fr; gap: 6px; align-items: center; margin-top: 4px;"><label>Current PIN:</label><input type="password" id="oldPinInput"><label>New PIN:</label><input type="password" id="newPinInput"><label>Confirm PIN:</label><input type="password" id="confirmPinInput"></div><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button class="win-btn" onclick="submitChangePassword()" style="background: #e0f2fe; font-weight: bold; color: var(--win-blue);">Update PIN</button><button class="win-btn" onclick="closeChangePasswordModal()">Cancel</button></div></div></div>
 
-                  <div id="customPinModal" class="modal" style="z-index: 100050; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
-                      <div class="modal-content" style="width: 360px; padding: 22px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #cbd5e1; background: #ffffff;">
-                          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-                              <div style="width: 36px; height: 36px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #d97706; flex-shrink: 0;">🔒</div>
-                              <div>
-                                  <h3 style="margin: 0; color: #0f172a; font-size: 14.5px; font-weight: 700;">Autentikasi Keamanan</h3>
-                                  <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Masukkan PIN akses menu kalibrasi.</div>
-                              </div>
-                          </div>
-                          <div style="margin-bottom: 14px;">
-                              <label style="display: block; font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 5px;">Admin PIN:</label>
-                              <input type="password" id="customPinInput" placeholder="Masukkan 4 digit PIN..." style="width: 100%; padding: 8px; font-size: 14px; text-align: center; letter-spacing: 2px; font-weight: bold; border: 1px solid #cbd5e1; border-radius: 4px; outline: none;" onkeydown="if(event.key==='Enter') submitCustomPin()">
-                          </div>
-                          <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                              <button type="button" class="win-btn" onclick="closeCustomPinModal()" style="padding: 6px 14px; font-size: 11px;">Batal</button>
-                              <button type="button" class="win-btn" onclick="submitCustomPin()" style="background: #0284c7; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px; font-size: 11px;">Konfirmasi PIN</button>
+              <div id="customPinModal" class="modal" style="z-index: 100050; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
+                  <div class="modal-content" style="width: 360px; padding: 22px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid #cbd5e1; background: #ffffff;">
+                      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                          <div style="width: 36px; height: 36px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #d97706; flex-shrink: 0;">🔒</div>
+                          <div>
+                              <h3 style="margin: 0; color: #0f172a; font-size: 14.5px; font-weight: 700;">Autentikasi Keamanan</h3>
+                              <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Masukkan PIN akses menu kalibrasi.</div>
                           </div>
                       </div>
-                  </div>
-
-                  <div id="licenseScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 99999; display: none; align-items: center; justify-content: center;">
-                  <div style="background: #ffffff; padding: 30px; border-radius: 12px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; font-family: sans-serif;">
-                      <h3 style="margin-bottom: 10px; color: #1e293b;">Aktivasi Lisensi Aplikasi</h3>
-                      <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">Silakan masukkan kunci lisensi resmi klinik Anda untuk menggunakan sistem.</p>
-                      
-                      <input type="text" id="keyInput" placeholder="Contoh: AUD-XXXX-XXXX-XXXX" style="width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; text-transform: uppercase;">
-                      
-                      <button onclick="activateLicense()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">Aktivasi Sekarang</button>
-                      
-                      <p id="licenseMsg" style="margin-top: 15px; font-size: 13px; font-weight: 500;"></p>
-                      
-                      <div style="margin-top: 25px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                          ID Perangkat Anda: <span id="settingDeviceSN" style="font-weight: bold; color: #475569;">Memuat...</span>
+                      <div style="margin-bottom: 14px;">
+                          <label style="display: block; font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 5px;">Admin PIN:</label>
+                          <input type="password" id="customPinInput" placeholder="Masukkan 4 digit PIN..." style="width: 100%; padding: 8px; font-size: 14px; text-align: center; letter-spacing: 2px; font-weight: bold; border: 1px solid #cbd5e1; border-radius: 4px; outline: none;" onkeydown="if(event.key==='Enter') submitCustomPin()">
+                      </div>
+                      <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                          <button type="button" class="win-btn" onclick="closeCustomPinModal()" style="padding: 6px 14px; font-size: 11px;">Batal</button>
+                          <button type="button" class="win-btn" onclick="submitCustomPin()" style="background: #0284c7; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px; font-size: 11px;">Konfirmasi PIN</button>
                       </div>
                   </div>
               </div>
 
-                <!-- MODAL INPUT SERIAL NUMBER TRANSDUSER -->
-                <div id="calibrationSnModal" class="modal" style="z-index: 100060; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
-                    <div class="modal-content" style="width: 480px; padding: 22px; border-radius: 8px; background: #ffffff; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-                            <div style="font-size: 20px;">🔢</div>
-                            <div>
-                                <h3 style="margin: 0; color: #0f172a; font-size: 14.5px; font-weight: 700;">Input Serial Number Transduser</h3>
-                                <div style="font-size: 10.5px; color: #64748b;">Masukkan nomor seri untuk setiap perangkat/kanal kalibrasi.</div>
-                            </div>
+            <!-- MODAL INPUT SERIAL NUMBER TRANSDUSER -->
+            <div id="calibrationSnModal" class="modal" style="z-index: 100060; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
+                <div class="modal-content" style="width: 480px; padding: 22px; border-radius: 8px; background: #ffffff; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                        <div style="font-size: 20px;">🔢</div>
+                        <div>
+                            <h3 style="margin: 0; color: #0f172a; font-size: 14.5px; font-weight: 700;">Input Serial Number Transduser</h3>
+                            <div style="font-size: 10.5px; color: #64748b;">Masukkan nomor seri untuk setiap perangkat/kanal kalibrasi.</div>
                         </div>
-
-                        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; font-size: 11px; text-align: left;">
-                
-                <!-- AC Kanan (R): Tipe & Serial Number -->
-                <div style="background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <label style="font-weight: bold; color: #1e293b; display: block; margin-bottom: 4px;">Air Conduction Kanan (AC-R):</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                        <select id="select_transducer_R" style="width: 100%; padding: 5px; font-size: 11px;">
-                            <option value="TDH39">TDH39</option>
-                            <option value="DD45">DD45</option>
-                            <option value="DD65">DD65</option>
-                            <option value="EAR3">EAR3</option>
-                            <option value="DD450">DD450</option>
-                            <option value="SAEP1">SAEP1</option>
-                        </select>
-                        <input type="text" id="sn_R_AC" placeholder="No. Seri AC-R" value="SN-AC-R-2026" style="width: 100%; padding: 5px; font-size: 11px; box-sizing: border-box;">
                     </div>
-                </div>
 
-                <!-- AC Kiri (L): Tipe & Serial Number -->
-                <div style="background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <label style="font-weight: bold; color: #1e293b; display: block; margin-bottom: 4px;">Air Conduction Kiri (AC-L):</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                        <select id="select_transducer_L" style="width: 100%; padding: 5px; font-size: 11px;">
-                            <option value="TDH39">TDH39</option>
-                            <option value="DD45">DD45</option>
-                            <option value="DD65">DD65</option>
-                            <option value="EAR3">EAR3</option>
-                            <option value="DD450">DD450</option>
-                            <option value="SAEP1">SAEP1</option>
-                        </select>
-                        <input type="text" id="sn_L_AC" placeholder="No. Seri AC-L" value="SN-AC-L-2026" style="width: 100%; padding: 5px; font-size: 11px; box-sizing: border-box;">
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="width: 140px; font-weight: bold; color: #334155;">Bone Conduction (BC):</label>
-                    <input type="text" id="sn_BC" value="SN-BC-2026" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="width: 140px; font-weight: bold; color: #d97706;">Free Field (FFT/SPKR):</label>
-                    <input type="text" id="sn_FFT" value="SN-FFT-2026" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="width: 140px; font-weight: bold; color: #475569;">Nama Teknisi:</label>
-                    <input type="text" id="sn_Technician" value="Tim Kalibrasi Medis" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; font-size: 11px; text-align: left;">
+            
+            <!-- AC Kanan (R): Tipe & Serial Number -->
+            <div style="background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <label style="font-weight: bold; color: #1e293b; display: block; margin-bottom: 4px;">Air Conduction Kanan (AC-R):</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <select id="select_transducer_R" style="width: 100%; padding: 5px; font-size: 11px;">
+                        <option value="TDH39">TDH39</option>
+                        <option value="DD45">DD45</option>
+                        <option value="DD65">DD65</option>
+                        <option value="EAR3">EAR3</option>
+                        <option value="DD450">DD450</option>
+                        <option value="SAEP1">SAEP1</option>
+                    </select>
+                    <input type="text" id="sn_R_AC" placeholder="No. Seri AC-R" value="SN-AC-R-2026" style="width: 100%; padding: 5px; font-size: 11px; box-sizing: border-box;">
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                <button type="button" class="win-btn" onclick="document.getElementById('calibrationSnModal').style.display='none'" style="padding: 6px 14px; font-size: 11px;">Batal</button>
-                <button type="button" class="win-btn" onclick="generateDetailedCalibrationReport()" style="background: #0284c7; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px; font-size: 11px;">Generate Sertifikat</button>
+            <!-- AC Kiri (L): Tipe & Serial Number -->
+            <div style="background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <label style="font-weight: bold; color: #1e293b; display: block; margin-bottom: 4px;">Air Conduction Kiri (AC-L):</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <select id="select_transducer_L" style="width: 100%; padding: 5px; font-size: 11px;">
+                        <option value="TDH39">TDH39</option>
+                        <option value="DD45">DD45</option>
+                        <option value="DD65">DD65</option>
+                        <option value="EAR3">EAR3</option>
+                        <option value="DD450">DD450</option>
+                        <option value="SAEP1">SAEP1</option>
+                    </select>
+                    <input type="text" id="sn_L_AC" placeholder="No. Seri AC-L" value="SN-AC-L-2026" style="width: 100%; padding: 5px; font-size: 11px; box-sizing: border-box;">
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="width: 140px; font-weight: bold; color: #334155;">Bone Conduction (BC):</label>
+                <input type="text" id="sn_BC" value="SN-BC-2026" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="width: 140px; font-weight: bold; color: #d97706;">Free Field (FFT/SPKR):</label>
+                <input type="text" id="sn_FFT" value="SN-FFT-2026" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="width: 140px; font-weight: bold; color: #475569;">Nama Teknisi:</label>
+                <input type="text" id="sn_Technician" value="Tim Kalibrasi Medis" style="flex:1; padding:5px; border:1px solid #cbd5e1; border-radius:4px;">
             </div>
         </div>
-    </div>
 
-
-    <!-- Modal Pop-up Komplain (Versi dengan Attachment) -->
-    <div id="complaintModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
-        <div style="background: white; width: 420px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); font-family: 'Segoe UI', sans-serif;">
-            <h3 style="margin: 0 0 5px 0; color: #1e293b; font-size: 18px;"><i class="fa-solid fa-triangle-exclamation text-warning"></i> Laporan Kendala IT</h3>
-            <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b;">Jelaskan masalah yang Anda alami & lampirkan screenshot bila perlu.</p>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;">Nama Klien / Cabang <span style="color:red">*</span></label>
-                <input type="text" id="compClientName" placeholder="Contoh: Klinik Cabang A" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 13px;">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;">Deskripsi Kendala <span style="color:red">*</span></label>
-                <textarea id="compSummary" rows="3" placeholder="Contoh: Muncul pesan error saat menekan tombol cetak PDF..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 13px; resize: vertical;"></textarea>
-            </div>
-
-            <div style="margin-bottom: 25px;">
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;"><i class="fa-solid fa-paperclip"></i> Lampirkan Screenshot (Opsional)</label>
-                <input type="file" id="compAttachment" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 6px; font-size: 12px; background: #f8fafc; cursor: pointer;">
-            </div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button onclick="closeComplaintModal()" style="padding: 8px 16px; background: white; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Batal</button>
-                <button id="btnSubmitComplaint" onclick="submitComplaint()" style="padding: 8px 16px; background: #2563eb; border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Kirim Laporan</button>
-            </div>
+        <div style="display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+            <button type="button" class="win-btn" onclick="document.getElementById('calibrationSnModal').style.display='none'" style="padding: 6px 14px; font-size: 11px;">Batal</button>
+            <button type="button" class="win-btn" onclick="generateDetailedCalibrationReport()" style="background: #0284c7; color: white; font-weight: bold; padding: 6px 18px; border-radius: 4px; font-size: 11px;">Generate Sertifikat</button>
         </div>
     </div>
+</div>
 
 
-    <!-- ================= CUSTOM CONFIRM MODAL ================= -->
-    <div id="customConfirmOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; width: 350px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;">
-            
-            <!-- Ikon Peringatan -->
-            <div style="margin-bottom: 15px; color: #f59e0b; font-size: 32px;">⚠️</div>
-            
-            <h3 style="margin: 0 0 10px 0; color: #f8fafc; font-size: 16px; font-weight: bold;">Konfirmasi Hapus</h3>
-            
-            <!-- Pesan Dinamis -->
-            <p id="customConfirmMessage" style="color: #cbd5e1; font-size: 13px; margin: 0 0 20px 0; line-height: 1.5;">
-                Apakah Anda yakin ingin menghapus data ini?
-            </p>
-            
-            <!-- Tombol Aksi -->
-            <div style="display: flex; justify-content: center; gap: 10px;">
-                <button onclick="closeCustomConfirm()" style="background: #475569; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px;">
-                    Batal
-                </button>
-                <button id="btnCustomConfirmOk" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">
-                    Ya, Hapus
-                </button>
-            </div>
+<!-- Modal Pop-up Komplain (Versi dengan Attachment) -->
+<div id="complaintModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(3px);">
+    <div style="background: white; width: 420px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); font-family: 'Segoe UI', sans-serif;">
+        <h3 style="margin: 0 0 5px 0; color: #1e293b; font-size: 18px;"><i class="fa-solid fa-triangle-exclamation text-warning"></i> Laporan Kendala IT</h3>
+        <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b;">Jelaskan masalah yang Anda alami & lampirkan screenshot bila perlu.</p>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;">Nama Klien / Cabang <span style="color:red">*</span></label>
+            <input type="text" id="compClientName" placeholder="Contoh: Klinik Cabang A" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 13px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;">Deskripsi Kendala <span style="color:red">*</span></label>
+            <textarea id="compSummary" rows="3" placeholder="Contoh: Muncul pesan error saat menekan tombol cetak PDF..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 13px; resize: vertical;"></textarea>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px;"><i class="fa-solid fa-paperclip"></i> Lampirkan Screenshot (Opsional)</label>
+            <input type="file" id="compAttachment" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 6px; font-size: 12px; background: #f8fafc; cursor: pointer;">
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="closeComplaintModal()" style="padding: 8px 16px; background: white; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Batal</button>
+            <button id="btnSubmitComplaint" onclick="submitComplaint()" style="padding: 8px 16px; background: #2563eb; border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">Kirim Laporan</button>
         </div>
     </div>
+</div>
 
-    <!-- ========================================== -->
-    <!-- LAYAR AKTIVASI LISENSI (FULL SCREEN BLOKER) -->
-    <!-- ========================================== -->
-    <div id="licenseScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(15, 23, 42, 0.95); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px);">
-        <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: sans-serif;">
-            <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
-            <h2 style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 22px;">Aktivasi Perangkat</h2>
-            <p style="color: #475569; font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Aplikasi belum diaktivasi untuk komputer ini. Silakan masukkan Kunci Lisensi yang valid untuk melanjutkan.</p>
-            
-            <input type="text" id="keyInput" placeholder="Masukkan Kunci Lisensi..." style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; font-size: 16px; text-align: center; outline: none; transition: border-color 0.3s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
-            
-            <button onclick="activateLicense()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.3s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Aktivasi Sistem</button>
-            
-            <p id="licenseMsg" style="margin-top: 16px; margin-bottom: 0; font-size: 14px; font-weight: 600; min-height: 20px;"></p>
+
+<!-- ================= CUSTOM CONFIRM MODAL ================= -->
+<div id="customConfirmOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; width: 350px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;">
+        
+        <!-- Ikon Peringatan -->
+        <div style="margin-bottom: 15px; color: #f59e0b; font-size: 32px;">⚠️</div>
+        
+        <h3 style="margin: 0 0 10px 0; color: #f8fafc; font-size: 16px; font-weight: bold;">Konfirmasi Hapus</h3>
+        
+        <!-- Pesan Dinamis -->
+        <p id="customConfirmMessage" style="color: #cbd5e1; font-size: 13px; margin: 0 0 20px 0; line-height: 1.5;">
+            Apakah Anda yakin ingin menghapus data ini?
+        </p>
+        
+        <!-- Tombol Aksi -->
+        <div style="display: flex; justify-content: center; gap: 10px;">
+            <button onclick="closeCustomConfirm()" style="background: #475569; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                Batal
+            </button>
+            <button id="btnCustomConfirmOk" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">
+                Ya, Hapus
+            </button>
         </div>
     </div>
+</div>
+
+<!-- ========================================== -->
+<!-- LAYAR AKTIVASI LISENSI (FULL SCREEN BLOKER) -->
+<!-- ========================================== -->
+<div id="licenseScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(15, 23, 42, 0.95); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px);">
+    <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: sans-serif;">
+        <div style="font-size: 40px; margin-bottom: 10px;">🔒</div>
+        <h2 style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 22px;">Aktivasi Perangkat</h2>
+        <p style="color: #475569; font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Aplikasi belum diaktivasi untuk komputer ini. Silakan masukkan Kunci Lisensi yang valid untuk melanjutkan.</p>
+        
+        <input type="text" id="keyInput" placeholder="Masukkan Kunci Lisensi..." style="width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; font-size: 16px; text-align: center; outline: none; transition: border-color 0.3s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
+        
+        <button onclick="activateLicense()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.3s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Aktivasi Sistem</button>
+        
+        <p id="licenseMsg" style="margin-top: 16px; margin-bottom: 0; font-size: 14px; font-weight: 600; min-height: 20px;"></p>
+    </div>
+</div>
 
     <div id="vraRewardLeft" class="vra-reward" style="left: 28%;">🧸🎉</div>
     <div id="vraRewardRight" class="vra-reward" style="right: 5%;">🧸🎉</div>
