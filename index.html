@@ -6146,6 +6146,121 @@ function sendPayloadViaBackend(payload, btn) {
 
 
 
+     ///////////////////////////////////////
+//// 🌟 CENTRAL LICENSE ACTIVATION ////
+///////////////////////////////////////
+const CENTRAL_LICENSE_URL = "https://script.google.com/macros/s/AKfycbwGeRAgG2MiMAUmX4-4Qww024nCjJck_M6AH__Q1G-oxa0rppcttFI0jjWVNjQ-Uv5H/exec";
+
+// Fungsi Pembuat Sidik Jari Unik Komputer (Machine ID)
+function generateMachineId() {
+    let rawData = navigator.userAgent + screen.width + screen.height + navigator.language + (navigator.hardwareConcurrency || '');
+    let hash = 0;
+    for (let i = 0; i < rawData.length; i++) {
+        let char = rawData.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; 
+    }
+    return "PC-" + Math.abs(hash).toString(36).toUpperCase();
+}
+
+// Intersepsi Pengecekan Awal saat Halaman Dimuat
+document.addEventListener("DOMContentLoaded", function() {
+    let isLicensed = localStorage.getItem('audiometer_licensed');
+    let licenseScreen = document.getElementById('licenseScreen');
+    
+    // Tampilkan Machine ID dan Nama Klinik ke UI settings jika elemennya ada
+    let machineId = generateMachineId();
+    let displaySN = document.getElementById('settingDeviceSN') || document.getElementById('settingsDisplaySN');
+    if (displaySN) displaySN.innerText = machineId;
+
+    let displayClinic = document.getElementById('settingsDisplayClinicName');
+    if (displayClinic) {
+        displayClinic.innerText = localStorage.getItem('clinic_name') || localStorage.getItem('klinikName') || 'Klinik Belum Disetel';
+    }
+
+    if (isLicensed !== 'true') {
+        if (licenseScreen) licenseScreen.style.display = 'flex';
+    } else {
+        if (licenseScreen) licenseScreen.style.display = 'none';
+    }
+});
+
+async function activateLicense() {
+    let keyInput = document.getElementById('keyInput').value.trim();
+    let msgEl = document.getElementById('licenseMsg');
+    
+    if (!keyInput) {
+        if (msgEl) {
+            msgEl.style.color = "#dc2626";
+            msgEl.innerText = "Silakan masukkan kunci lisensi.";
+        }
+        return;
+    }
+
+    if (msgEl) {
+        msgEl.style.color = "#2563eb";
+        msgEl.innerText = "Menghubungkan ke server lisensi...";
+    }
+
+    let machineId = generateMachineId();
+
+    try {
+        let response = await fetch(`${CENTRAL_LICENSE_URL}?action=validateLicense&key=${encodeURIComponent(keyInput)}&machineId=${encodeURIComponent(machineId)}`);
+        let result = await response.json();
+
+        if (result.status === "success") {
+            // Simpan status lisensi & data pendukung
+            localStorage.setItem('audiometer_licensed', 'true');
+            if (result.scriptUrl) {
+                localStorage.setItem('client_script_url', result.scriptUrl); 
+            }
+            
+            // Simpan SN Perangkat & Nama Klinik secara bersih
+            localStorage.setItem('device_serial_number', machineId);
+            if (result.clientName) {
+                localStorage.setItem('clinic_name', result.clientName);
+                localStorage.setItem('klinikName', result.clientName); // Diselaraskan dengan menu edit logo
+            }
+            
+            if (msgEl) {
+                msgEl.style.color = "#16a34a";
+                msgEl.innerText = "Aktivasi berhasil! Memuat aplikasi...";
+            }
+            
+            // Perbarui teks di layar jika fungsi openSettingsModal tersedia
+            if (typeof openSettingsModal === "function") {
+                openSettingsModal();
+            }
+
+            // Update langsung elemen UI jika terbuka
+            let displaySN = document.getElementById('settingDeviceSN') || document.getElementById('settingsDisplaySN');
+            if (displaySN) displaySN.innerText = machineId;
+            let displayClinic = document.getElementById('settingsDisplayClinicName');
+            if (displayClinic && result.clientName) displayClinic.innerText = result.clientName;
+
+            setTimeout(() => {
+                let licenseScreen = document.getElementById('licenseScreen');
+                if (licenseScreen) {
+                    licenseScreen.style.display = 'none'; 
+                }
+            }, 1000);
+        } else {
+            if (msgEl) {
+                msgEl.style.color = "#dc2626";
+                msgEl.innerText = result.message || "Aktivasi ditolak.";
+            }
+        }
+    } catch (err) {
+        if (msgEl) {
+            msgEl.style.color = "#dc2626";
+            msgEl.innerText = "Gagal terhubung ke server pusat. Periksa internet.";
+        }
+    }
+}   
+
+
+
+
 
 
     // =========================================================
