@@ -3619,6 +3619,10 @@ function generateDetailedCalibrationReport() {
     localStorage.setItem('gsi_last_calibrated_date', nowStr);
     renderCalibrationUI();
     
+    // --- TAMBAHAN BARU: Sinkronisasi ke Cloud secara senyap ---
+    backupCalibrationToCloud();
+    // -----------------------------------------------------------
+    
     showToast("✔ Saved & Calibrated: " + calState.freq + " Hz (" + key + ") -> Offset: " + calculatedOffset.toFixed(2) + " dB");
 }
 
