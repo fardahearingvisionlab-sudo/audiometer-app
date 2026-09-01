@@ -1,9 +1,10 @@
-const CACHE_NAME = 'audiometry-pwa-v1';
+const CACHE_NAME = 'audiometry-pwa-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-  // Tambahkan nama file CSS atau gambar statis lainnya di sini jika ada
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
