@@ -3601,17 +3601,17 @@ function generateDetailedCalibrationReport() {
     let key = calState.ear + '_' + activeModelKey;
     if(!calibrationData[key]) calibrationData[key] = {};
     
-    // 1. Ambil nilai dari input yang sekarang berfungsi sebagai Hasil SLM Aktual
+    // 1. Ambil nilai dari input SLM Aktual
     let slmVal = parseFloat(document.getElementById('c_offset_input').value) || 0;
     
-    // 2. Ambil nilai Target SPL standar ISO untuk frekuensi aktif saat ini
+    // 2. Ambil nilai Target SPL standar ISO
     let tableSet = window.TRANSDUCER_REGISTRY[activeModelKey] || window.TRANSDUCER_REGISTRY['SAEP1'];
     let targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0;
     
-    // 3. Hitung otomatis nilai offset koreksi (Target ISO - Hasil SLM)
+    // 3. Hitung otomatis offset
     let calculatedOffset = targetSpl - slmVal;
     
-    // 4. Simpan hasil perhitungan offset yang benar ke memori kalibrasi
+    // 4. Simpan ke memori lokal
     calibrationData[key][calState.freq] = parseFloat(calculatedOffset.toFixed(2));
     
     saveCalibrationToStorage();
@@ -3619,9 +3619,9 @@ function generateDetailedCalibrationReport() {
     localStorage.setItem('gsi_last_calibrated_date', nowStr);
     renderCalibrationUI();
     
-    // --- TAMBAHAN BARU: Sinkronisasi ke Cloud secara senyap ---
+    // 👇 BARIS INI YANG DITAMBAHKAN UNTUK AUTO-BACKUP 👇
     backupCalibrationToCloud();
-    // -----------------------------------------------------------
+    // --------------------------------------------------
     
     showToast("✔ Saved & Calibrated: " + calState.freq + " Hz (" + key + ") -> Offset: " + calculatedOffset.toFixed(2) + " dB");
 }
@@ -6277,7 +6277,67 @@ async function activateLicense() {
             msgEl.innerText = "Gagal terhubung ke server pusat. Periksa internet.";
         }
     }
-}   
+}
+
+
+// ==========================================
+// FUNGSI CLOUD BACKUP KALIBRASI (AUTO SYNC)
+// ==========================================
+function backupCalibrationToCloud() {
+    let machineId = localStorage.getItem('device_serial_number');
+    let calDataStr = localStorage.getItem('gsi_audiology_calibration');
+    
+    // Jangan lakukan backup jika Machine ID atau data kalibrasi belum ada
+    if (!machineId || !calDataStr) return; 
+
+    let payload = {
+        action: "saveCalibration",
+        machineId: machineId,
+        calibrationData: calDataStr
+    };
+
+    fetch(CENTRAL_LICENSE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain untuk bypass CORS
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log("☁️ Backup kalibrasi ke Master Lisensi sukses.");
+        }
+    })
+    .catch(err => console.warn("⚠️ Gagal backup kalibrasi ke Cloud (Mode Offline).", err));
+}
+
+function restoreCalibrationFromCloud() {
+    let machineId = localStorage.getItem('device_serial_number');
+    if (!machineId) {
+        showToast("⚠️ Perangkat belum teridentifikasi (Aktivasi lisensi diperlukan).");
+        return;
+    }
+
+    showToast("⏳ Sedang mencari data kalibrasi di Cloud...");
+
+    fetch(`${CENTRAL_LICENSE_URL}?action=getCalibration&machineId=${encodeURIComponent(machineId)}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success' && data.calibrationData) {
+            // Timpa data di lokal dengan data dari cloud
+            localStorage.setItem('gsi_audiology_calibration', JSON.stringify(data.calibrationData));
+            calibrationData = data.calibrationData; 
+            
+            showToast(`✅ Kalibrasi Berhasil Dipulihkan!\nTerakhir update: ${data.lastUpdated}`);
+            
+            // Refresh tampilan tabel/UI kalibrasi
+            if (typeof renderCalibrationUI === 'function') renderCalibrationUI();
+        } else {
+            showToast("⚠️ " + (data.message || "Data kalibrasi tidak ditemukan di Cloud."));
+        }
+    })
+    .catch(err => showToast("❌ Gagal terhubung ke server Master Lisensi."));
+}
+
 
 
 
