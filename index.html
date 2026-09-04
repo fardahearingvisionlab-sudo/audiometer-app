@@ -6341,13 +6341,12 @@ function restoreCalibrationFromCloud() {
     window.addEventListener('DOMContentLoaded', async () => {
         if ("serial" in navigator) {
             try {
-                // Cek apakah browser sudah pernah diberi izin untuk Arduino ini
                 const authorizedPorts = await navigator.serial.getPorts();
                 if (authorizedPorts.length > 0) {
-                    portAudiometer = authorizedPorts[0]; // Ambil port yang sudah diizinkan
+                    portAudiometer = authorizedPorts[0]; 
                     await portAudiometer.open({ baudRate: 9600 });
                     updateConnectionUI(true, "Auto-Connected ke Arduino Leonardo");
-                    bacaDataSerial(); 
+                    bacaDataSerial(); // <--- Memanggil fungsi pembaca
                 }
             } catch (err) {
                 console.log("Belum ada port terhubung otomatis:", err);
@@ -6363,16 +6362,14 @@ function restoreCalibrationFromCloud() {
                 return;
             }
 
-            // FILTER PRESISI: Memakai VID & PID khusus Arduino Leonardo
             const filters = [
                 { usbVendorId: 0x2341, usbProductId: 0x8036 }
             ];
 
-            // Membuka pop-up yang sudah tersaring
             portAudiometer = await navigator.serial.requestPort({ filters });
             await portAudiometer.open({ baudRate: 9600 });
             updateConnectionUI(true, "Audiometer Terhubung! Siap digunakan.");
-            bacaDataSerial();
+            bacaDataSerial(); // <--- Memanggil fungsi pembaca
         } catch (err) {
             if (err.name !== 'NotFoundError') {
                 updateConnectionUI(false, "Gagal: " + err.message);
@@ -6383,7 +6380,6 @@ function restoreCalibrationFromCloud() {
         }
     });
 
-    // Helper untuk merubah tampilan tombol dan status
     function updateConnectionUI(isConnected, message) {
         const statusBox = document.getElementById('statusAudiometer');
         const btn = document.getElementById('btnConnectAudio');
@@ -6409,22 +6405,21 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
-    // 1. SISTEM ANTREAN SERIAL (ANTI-TABRAKAN & ANTI-LOCK)
+    // 3. SISTEM ANTREAN SERIAL (MENGIRIM DATA KE ARDUINO)
     // ============================================================
     let isSerialWriting = false;
-    let serialQueue = []; // Keranjang antrean data
+    let serialQueue = []; 
 
     async function prosesAntreanSerial() {
         if (isSerialWriting || serialQueue.length === 0) return;
         
-        // Periksa kesiapan port USB
         if (typeof portAudiometer === 'undefined' || !portAudiometer || !portAudiometer.writable) {
             serialQueue = []; 
             return;
         }
 
         isSerialWriting = true;
-        let dataKeKirim = serialQueue.shift(); // Ambil pesanan pertama
+        let dataKeKirim = serialQueue.shift(); 
 
         try {
             if (!writerAudiometer) {
@@ -6440,20 +6435,59 @@ function restoreCalibrationFromCloud() {
             }
         } finally {
             isSerialWriting = false;
-            
-            // Lanjut ke antrean berikutnya jika masih ada
             if (serialQueue.length > 0) {
                 setTimeout(prosesAntreanSerial, 10); 
             }
         }
     }
 
-    // Fungsi utama ini sekarang hanya bertugas "menitipkan" pesan ke antrean
     function kirimDataAudiometer(data) {
         serialQueue.push(data);
         prosesAntreanSerial();
     }
 
+    // ============================================================
+    // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN) -> BARU DITAMBAHKAN
+    // ============================================================
+    async function bacaDataSerial() {
+        while (portAudiometer && portAudiometer.readable) {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
+            const reader = textDecoder.readable.getReader();
+
+            try {
+                let bufferData = "";
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break; 
+                    
+                    if (value) {
+                        bufferData += value;
+                        if (bufferData.includes('\n')) {
+                            let pesanDiterima = bufferData.trim();
+                            
+                            // Jika ada teks masuk dari Arduino
+                            if (pesanDiterima === "RESPON_PASIEN") {
+                                console.log("Sinyal tombol pasien diterima di Web!");
+                                
+                                // Panggil fungsi nyala lampu visual Anda di sini
+                                if (typeof handlePatientResponse === 'function') {
+                                    handlePatientResponse(); 
+                                } else {
+                                    console.warn("Lampu gagal menyala: Fungsi 'handlePatientResponse' belum Anda buat di JS.");
+                                }
+                            }
+                            bufferData = ""; 
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error baca serial:", error);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+    }
 
     // ============================================================
     // FITUR PREVIEW TX DINAMIS (SINKRONISASI UI REAL-TIME)
@@ -6465,36 +6499,28 @@ function restoreCalibrationFromCloud() {
 
         if (!freqEl || !dbEl || !statusBox) return;
 
-        // Fungsi untuk membaca layar dan memperbarui kotak indikator
         const updateTxPreview = () => {
-            // Jangan timpa teks jika suara sedang aktif (biarkan "TX: ..." tampil)
             if (typeof isPlaying !== 'undefined' && isPlaying) return; 
             
-            // 1. Ekstrak Frekuensi dari layar
             let freqText = freqEl.innerText.toLowerCase();
             let numFreq = parseFloat(freqText.replace(/[^0-9.]/g, '')) || 1000;
             let finalFreq = (freqText.includes('k') && numFreq < 1000) ? numFreq * 1000 : numFreq;
 
-            // 2. Ekstrak dB dari layar
             let dbText = dbEl.innerText;
             let finalDb = parseFloat(dbText.replace(/[^0-9.-]/g, '')) || 40;
 
-            // 3. Ekstrak Telinga dan Mode
             let finalSide = (typeof currentSide !== 'undefined' && currentSide.toLowerCase() === 'left') ? 'L' : 'R';
             let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
 
-            // 4. Update teks indikator dengan label "Standby:" atau "Siap:"
             statusBox.innerText = `Siap: ${finalMode},${finalSide},${finalFreq},${finalDb}`;
         };
 
-        // Pasang "CCTV" (Observer) untuk memantau perubahan teks di kotak biru dan merah
         const observer = new MutationObserver(updateTxPreview);
         const config = { characterData: true, childList: true, subtree: true };
         
         observer.observe(freqEl, config);
         observer.observe(dbEl, config);
 
-        // Pantau juga klik mouse dan tombol keyboard (saat ganti telinga / mode)
         document.addEventListener('click', () => setTimeout(updateTxPreview, 100));
         document.addEventListener('keydown', () => setTimeout(updateTxPreview, 100));
     });
