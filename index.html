@@ -6346,8 +6346,8 @@ function restoreCalibrationFromCloud() {
                 if (authorizedPorts.length > 0) {
                     portAudiometer = authorizedPorts[0]; // Ambil port yang sudah diizinkan
                     await portAudiometer.open({ baudRate: 9600 });
-                    
                     updateConnectionUI(true, "Auto-Connected ke Arduino Leonardo");
+                    bacaDataSerial(); 
                 }
             } catch (err) {
                 console.log("Belum ada port terhubung otomatis:", err);
@@ -6371,8 +6371,8 @@ function restoreCalibrationFromCloud() {
             // Membuka pop-up yang sudah tersaring
             portAudiometer = await navigator.serial.requestPort({ filters });
             await portAudiometer.open({ baudRate: 9600 });
-            
             updateConnectionUI(true, "Audiometer Terhubung! Siap digunakan.");
+            bacaDataSerial();
         } catch (err) {
             if (err.name !== 'NotFoundError') {
                 updateConnectionUI(false, "Gagal: " + err.message);
