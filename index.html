@@ -5453,13 +5453,13 @@ function showToast(message, title = "✅ Informasi") {
         if (patientRespTimeout) clearTimeout(patientRespTimeout);
 
         if (isStimulusActive) {
-            // RESPON VALID: Nyala Hijau
-            respLight.style.background = '#22c55e'; 
-            respLight.style.boxShadow = '0 0 12px #22c55e';
+            // RESPON VALID: Inti Putih dengan Pendaran (Glow) Hijau Neon Tebal
+            respLight.style.background = '#ffffff'; 
+            respLight.style.boxShadow = '0 0 15px 6px #00ff00'; 
         } else {
-            // FALSE POSITIVE (Refleks ngawur saat sepi): Nyala Merah
-            respLight.style.background = '#ef4444'; 
-            respLight.style.boxShadow = '0 0 12px #ef4444';
+            // FALSE POSITIVE: Nyala Oranye Emas
+            respLight.style.background = '#f59e0b';  
+            respLight.style.boxShadow = '0 0 12px 3px #f59e0b'; 
         }
 
         // Lampu otomatis mati setelah 1 detik
