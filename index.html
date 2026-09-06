@@ -5025,35 +5025,34 @@ function startTone() {
     // FUNGSI TRIGGER SIGNAL (DIPISAH DARI START TONE)
     // ============================================================
     function triggerSignalPresentation() {
-        let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
-        let leftEarPanel = document.querySelector('.ear-panel.left-ear');
-        let activeEar = (typeof currentSide !== 'undefined') ? currentSide.toLowerCase() : 'right';
-        let freq = FREQUENCIES[currentFreqIndex] || 1000; 
-        let intensity = typeof currentDb !== 'undefined' ? currentDb : 40;
-        
-        // Ambil status masking apakah sedang ON atau OFF
-        let isMasking = document.getElementById('chkMasking') ? document.getElementById('chkMasking').checked : false;
-        let noiseLvl = document.getElementById('maskingDb') ? parseFloat(document.getElementById('maskingDb').value) : 30;
+    let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
+    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
+    let activeEar = (typeof currentSide !== 'undefined') ? currentSide.toLowerCase() : 'right';
+    let freq = FREQUENCIES[currentFreqIndex] || 1000; 
+    let intensity = typeof currentDb !== 'undefined' ? currentDb : 40;
+    
+    let isMasking = document.getElementById('chkMasking') ? document.getElementById('chkMasking').checked : false;
+    let noiseLvl = document.getElementById('maskingDb') ? parseFloat(document.getElementById('maskingDb').value) : 30;
 
-        // Panggil fungsi pemutar suara dengan menyertakan masking
-        if (typeof playToneWithMasking === 'function') {
-            playToneWithMasking(freq, intensity, activeEar, isMasking, noiseLvl);
-        }
-
-        let durationMs = 600;
-        if (activeEar === 'left') {
-            if (leftEarPanel) { 
-                leftEarPanel.classList.add('flash-left'); 
-                setTimeout(() => { leftEarPanel.classList.remove('flash-left'); }, durationMs); 
-            }
-        } else {
-            if (rightEarPanel) { 
-                rightEarPanel.classList.add('flash-right'); 
-                setTimeout(() => { rightEarPanel.classList.remove('flash-right'); }, durationMs); 
-            }
-        }
+    if (typeof playToneWithMasking === 'function') {
+        playToneWithMasking(freq, intensity, activeEar, isMasking, noiseLvl);
     }
 
+    // UBAH DURASI ANIMASI LAYAR MENJADI 1000ms (1 Detik)
+    let durationMs = 1000; 
+    
+    if (activeEar === 'left') {
+        if (leftEarPanel) { 
+            leftEarPanel.classList.add('flash-left'); 
+            setTimeout(() => { leftEarPanel.classList.remove('flash-left'); }, durationMs); 
+        }
+    } else {
+        if (rightEarPanel) { 
+            rightEarPanel.classList.add('flash-right'); 
+            setTimeout(() => { rightEarPanel.classList.remove('flash-right'); }, durationMs); 
+        }
+    }
+}
 
     // ============================================================
     // 2. FUNGSI STOP TONE TERBARU
