@@ -973,11 +973,11 @@ canvas#rightChart, canvas#leftChart {
         
         <!-- GRAFIK PTA KANAN & KIRI -->
         <div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;">
-            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; aspect-ratio: 1.25; position: relative; padding: 2px;">
-                <canvas id="prevRightChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; padding: 2px;">
+                <canvas id="prevRightChart"></canvas>
             </div>
-            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; aspect-ratio: 1.25; position: relative; padding: 2px;">
-                <canvas id="prevLeftChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; padding: 2px;">
+                <canvas id="prevLeftChart"></canvas>
             </div>
         </div>
 
@@ -1094,8 +1094,8 @@ canvas#rightChart, canvas#leftChart {
 
         <!-- Grafik Speech -->
         <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">SPEECH (PI-FUNCTION)</div>
-        <div style="border: 1px solid #000; width: 100%; height: 25mm; margin-bottom: 6px; position: relative;">
-            <canvas id="prevSpeechChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+        <div style="border: 1px solid #000; height: 35mm; width: 100%; margin-bottom: 6px;">
+            <canvas id="prevSpeechChart"></canvas>
         </div>
 
         <!-- Diagnosis -->
@@ -2842,22 +2842,22 @@ window.onload = function() {
 
 
 // =================================================================
-// 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA FINAL)
+// 3. SINKRONISASI DATA KE GRAFIK CETAK (VERSI BERSIH & MURNI)
 // =================================================================
 function updatePrintChartsData() {
-    const syncChart = (mainChart, printChart, targetRatio) => {
+    const syncChart = (mainChart, printChart) => {
         if (!mainChart || !printChart) return;
         
         try {
-            // 1. Salin Label
+            // 1. Salin Label Sumbu X
             if (mainChart.data && mainChart.data.labels) {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data (Filter MaxLimitZone Ekstra Ketat)
+            // 2. Salin Data (HANYA MENYARING ZONA ABU-ABU)
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
-                    .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
+                    .filter(ds => ds.label !== 'MaxLimitZone') // Cukup saring namanya!
                     .map(ds => ({ ...ds, data: [...ds.data] }));
             }
 
@@ -2875,20 +2875,10 @@ function updatePrintChartsData() {
                 }
             }
             
-            // =========================================================
-            // 4. KUNCI KEDAMAIAN CHART.JS (SEMUA MAINTAIN = TRUE)
-            // =========================================================
+            // MATIKAN ANIMASI SAJA.
+            // Biarkan rasio/proporsi grafik diurus oleh setingan bawaan saat Anda membuat Chart pertama kali.
             printChart.options.animation = false;
-            printChart.options.responsive = true;
-            
-            // WAJIB TRUE agar canvas tidak meledak ke luar wadah
-            printChart.options.maintainAspectRatio = true; 
-            
-            // Terapkan rasio sesuai jenis grafik yang dikirim
-            printChart.options.aspectRatio = targetRatio;
-            
             printChart.update();
-            // =========================================================
             
         } catch (err) {
             console.warn("Gagal menyinkronkan satu grafik:", err);
@@ -2896,29 +2886,22 @@ function updatePrintChartsData() {
     };
 
     try {
-        // HALAMAN 1: Audiogram dibuat agak kotak (1.25)
-        if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance, 1.25);
-        if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance, 1.25);
+        if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance);
+        if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance);
+        if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance);
         
-        // HALAMAN 1: Speech dibuat lebar dan pendek agar hemat tempat (2.5)
-        if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance, 2.5);
+        if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance);
+        if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance);
         
-        // HALAMAN 2-5: Grafik lainnya dibuat melebar normal (2.0)
-        if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance, 2.0);
-        if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance, 2.0);
+        if (typeof oaeRightChart !== 'undefined' && typeof printOaeRightChartInstance !== 'undefined') syncChart(oaeRightChart, printOaeRightChartInstance);
+        if (typeof oaeLeftChart !== 'undefined' && typeof printOaeLeftChartInstance !== 'undefined') syncChart(oaeLeftChart, printOaeLeftChartInstance);
         
-        if (typeof oaeRightChart !== 'undefined' && typeof printOaeRightChartInstance !== 'undefined') syncChart(oaeRightChart, printOaeRightChartInstance, 2.0);
-        if (typeof oaeLeftChart !== 'undefined' && typeof printOaeLeftChartInstance !== 'undefined') syncChart(oaeLeftChart, printOaeLeftChartInstance, 2.0);
+        if (typeof abrRightChart !== 'undefined' && typeof printAbrRightChartInstance !== 'undefined') syncChart(abrRightChart, printAbrRightChartInstance);
+        if (typeof abrLeftChart !== 'undefined' && typeof printAbrLeftChartInstance !== 'undefined') syncChart(abrLeftChart, printAbrLeftChartInstance);
         
-        if (typeof abrRightChart !== 'undefined' && typeof printAbrRightChartInstance !== 'undefined') syncChart(abrRightChart, printAbrRightChartInstance, 2.0);
-        if (typeof abrLeftChart !== 'undefined' && typeof printAbrLeftChartInstance !== 'undefined') syncChart(abrLeftChart, printAbrLeftChartInstance, 2.0);
-        
-        if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance, 2.0);
-        if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance, 2.0);
+        if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance);
+        if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance);
 
-        // =================================================================
-        // PAKSA SKALA ASSR & OAE
-        // =================================================================
         const forceAudiogramScale = (chartInstance) => {
             if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
                 chartInstance.options.scales.y.min = -10;        
