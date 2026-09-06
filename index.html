@@ -4971,30 +4971,32 @@ function startTone() {
     if (currentMode === 'BC') selectedTransducer = 'BC';
     if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-    let splAt70dB = 70.0; // <- Default fallback standar ISO
+    // ==============================================================
+    // PERBAIKAN UTAMA: KALKULASI VOLUME & TRANSISI NATURAL
+    // ==============================================================
+    let splAt70dB = 70.0; // Fallback aman
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-        splAt70dB = window.TRANSDUCER_REGISTRY[selectedTransducer][freq];
+        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
 
-    // ==============================================================
-    // PERBAIKAN UTAMA: KALKULASI VOLUME SINKRON DENGAN KALIBRASI
-    // Mencegah Digital Clipping / Suara Pecah pada Frekuensi Rendah
-    // ==============================================================
-    // Ambil offset kalibrasi jika sudah ada
+    // Pastikan nilai selalu dibaca sebagai angka, bukan teks/string
+    let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
+    
     let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
-    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? calibrationData[calKey][freq] : 0;
+    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
     
-    // Hitung output total berdasarkan db HL yang dipilih di UI, target SPL ISO, dan offset alat
-    let actualSPL = splAt70dB + (currentDb - 70) + currentOffset;
-    
+    // Kalkulasi Target
+    let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     const SYSTEM_MAX_SPL = 95; 
     
-    // PERBAIKAN: Mengembalikan limit aman ke 1.0 (0 dBFS) agar gelombang tidak dipotong paksa.
-    let targetGain = Math.min(Math.max(Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
-    // ==============================================================
+    // Batas aman murni audio digital (Maks 1.0)
+    let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
+    // Gunakan setTargetAtTime untuk kurva transisi logaritmik (lebih pas dengan telinga manusia)
     currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
-    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.05); // Transisi halus mencegah bunyi "klik"
+    currentGainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.015);
+    // ==============================================================
     
     if (panner) {
         osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
@@ -5398,7 +5400,9 @@ function startTone() {
     if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
     let currentTime = audioCtx.currentTime;
-    let duration = 0.6;
+    
+    // UBAH DURASI MENJADI 1 DETIK (1.0)
+    let duration = 1.0; 
 
     let oscillator = audioCtx.createOscillator();
     let toneGain = audioCtx.createGain();
@@ -5419,8 +5423,31 @@ function startTone() {
         lfo.stop(currentTime + duration);
     }
 
+    let selectedTransducer = 'DD45';
+    let transSelect = document.getElementById('setAcTransducer');
+    if (transSelect) { selectedTransducer = transSelect.value; }
+    
+    if (typeof currentMode !== 'undefined') {
+        if (currentMode === 'BC') selectedTransducer = 'BC';
+        if (currentMode === 'FFT') selectedTransducer = 'SPKR';
+    }
+
+    let splAt70dB = 70.0; 
+    if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][frequency]) {
+        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][frequency]);
+    }
+
+    let calKey = ((activeEar.toLowerCase() === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
+    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][frequency]) ? Number(calibrationData[calKey][frequency]) : 0;
+    
+    let actualSPL = splAt70dB + (Number(intensitydB) - 70) + currentOffset;
+    const SYSTEM_MAX_SPL = 95; 
+    
+    let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
+
     if (tonePanner) {
-        if (currentMode === 'FFT') {
+        if (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC')) {
             tonePanner.pan.setValueAtTime(0, currentTime);
         } else if (activeEar.toLowerCase() === 'left') {
             tonePanner.pan.setValueAtTime(-1, currentTime);
@@ -5433,15 +5460,24 @@ function startTone() {
         oscillator.connect(toneGain);
     }
 
-    let toneVolume = Math.min(Math.max((intensitydB + 10) / 120, 0), 1);
-    toneGain.gain.setValueAtTime(toneVolume, currentTime);
+    toneGain.gain.setValueAtTime(0.0001, currentTime);
+    toneGain.gain.setTargetAtTime(targetGain, currentTime, 0.015); 
+    toneGain.gain.setTargetAtTime(0.0001, currentTime + duration - 0.05, 0.015); 
+    
     toneGain.connect(audioCtx.destination);
-
     oscillator.start(currentTime);
     oscillator.stop(currentTime + duration);
 
-    // Pembuat noise ganda di bawah sini telah dihilangkan karena 
-    // noise dikendalikan secara mandiri dan kontinyu oleh startContinuousMaskingNoise()
+    if (typeof kirimDataAudiometer === 'function') {
+        let finalSide = (activeEar.toLowerCase() === 'left') ? 'L' : 'R';
+        let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+        
+        kirimDataAudiometer(`${finalMode},${finalSide},${frequency},${intensitydB}\n`);
+        
+        setTimeout(() => {
+            kirimDataAudiometer("STOP,0,0,0\n");
+        }, duration * 1000);
+    }
 }
 
     async function loadPatientsFromServer() {
