@@ -4674,10 +4674,17 @@ function startContinuousMaskingNoise() {
         splAt70dB = window.TRANSDUCER_REGISTRY[maskingTransducer][freq];
     }
 
-    // Hitung SPL Aktual dan Konversi ke Gain Web Audio
+    // ==============================================================
+    // PERBAIKAN UTAMA: KALKULASI VOLUME MASKING SAAT PERTAMA NYALA
+    // ==============================================================
     let actualNoiseSPL = splAt70dB + (noiseLvl - 70);
-    let noiseVol = Math.min(Math.max(Math.pow(10, (actualNoiseSPL - 120) / 20), 0.0001), 1.0);
-    // ============================================================
+    
+    // 1. Samakan baseline max SPL dengan menu Kalibrasi (95)
+    const SYSTEM_MAX_SPL = 95; 
+    
+    // 2. Lepas penahan 1.0 menjadi 10.0
+    let noiseVol = Math.min(Math.max(Math.pow(10, (actualNoiseSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 10.0);
+    // ==============================================================
 
     window.activeNoiseGain = audioCtx.createGain();
     window.activeNoiseGain.gain.setValueAtTime(noiseVol, audioCtx.currentTime); 
@@ -4689,7 +4696,7 @@ function startContinuousMaskingNoise() {
     }
     window.activeNoiseSource.start();
 }
-
+        
 function stopContinuousMaskingNoise() {
     if (window.activeNoiseSource) {
         try { 
@@ -4724,9 +4731,17 @@ function stopContinuousMaskingNoise() {
             splAt70dB = window.TRANSDUCER_REGISTRY[maskingTransducer][freq];
         }
 
-        // Kalkulasi ulang secara real-time
+        // ==============================================================
+        // PERBAIKAN UTAMA: KALKULASI VOLUME MASKING
+        // ==============================================================
         let actualNoiseSPL = splAt70dB + (val - 70);
-        let targetGain = Math.min(Math.max(Math.pow(10, (actualNoiseSPL - 120) / 20), 0.0001), 1.0);
+        
+        // 1. Samakan baseline max SPL dengan menu Kalibrasi (95)
+        const SYSTEM_MAX_SPL = 95; 
+        
+        // 2. Lepas penahan 1.0 menjadi 10.0 agar suara masking bisa mengimbangi stimulus
+        let targetGain = Math.min(Math.max(Math.pow(10, (actualNoiseSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 10.0);
+        // ==============================================================
 
         window.activeNoiseGain.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.05);
     }
@@ -4857,9 +4872,6 @@ function stopVRAReward(side) {
     }
 }
 
-// ============================================================
-// FUNGSI PEMUTAR AUDIO (KEMBALI KE KODE ASLI - 100% AKURAT)
-// ============================================================
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
@@ -4924,10 +4936,20 @@ function startTone() {
         splAt70dB = window.TRANSDUCER_REGISTRY[selectedTransducer][freq];
     }
 
-    // PERHITUNGAN VOLUME KEMBALI MENGGUNAKAN "currentDb" (Sangat Akurat)
+    // ==============================================================
+    // PERBAIKAN UTAMA: KALKULASI VOLUME (SINKRON DENGAN KALIBRASI)
+    // ==============================================================
     let actualSPL = splAt70dB + (currentDb - 70);
-    let targetGain = Math.min(Math.max(Math.pow(10, (actualSPL - 120) / 20), 0.0001), 1.0);
     
+    // 1. Samakan baseline max SPL dengan menu Kalibrasi Anda
+    const SYSTEM_MAX_SPL = 95; 
+    
+    // 2. Menghapus hard limit 1.0 (Math.min) agar Web Audio API 
+    //    mengizinkan modul PCM2704 menerima gain yang lebih tinggi untuk level 120dB
+    //    (Kita batasi di angka 10.0 sebagai jaring pengaman agar browser tidak crash)
+    let targetGain = Math.min(Math.max(Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 10.0);
+    // ==============================================================
+
     currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
     currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.05);
     
@@ -5083,42 +5105,65 @@ function startTone() {
     }
 
     function playNextWord() {
-        let batchSize = parseInt(document.getElementById('batchSize').value) || 10; let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
-        
-        if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
-            isPlaylistRunning = false; 
-            let wordListContainer = document.getElementById('speechWordList'); if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-            if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
-            return; 
-        }
-
-        let reader = new FileReader();
-        reader.onload = e => {
-            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioCtx.decodeAudioData(e.target.result, buffer => {
-                if(!isPlaylistRunning) return;
-                speechSourceNode = audioCtx.createBufferSource(); speechSourceNode.buffer = buffer; 
-                let speechPanner = audioCtx.createStereoPanner(); speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
-                speechGainNode = audioCtx.createGain(); speechGainNode.gain.setValueAtTime(Math.min(Math.max(Math.pow(10, (currentDb - 60) / 20), 0.0001), 15.0), audioCtx.currentTime); 
-                speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); speechSourceNode.start(0); 
-                
-                let playingDiv = wordUIs[currentPlaylistIndex]; if(playingDiv) playingDiv.classList.add('playing');
-                currentPlaylistIndex++; wordsPlayedInCurrentBatch++;
-                
-                speechSourceNode.onended = () => { 
-                    if(playingDiv) playingDiv.classList.remove('playing');
-                    if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
-                        let delayMs = customDelaySec * 1000; setTimeout(playNextWord, delayMs);
-                    } else {
-                        isPlaylistRunning = false; 
-                        let wordListContainer = document.getElementById('speechWordList'); if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-                        showToast(`Deret kata selesai dimainkan.`);
-                    }
-                };
-            });
-        };
-        reader.readAsArrayBuffer(playlistQueue[currentPlaylistIndex]);
+    let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
+    let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
+    
+    if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
+        isPlaylistRunning = false; 
+        let wordListContainer = document.getElementById('speechWordList'); 
+        if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+        if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
+        return; 
     }
+
+    let reader = new FileReader();
+    reader.onload = e => {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.decodeAudioData(e.target.result, buffer => {
+            if(!isPlaylistRunning) return;
+            speechSourceNode = audioCtx.createBufferSource(); 
+            speechSourceNode.buffer = buffer; 
+            
+            let speechPanner = audioCtx.createStereoPanner(); 
+            speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
+            
+            speechGainNode = audioCtx.createGain(); 
+            
+            // ==============================================================
+            // PERBAIKAN UTAMA: KALKULASI VOLUME SPEECH
+            // ==============================================================
+            const SYSTEM_MAX_SPL = 95; 
+            // Mengubah referensi 60 menjadi SYSTEM_MAX_SPL (95) agar selaras dengan Pure Tone
+            let targetGain = Math.min(Math.max(Math.pow(10, (currentDb - SYSTEM_MAX_SPL) / 20), 0.0001), 15.0);
+            
+            speechGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime); 
+            // ==============================================================
+            
+            speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); 
+            speechSourceNode.start(0); 
+            
+            let playingDiv = wordUIs[currentPlaylistIndex]; 
+            if(playingDiv) playingDiv.classList.add('playing');
+            
+            currentPlaylistIndex++; 
+            wordsPlayedInCurrentBatch++;
+            
+            speechSourceNode.onended = () => { 
+                if(playingDiv) playingDiv.classList.remove('playing');
+                if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
+                    let delayMs = customDelaySec * 1000; 
+                    setTimeout(playNextWord, delayMs);
+                } else {
+                    isPlaylistRunning = false; 
+                    let wordListContainer = document.getElementById('speechWordList'); 
+                    if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+                    showToast(`Deret kata selesai dimainkan.`);
+                }
+            };
+        });
+    };
+    reader.readAsArrayBuffer(playlistQueue[currentPlaylistIndex]);
+}
 
     function markWord(isCorrect) {
         if (currentEvaluationIndex >= playlistQueue.length) return showToast("Semua kata telah dinilai.");
