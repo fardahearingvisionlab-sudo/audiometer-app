@@ -301,6 +301,19 @@
         max-width: 100% !important;
         page-break-inside: avoid !important;
     }
+
+    /* ======================================================= */
+    /* ATURAN ANTI-TERPOTONG UNTUK KERTAS PRINTER              */
+    /* ======================================================= */
+    .cegah-terpotong {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Memaksa margin kertas lebih kecil agar isi Hal 1 muat */
+    @page {
+        margin: 5mm; 
+    }
 }
 
 /* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
@@ -1086,9 +1099,10 @@ canvas#rightChart, canvas#leftChart {
         </div>
 
         <!-- Diagnosis -->
-        <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">DIAGNOSIS:</div>
-        <div style="border: 1px solid #000; min-height: 12mm; padding: 4px; font-size: 10px;"><span id="prev_diagnosis">-</span></div>
-    </div>
+        <div class="cegah-terpotong">
+            <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">DIAGNOSIS:</div>
+            <div style="border: 1px solid #000; min-height: 12mm; padding: 4px; font-size: 10px;"><span id="prev_diagnosis">-</span></div>
+        </div>
 
     <!-- ================= HALAMAN 2: TIMPANOMETRI & REFLEKS ================= -->
     <div id="print_page2" class="print-page">
@@ -2826,6 +2840,7 @@ window.onload = function() {
     updatePrintPages();         // Atur tampil/tidaknya berdasarkan status checkbox
 };
 
+
 // =================================================================
 // 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
@@ -2839,7 +2854,7 @@ function updatePrintChartsData() {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data (Membuang Zona Abu-abu secara ketat)
+            // 2. Salin Data (Membuang Zona Abu-abu)
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
                     .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
@@ -2861,21 +2876,19 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. PERBAIKAN PROPORSI (Mencegah Grafik Terpotong)
+            // 4. PERBAIKAN PROPORSI (Aman dari potongan margin kertas)
             // =========================================================
             printChart.options.animation = false;
+            
+            // Biarkan grafik responsif mengikuti lebar kertas
             printChart.options.responsive = true;
+            
+            // Pertahankan rasio bentuk kotak, jangan melebar jadi pipih
             printChart.options.maintainAspectRatio = true; 
-            
-            // Rasio 1.2 membuat grafik sedikit lebih pendek sehingga aman dari potongan kertas bawah
-            printChart.options.aspectRatio = 1.2; 
-            
-            printChart.update();
-            
-            // PERINTAH SAKTI: Paksa kanvas untuk menyesuaikan ukuran barunya di kertas cetak
-            printChart.resize();
+            printChart.options.aspectRatio = mainChart.options.aspectRatio || 1.4; 
             // =========================================================
             
+            printChart.update();
         } catch (err) {
             console.warn("Gagal menyinkronkan satu grafik:", err);
         }
@@ -2909,7 +2922,6 @@ function updatePrintChartsData() {
                 chartInstance.options.scales.y.ticks.autoSkip = false;
                 
                 chartInstance.update();
-                chartInstance.resize(); // Paksa resize juga di sini
             }
         };
 
@@ -2927,7 +2939,6 @@ function updatePrintChartsData() {
                 chartInstance.options.scales.y.ticks.autoSkip = false;
                 
                 chartInstance.update();
-                chartInstance.resize(); // Paksa resize juga di sini
             }
         };
 
@@ -2938,7 +2949,7 @@ function updatePrintChartsData() {
         console.error("Crash sistem sinkronisasi cetak:", error);
     }
 }
-        
+
     function setExamStimulus(type) {
         currentStimulus = type;
         document.getElementById('btnStimPure').classList.remove('active-mode'); document.getElementById('btnStimWarble').classList.remove('active-mode');
@@ -4527,7 +4538,7 @@ function loadSessionDataToTable(data) {
             if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
         }, 300);
     }
-        
+
     function updateGsiCharts() {
         const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
         
