@@ -6495,44 +6495,50 @@ function restoreCalibrationFromCloud() {
     // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN) -> BARU DITAMBAHKAN
     // ============================================================
     async function bacaDataSerial() {
-        while (portAudiometer && portAudiometer.readable) {
-            const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
-            const reader = textDecoder.readable.getReader();
+    while (portAudiometer && portAudiometer.readable) {
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
 
-            try {
-                let bufferData = "";
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break; 
+        try {
+            let bufferData = "";
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break; 
+                
+                if (value) {
+                    bufferData += value;
                     
-                    if (value) {
-                        bufferData += value;
-                        if (bufferData.includes('\n')) {
-                            let pesanDiterima = bufferData.trim();
+                    // Pecah data berdasarkan baris baru (\n)
+                    let barisData = bufferData.split('\n');
+                    
+                    // Pindahkan elemen terakhir (yang mungkin belum ada \n / belum utuh) kembali ke buffer
+                    bufferData = barisData.pop();
+
+                    // Loop untuk mengecek setiap baris yang sudah terkirim utuh
+                    for (let baris of barisData) {
+                        let pesanDiterima = baris.trim();
+                        
+                        // Cek apakah pesan berisi respon pasien
+                        if (pesanDiterima === "RESPON_PASIEN") {
+                            console.log("Sinyal tombol pasien diterima di Web!");
                             
-                            // Jika ada teks masuk dari Arduino
-                            if (pesanDiterima === "RESPON_PASIEN") {
-                                console.log("Sinyal tombol pasien diterima di Web!");
-                                
-                                // Panggil fungsi nyala lampu visual Anda di sini
-                                if (typeof handlePatientResponse === 'function') {
-                                    handlePatientResponse(); 
-                                } else {
-                                    console.warn("Lampu gagal menyala: Fungsi 'handlePatientResponse' belum Anda buat di JS.");
-                                }
+                            if (typeof handlePatientResponse === 'function') {
+                                handlePatientResponse(); 
+                            } else {
+                                console.warn("Lampu gagal menyala: Fungsi 'handlePatientResponse' tidak ditemukan.");
                             }
-                            bufferData = ""; 
                         }
                     }
                 }
-            } catch (error) {
-                console.error("Error baca serial:", error);
-            } finally {
-                reader.releaseLock();
             }
+        } catch (error) {
+            console.error("Error baca serial:", error);
+        } finally {
+            reader.releaseLock();
         }
     }
+}
 
     // ============================================================
     // FITUR PREVIEW TX DINAMIS (SINKRONISASI UI REAL-TIME)
