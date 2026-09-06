@@ -4579,6 +4579,9 @@ function loadSessionDataToTable(data) {
     if ((m === 'FFT' || m === 'VRA') && typeof setExamStimulus === 'function') { setExamStimulus('warble'); }
     let vraCtrl = document.getElementById('vraControls'); if (vraCtrl) vraCtrl.style.display = (m === 'VRA') ? 'block' : 'none';
     showToast(`Mode: ${m}`);
+
+    if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, m);
+    if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
 }
 
     function setSide(s) { 
@@ -4591,8 +4594,31 @@ function loadSessionDataToTable(data) {
     updateMaskingDisplayUI(); 
 }
 
-    function updateDisplayStatus() { let f = FREQUENCIES[currentFreqIndex]; document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; }
-    function adjustDb(val) { let nv = currentDb + val; if(nv >= -10 && nv <= 120) { currentDb = nv; updateDisplayStatus(); } }
+    function updateDisplayStatus() { 
+    let f = FREQUENCIES[currentFreqIndex]; 
+    document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
+    document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; 
+}
+
+    // PERBAIKAN: Fungsi adjustDb sekarang pintar dan tahu batas maksimal!
+    function adjustDb(val) {
+    let freqAktif = FREQUENCIES[currentFreqIndex];
+    let batasMaksimal = getMaximumLimit(currentMode, freqAktif);
+    
+    let nv = currentDb + val;
+    
+    if (nv > batasMaksimal) {
+        currentDb = batasMaksimal; // Kunci di batas mentok
+        if (typeof showToast === 'function') {
+            showToast(`⚠️ Batas maksimal ${currentMode} untuk ${freqAktif} Hz adalah ${batasMaksimal} dB HL`);
+        }
+    } else if (nv < -10) {
+        currentDb = -10; // Kunci batas bawah minimum
+    } else {
+        currentDb = nv;
+    }
+    updateDisplayStatus();
+}
     
     function updateMaskingDisplayUI() {
     let chkMasking = document.getElementById('chkMasking');
@@ -4912,6 +4938,57 @@ function stopVRAReward(side) {
     }
 }
 
+// ============================================================
+// FUNGSI BATAS MAKSIMAL KLINIS (ISO/ANSI)
+// ============================================================
+function getMaximumLimit(mode, freq) {
+    let f = Number(freq);
+    if (mode === 'BC') {
+        if (f === 125) return 0;   // Tidak dites
+        if (f === 250) return 45;
+        if (f === 500) return 60;
+        if (f === 750) return 65;
+        if (f === 1000 || f === 1500 || f === 2000 || f === 3000 || f === 4000) return 70;
+        if (f === 6000 || f === 8000) return 50;
+        return 50; 
+    } else {
+        // Mode AC / FFT / VRA
+        if (f === 125) return 80;
+        if (f === 250) return 100;
+        if (f === 500) return 110;
+        if (f === 750) return 115;
+        if (f === 8000) return 100;
+        if (f === 10000 || f === 12500) return 90;
+        return 120; 
+    }
+}
+
+// FUNGSI UNTUK MENGGAMBAR ZONA ABU-ABU DI AUDIOGRAM
+function updateVisualBatasMaksimal(chartInstance, mode) {
+    if (!chartInstance) return;
+    
+    // Ambil variabel FREQUENCIES bawaan aplikasi Anda
+    let limitData = FREQUENCIES.map(f => getMaximumLimit(mode, f));
+
+    let datasetBatas = {
+        label: 'MaxLimitZone',
+        data: limitData,
+        borderColor: 'transparent', 
+        backgroundColor: 'rgba(203, 213, 225, 0.4)', // Abu-abu transparan
+        pointRadius: 0, 
+        fill: { value: 130 }, // Tarik warna ke bagian paling bawah grafik
+        order: 99 // Simpan di layer paling belakang
+    };
+
+    let limitIndex = chartInstance.data.datasets.findIndex(ds => ds.label === 'MaxLimitZone');
+    if (limitIndex >= 0) {
+        chartInstance.data.datasets[limitIndex] = datasetBatas;
+    } else {
+        chartInstance.data.datasets.push(datasetBatas);
+    }
+    chartInstance.update();
+}
+
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
@@ -5053,6 +5130,7 @@ function startTone() {
         }
     }
 }
+
 
     // ============================================================
     // 2. FUNGSI STOP TONE TERBARU
