@@ -4930,7 +4930,7 @@ function startTone() {
     let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
     if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
 
-    // 1. BANGKITKAN AUDIO (ANTI-SLEEP) TANPA MERUSAK SISTEM
+    // 1. BANGKITKAN AUDIO (ANTI-SLEEP)
     if (!audioCtx || audioCtx.state === 'closed') {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -4971,27 +4971,30 @@ function startTone() {
     if (currentMode === 'BC') selectedTransducer = 'BC';
     if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-    let splAt70dB = 80.0;
+    let splAt70dB = 70.0; // <- Default fallback standar ISO
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
         splAt70dB = window.TRANSDUCER_REGISTRY[selectedTransducer][freq];
     }
 
     // ==============================================================
-    // PERBAIKAN UTAMA: KALKULASI VOLUME (SINKRON DENGAN KALIBRASI)
+    // PERBAIKAN UTAMA: KALKULASI VOLUME SINKRON DENGAN KALIBRASI
+    // Mencegah Digital Clipping / Suara Pecah pada Frekuensi Rendah
     // ==============================================================
-    let actualSPL = splAt70dB + (currentDb - 70);
+    // Ambil offset kalibrasi jika sudah ada
+    let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
+    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? calibrationData[calKey][freq] : 0;
     
-    // 1. Samakan baseline max SPL dengan menu Kalibrasi Anda
+    // Hitung output total berdasarkan db HL yang dipilih di UI, target SPL ISO, dan offset alat
+    let actualSPL = splAt70dB + (currentDb - 70) + currentOffset;
+    
     const SYSTEM_MAX_SPL = 95; 
     
-    // 2. Menghapus hard limit 1.0 (Math.min) agar Web Audio API 
-    //    mengizinkan modul PCM2704 menerima gain yang lebih tinggi untuk level 120dB
-    //    (Kita batasi di angka 10.0 sebagai jaring pengaman agar browser tidak crash)
-    let targetGain = Math.min(Math.max(Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 10.0);
+    // PERBAIKAN: Mengembalikan limit aman ke 1.0 (0 dBFS) agar gelombang tidak dipotong paksa.
+    let targetGain = Math.min(Math.max(Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
     // ==============================================================
 
     currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
-    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.05);
+    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.05); // Transisi halus mencegah bunyi "klik"
     
     if (panner) {
         osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
