@@ -2829,12 +2829,8 @@ window.onload = function() {
 // =================================================================
 // 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
-// =================================================================
-// 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
-// =================================================================
 function updatePrintChartsData() {
     const syncChart = (mainChart, printChart) => {
-        // Keamanan tambahan: pastikan kedua chart benar-benar ada
         if (typeof mainChart === 'undefined' || !mainChart || typeof printChart === 'undefined' || !printChart) return;
         
         try {
@@ -2843,22 +2839,14 @@ function updatePrintChartsData() {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data (DENGAN PENYARINGAN EKSTRA KETAT)
+            // 2. Salin Data (Membuang Zona Abu-abu)
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
-                    .filter(ds => {
-                        // BUANG jika namanya MaxLimitZone atau warnanya abu-abu transparan!
-                        if (ds.label === 'MaxLimitZone') return false;
-                        if (ds.backgroundColor === 'rgba(203, 213, 225, 0.4)') return false;
-                        return true; // Sisanya (AC, BC, FFT) lolos
-                    })
-                    .map(ds => ({
-                        ...ds,
-                        data: [...ds.data]
-                    }));
+                    .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
+                    .map(ds => ({ ...ds, data: [...ds.data] }));
             }
 
-            // 3. Salin Skala (Toleransi jika dari mainChart kosong)
+            // 3. Salin Skala
             if (mainChart.options && mainChart.options.scales && printChart.options && printChart.options.scales) {
                 if (mainChart.options.scales.x && printChart.options.scales.x) {
                     printChart.options.scales.x.min = mainChart.options.scales.x.min;
@@ -2873,25 +2861,16 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. PERBAIKAN PROPORSI GRAFIK (KUNCI TINGGI SECARA FISIK)
+            // 4. PERBAIKAN PROPORSI (Aman dari potongan margin kertas)
             // =========================================================
             printChart.options.animation = false;
             
-            // Matikan rasio bawaan, karena kita akan memaksanya pakai CSS
-            printChart.options.maintainAspectRatio = false; 
+            // Biarkan grafik responsif mengikuti lebar kertas
+            printChart.options.responsive = true;
             
-            // Kunci tinggi fisik kotak grafik agar tidak tergencet oleh kertas Printer
-            if (printChart.canvas) {
-                // Tinggi 280px adalah standar rasio persegi panjang yang ideal untuk Audiogram
-                printChart.canvas.style.height = '280px'; 
-                printChart.canvas.style.maxHeight = '280px'; 
-                
-                // Kunci juga rumahnya (wadah pembungkus grafik)
-                if (printChart.canvas.parentNode) {
-                    printChart.canvas.parentNode.style.height = '280px';
-                    printChart.canvas.parentNode.style.position = 'relative';
-                }
-            }
+            // Pertahankan rasio bentuk kotak, jangan melebar jadi pipih
+            printChart.options.maintainAspectRatio = true; 
+            printChart.options.aspectRatio = mainChart.options.aspectRatio || 1.4; 
             // =========================================================
             
             printChart.update();
@@ -2917,9 +2896,6 @@ function updatePrintChartsData() {
         if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance);
         if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance);
 
-        // =================================================================
-        // PAKSA SKALA ASSR MENGGUNAKAN STANDAR AUDIOGRAM
-        // =================================================================
         const forceAudiogramScale = (chartInstance) => {
             if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
                 chartInstance.options.scales.y.min = -10;        
@@ -2937,9 +2913,6 @@ function updatePrintChartsData() {
         if (typeof printAssrRightChartInstance !== 'undefined') forceAudiogramScale(printAssrRightChartInstance);
         if (typeof printAssrLeftChartInstance !== 'undefined') forceAudiogramScale(printAssrLeftChartInstance);
         
-        // =================================================================
-        // PAKSA SKALA OAE AGAR TIDAK BERHENTI DI 30 dB
-        // =================================================================
         const forceOAEScale = (chartInstance) => {
             if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
                 chartInstance.options.scales.y.min = -10; 
@@ -4527,7 +4500,6 @@ function loadSessionDataToTable(data) {
                 datasets: [
                     { label: 'AC', data: Array(12).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, pointStyle: isRight?'circle':'crossRot', pointRadius: 6, borderWidth: 2.5, fill: false, spanGaps: true }, 
                     { label: 'BC', data: Array(12).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], pointStyle:'triangle', pointRadius:6, borderWidth:2.5, fill:false, spanGaps:true },
-                    // DATASET BARU: FFT / VRA menggunakan Simbol 'S'
                     { label: 'FFT', data: Array(12).fill(null), borderColor: color, backgroundColor: color, borderDash:[3,3], pointStyle: isRight ? imgSFRight : imgSFLeft, pointRadius: 7, borderWidth: 2, fill: false, spanGaps: true }
                 ] 
             },
@@ -4541,8 +4513,17 @@ function loadSessionDataToTable(data) {
             type: 'line', data: { datasets: [{ data: [], borderColor: '#0284c7', backgroundColor: '#0284c7', pointRadius: 6, borderWidth: 2.5, fill: false }] }, 
             options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } } } 
         });
-    }
 
+        // ==============================================================
+        // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
+        // ==============================================================
+        setTimeout(() => {
+            let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+            if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
+            if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+        }, 300);
+    }
+        
     function updateGsiCharts() {
         const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
         
