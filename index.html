@@ -2829,9 +2829,12 @@ window.onload = function() {
 // =================================================================
 // 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
+// =================================================================
+// 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
+// =================================================================
 function updatePrintChartsData() {
     const syncChart = (mainChart, printChart) => {
-        // Keamanan tambahan: pastikan kedua chart benar-benar ada dan sudah diinisialisasi
+        // Keamanan tambahan: pastikan kedua chart benar-benar ada
         if (typeof mainChart === 'undefined' || !mainChart || typeof printChart === 'undefined' || !printChart) return;
         
         try {
@@ -2840,18 +2843,22 @@ function updatePrintChartsData() {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data & Gaya Garis (DENGAN PENYARINGAN ZONA ABU-ABU)
+            // 2. Salin Data (DENGAN PENYARINGAN EKSTRA KETAT)
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
-                    // PERBAIKAN: Saring agar bayangan abu-abu batas maksimal tidak ikut diprint
-                    .filter(ds => ds.label !== 'MaxLimitZone')
+                    .filter(ds => {
+                        // BUANG jika namanya MaxLimitZone atau warnanya abu-abu transparan!
+                        if (ds.label === 'MaxLimitZone') return false;
+                        if (ds.backgroundColor === 'rgba(203, 213, 225, 0.4)') return false;
+                        return true; // Sisanya (AC, BC, FFT) lolos
+                    })
                     .map(ds => ({
                         ...ds,
                         data: [...ds.data]
                     }));
             }
 
-            // 3. Salin Skala
+            // 3. Salin Skala (Toleransi jika dari mainChart kosong)
             if (mainChart.options && mainChart.options.scales && printChart.options && printChart.options.scales) {
                 if (mainChart.options.scales.x && printChart.options.scales.x) {
                     printChart.options.scales.x.min = mainChart.options.scales.x.min;
@@ -2866,15 +2873,25 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. PERBAIKAN PROPORSI GRAFIK (MENCEGAH BENTUK PIPIH)
+            // 4. PERBAIKAN PROPORSI GRAFIK (KUNCI TINGGI SECARA FISIK)
             // =========================================================
             printChart.options.animation = false;
             
-            // Ubah menjadi TRUE agar grafik disiplin mempertahankan bentuk kotaknya
-            printChart.options.maintainAspectRatio = true; 
+            // Matikan rasio bawaan, karena kita akan memaksanya pakai CSS
+            printChart.options.maintainAspectRatio = false; 
             
-            // Memaksa rasio aspek (lebar vs tinggi) sesuai standar layar utama (biasanya 1.4)
-            printChart.options.aspectRatio = mainChart.options.aspectRatio || 1.4; 
+            // Kunci tinggi fisik kotak grafik agar tidak tergencet oleh kertas Printer
+            if (printChart.canvas) {
+                // Tinggi 280px adalah standar rasio persegi panjang yang ideal untuk Audiogram
+                printChart.canvas.style.height = '280px'; 
+                printChart.canvas.style.maxHeight = '280px'; 
+                
+                // Kunci juga rumahnya (wadah pembungkus grafik)
+                if (printChart.canvas.parentNode) {
+                    printChart.canvas.parentNode.style.height = '280px';
+                    printChart.canvas.parentNode.style.position = 'relative';
+                }
+            }
             // =========================================================
             
             printChart.update();
@@ -2884,7 +2901,6 @@ function updatePrintChartsData() {
     };
 
     try {
-        // Sinkronisasi aman untuk setiap chart 
         if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance);
         if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance);
         if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance);
