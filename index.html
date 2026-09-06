@@ -2845,7 +2845,8 @@ window.onload = function() {
 // 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
 function updatePrintChartsData() {
-    const syncChart = (mainChart, printChart) => {
+    // Tambahan parameter "chartType" agar fungsi tahu grafik apa yang sedang diproses
+    const syncChart = (mainChart, printChart, chartType = 'other') => {
         if (typeof mainChart === 'undefined' || !mainChart || typeof printChart === 'undefined' || !printChart) return;
         
         try {
@@ -2854,7 +2855,7 @@ function updatePrintChartsData() {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data (Membuang Zona Abu-abu)
+            // 2. Salin Data (Membuang Zona Abu-abu batas maksimal secara ketat)
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
                     .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
@@ -2876,52 +2877,68 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. PERBAIKAN PROPORSI (Aman dari potongan margin kertas)
+            // 4. LOGIKA PINTAR PENGATURAN PROPORSI GRAFIK
             // =========================================================
             printChart.options.animation = false;
-            
-            // Biarkan grafik responsif mengikuti lebar kertas
             printChart.options.responsive = true;
-            
-            // Pertahankan rasio bentuk kotak, jangan melebar jadi pipih
-            printChart.options.maintainAspectRatio = true; 
-            printChart.options.aspectRatio = mainChart.options.aspectRatio || 1.4; 
+
+            if (chartType === 'audiogram') {
+                // Khusus Pure Tone: Paksa jadi kotak proporsional agar tidak gepeng
+                printChart.options.maintainAspectRatio = true;
+                printChart.options.aspectRatio = 1.25; 
+            } 
+            else if (chartType === 'speech') {
+                // Khusus Speech: Bebaskan mengisi kotak 20mm yang sudah kita set di HTML
+                printChart.options.maintainAspectRatio = false; 
+            } 
+            else {
+                // Khusus ABR, Tymp, OAE, ASSR: Kembalikan ke bentuk lebar aslinya!
+                printChart.options.maintainAspectRatio = true;
+                printChart.options.aspectRatio = mainChart.options.aspectRatio || 2; 
+            }
             // =========================================================
             
             printChart.update();
+            printChart.resize(); // Paksa browser menggambar ulang sesuai porsinya
+            
         } catch (err) {
             console.warn("Gagal menyinkronkan satu grafik:", err);
         }
     };
 
     try {
-        if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance);
-        if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance);
-        if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance);
+        // Panggil fungsi sinkronisasi dengan identitas spesifik
+        if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance, 'audiogram');
+        if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance, 'audiogram');
         
-        if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance);
-        if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance);
+        if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance, 'speech');
         
-        if (typeof oaeRightChart !== 'undefined' && typeof printOaeRightChartInstance !== 'undefined') syncChart(oaeRightChart, printOaeRightChartInstance);
-        if (typeof oaeLeftChart !== 'undefined' && typeof printOaeLeftChartInstance !== 'undefined') syncChart(oaeLeftChart, printOaeLeftChartInstance);
+        // Sisa grafik lainnya dibiarkan menggunakan rasio memanjang ('other')
+        if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance, 'other');
+        if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance, 'other');
         
-        if (typeof abrRightChart !== 'undefined' && typeof printAbrRightChartInstance !== 'undefined') syncChart(abrRightChart, printAbrRightChartInstance);
-        if (typeof abrLeftChart !== 'undefined' && typeof printAbrLeftChartInstance !== 'undefined') syncChart(abrLeftChart, printAbrLeftChartInstance);
+        if (typeof oaeRightChart !== 'undefined' && typeof printOaeRightChartInstance !== 'undefined') syncChart(oaeRightChart, printOaeRightChartInstance, 'other');
+        if (typeof oaeLeftChart !== 'undefined' && typeof printOaeLeftChartInstance !== 'undefined') syncChart(oaeLeftChart, printOaeLeftChartInstance, 'other');
         
-        if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance);
-        if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance);
+        if (typeof abrRightChart !== 'undefined' && typeof printAbrRightChartInstance !== 'undefined') syncChart(abrRightChart, printAbrRightChartInstance, 'other');
+        if (typeof abrLeftChart !== 'undefined' && typeof printAbrLeftChartInstance !== 'undefined') syncChart(abrLeftChart, printAbrLeftChartInstance, 'other');
+        
+        if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance, 'other');
+        if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance, 'other');
 
+        // =================================================================
+        // PAKSA SKALA ASSR & OAE
+        // =================================================================
         const forceAudiogramScale = (chartInstance) => {
             if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
                 chartInstance.options.scales.y.min = -10;        
                 chartInstance.options.scales.y.max = 120;        
                 chartInstance.options.scales.y.reverse = true;    
-                
                 if (!chartInstance.options.scales.y.ticks) chartInstance.options.scales.y.ticks = {};
                 chartInstance.options.scales.y.ticks.stepSize = 10;
                 chartInstance.options.scales.y.ticks.autoSkip = false;
-                
                 chartInstance.update();
+                chartInstance.resize();
             }
         };
 
@@ -2933,12 +2950,11 @@ function updatePrintChartsData() {
                 chartInstance.options.scales.y.min = -10; 
                 chartInstance.options.scales.y.max = 60;          
                 chartInstance.options.scales.y.reverse = false;   
-                
                 if (!chartInstance.options.scales.y.ticks) chartInstance.options.scales.y.ticks = {};
                 chartInstance.options.scales.y.ticks.stepSize = 10;
                 chartInstance.options.scales.y.ticks.autoSkip = false;
-                
                 chartInstance.update();
+                chartInstance.resize();
             }
         };
 
