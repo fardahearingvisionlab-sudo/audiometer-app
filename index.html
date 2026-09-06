@@ -2840,15 +2840,18 @@ function updatePrintChartsData() {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data & Gaya Garis
+            // 2. Salin Data & Gaya Garis (DENGAN PENYARINGAN ZONA ABU-ABU)
             if (mainChart.data && mainChart.data.datasets) {
-                printChart.data.datasets = mainChart.data.datasets.map(ds => ({
-                    ...ds,
-                    data: [...ds.data]
-                }));
+                printChart.data.datasets = mainChart.data.datasets
+                    // PERBAIKAN: Saring agar bayangan abu-abu batas maksimal tidak ikut diprint
+                    .filter(ds => ds.label !== 'MaxLimitZone')
+                    .map(ds => ({
+                        ...ds,
+                        data: [...ds.data]
+                    }));
             }
 
-            // 3. Salin Skala (Toleransi jika dari mainChart kosong)
+            // 3. Salin Skala
             if (mainChart.options && mainChart.options.scales && printChart.options && printChart.options.scales) {
                 if (mainChart.options.scales.x && printChart.options.scales.x) {
                     printChart.options.scales.x.min = mainChart.options.scales.x.min;
@@ -2862,8 +2865,18 @@ function updatePrintChartsData() {
                 }
             }
             
+            // =========================================================
+            // 4. PERBAIKAN PROPORSI GRAFIK (MENCEGAH BENTUK PIPIH)
+            // =========================================================
             printChart.options.animation = false;
-            printChart.options.maintainAspectRatio = false;
+            
+            // Ubah menjadi TRUE agar grafik disiplin mempertahankan bentuk kotaknya
+            printChart.options.maintainAspectRatio = true; 
+            
+            // Memaksa rasio aspek (lebar vs tinggi) sesuai standar layar utama (biasanya 1.4)
+            printChart.options.aspectRatio = mainChart.options.aspectRatio || 1.4; 
+            // =========================================================
+            
             printChart.update();
         } catch (err) {
             console.warn("Gagal menyinkronkan satu grafik:", err);
@@ -2871,7 +2884,7 @@ function updatePrintChartsData() {
     };
 
     try {
-        // Sinkronisasi aman untuk setiap chart (menggunakan variabel yang ada di script Anda)
+        // Sinkronisasi aman untuk setiap chart 
         if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance);
         if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance);
         if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance);
