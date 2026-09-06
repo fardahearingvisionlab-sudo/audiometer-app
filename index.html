@@ -971,13 +971,13 @@ canvas#rightChart, canvas#leftChart {
         <h3 style="text-align: center; margin: 0 0 6px 0; font-size: 12px;">PURE TONE & SPEECH AUDIOMETRY SUMMARY</h3>
         
         <!-- GRAFIK PTA KANAN & KIRI -->
-        <!-- KODE BARU (Lebih hemat tinggi vertikal) -->
+        <!-- KODE BARU: Tinggi Fisik Terkunci 75mm (Menjamin Muat di Halaman 1) -->
         <div style="display: flex; gap: 8px; margin-bottom: 4px; justify-content: center; width: 100%;">
-            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; aspect-ratio: 1.25; display: flex; align-items: center; justify-content: center; padding: 2px;">
-                <canvas id="prevRightChart" style="width: 100%; height: 100%;"></canvas>
+            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; height: 75mm; position: relative;">
+                <canvas id="prevRightChart"></canvas>
             </div>
-            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; aspect-ratio: 1.25; display: flex; align-items: center; justify-content: center; padding: 2px;">
-                <canvas id="prevLeftChart" style="width: 100%; height: 100%;"></canvas>
+            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; height: 75mm; position: relative;">
+                <canvas id="prevLeftChart"></canvas>
             </div>
         </div>
 
@@ -2845,9 +2845,9 @@ window.onload = function() {
 // 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
 function updatePrintChartsData() {
-    // Tambahan parameter "chartType" agar fungsi tahu grafik apa yang sedang diproses
+    // Tambahan parameter chartType untuk membedakan perlakuan
     const syncChart = (mainChart, printChart, chartType = 'other') => {
-        if (typeof mainChart === 'undefined' || !mainChart || typeof printChart === 'undefined' || !printChart) return;
+        if (!mainChart || !printChart) return;
         
         try {
             // 1. Salin Label Sumbu X
@@ -2877,29 +2877,23 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. LOGIKA PINTAR PENGATURAN PROPORSI GRAFIK
+            // 4. STRATEGI FINAL PROPORSIONAL GRAFIK
             // =========================================================
             printChart.options.animation = false;
             printChart.options.responsive = true;
 
-            if (chartType === 'audiogram') {
-                // Khusus Pure Tone: Paksa jadi kotak proporsional agar tidak gepeng
-                printChart.options.maintainAspectRatio = true;
-                printChart.options.aspectRatio = 1.25; 
-            } 
-            else if (chartType === 'speech') {
-                // Khusus Speech: Bebaskan mengisi kotak 20mm yang sudah kita set di HTML
+            if (chartType === 'audiogram' || chartType === 'speech') {
+                // Khusus Halaman 1: Matikan rasio bawaan, penuhi kotak fisik dari HTML!
                 printChart.options.maintainAspectRatio = false; 
-            } 
-            else {
-                // Khusus ABR, Tymp, OAE, ASSR: Kembalikan ke bentuk lebar aslinya!
+            } else {
+                // Khusus Halaman 2-5: Hidupkan rasio, salin sama persis dari layar depan!
                 printChart.options.maintainAspectRatio = true;
-                printChart.options.aspectRatio = mainChart.options.aspectRatio || 2; 
+                printChart.options.aspectRatio = mainChart.options.aspectRatio; 
             }
-            // =========================================================
             
             printChart.update();
-            printChart.resize(); // Paksa browser menggambar ulang sesuai porsinya
+            // Perintah resize() telah DIHAPUS karena merusak tampilan HTML Modal
+            // =========================================================
             
         } catch (err) {
             console.warn("Gagal menyinkronkan satu grafik:", err);
@@ -2907,13 +2901,13 @@ function updatePrintChartsData() {
     };
 
     try {
-        // Panggil fungsi sinkronisasi dengan identitas spesifik
+        // Panggil fungsi dengan label 'audiogram' dan 'speech' untuk Hal 1
         if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance, 'audiogram');
         if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance, 'audiogram');
         
         if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance, 'speech');
         
-        // Sisa grafik lainnya dibiarkan menggunakan rasio memanjang ('other')
+        // Sisa grafik lainnya dibiarkan menggunakan label 'other' (menyalin rasio asli)
         if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance, 'other');
         if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance, 'other');
         
@@ -2938,7 +2932,6 @@ function updatePrintChartsData() {
                 chartInstance.options.scales.y.ticks.stepSize = 10;
                 chartInstance.options.scales.y.ticks.autoSkip = false;
                 chartInstance.update();
-                chartInstance.resize();
             }
         };
 
@@ -2954,7 +2947,6 @@ function updatePrintChartsData() {
                 chartInstance.options.scales.y.ticks.stepSize = 10;
                 chartInstance.options.scales.y.ticks.autoSkip = false;
                 chartInstance.update();
-                chartInstance.resize();
             }
         };
 
