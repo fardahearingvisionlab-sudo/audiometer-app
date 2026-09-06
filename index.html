@@ -177,111 +177,109 @@
 
         
     /* ==========================================================
-      STYLING MODAL PRATINJAU CETAK (FIXED)
-      ========================================================== */
-    #printPreviewModal {
-        display: none;
-        position: fixed;
-        z-index: 99999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.85);
-        overflow-y: auto;
-        padding-top: 50px;
-        padding-bottom: 50px;
-    }
+   STYLING MODAL PRATINJAU CETAK (FIXED & CLEAN)
+   ========================================================== */
+#printPreviewModal {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    overflow-y: auto;
+    padding-top: 50px;
+    padding-bottom: 50px;
+}
 
-    .print-modal-content {
-        background-color: transparent;
-        margin: 0 auto;
-        width: 210mm;
-        padding: 0;
-        box-sizing: border-box;
-    }
+.print-modal-content {
+    background-color: transparent;
+    margin: 0 auto;
+    width: 210mm;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    .print-page {
-        background: #ffffff;
-        width: 210mm;
-        min-height: 297mm;
-        margin: 0 auto 20px auto;
-        padding: 12mm 15mm;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        box-sizing: border-box;
-        page-break-after: always;
-        break-after: page;
-        position: relative;
-        display: block; 
-    }
+.print-page {
+    background: #ffffff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto 20px auto;
+    padding: 12mm 15mm;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    display: block; 
+}
 
-    .print-controls-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: #1e293b;
-        padding: 8px 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 10000;
-        box-sizing: border-box;
-        color: #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    }
+.print-controls-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #1e293b;
+    padding: 8px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10000;
+    box-sizing: border-box;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
 
-    .print-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 4px;
-        margin-bottom: 8px;
-        font-size: 10px;
-    }
+.print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    font-size: 10px;
+}
 
-    .print-table th, .print-table td {
-        border: 1px solid #000;
-        padding: 3px 5px;
-        text-align: center;
-    }
+.print-table th, .print-table td {
+    border: 1px solid #000;
+    padding: 3px 5px;
+    text-align: center;
+}
 
-    .header-pasien {
-        border: 1px solid #000;
-        padding: 6px;
-        margin-bottom: 10px;
-        font-size: 11px;
-    }
+.header-pasien {
+    border: 1px solid #000;
+    padding: 6px;
+    margin-bottom: 10px;
+    font-size: 11px;
+}
 
-    /* ==========================================================
-      PERBAIKAN KOTAK GRAFIK (ANTI PIPIH)
-      ========================================================== */
-    .print-chart-container, .chart-container {
-        position: relative;
-        width: 100%;
-        /* BERIKAN TINGGI PASTINYA AGAR CHART.JS TIDAK PIPIH */
-        height: 260px; 
-        margin: 0 auto 10px auto;
-    }
+/* ==========================================================
+   PERBAIKAN KOTAK GRAFIK (AMAN & TIDAK MERUSAK HALAMAN)
+   ========================================================== */
+.print-chart-container, .chart-container {
+    position: relative;
+    width: 100%;
+    margin: 0 auto 10px auto;
+}
 
-    /* KHUSUS UNTUK GRAFIK KANAN KIRI BERSEBELAHAN DI PRINT */
-    .print-chart-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        width: 100%;
-        gap: 15px; /* Jarak antara grafik telinga kanan dan kiri */
-        margin-bottom: 15px;
-    }
+.print-chart-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 15px;
+    margin-bottom: 15px;
+}
 
-    .print-chart-col {
-        flex: 1; /* Membagi dua rata (50% 50%) */
-        position: relative;
-        height: 260px; /* HARUS ADA TINGGI */
-        width: 100%;
-    }
+.print-chart-col {
+    flex: 1;
+    position: relative;
+    width: 100%;
+}
 
-    .print-page canvas {
+/* KUNCI UTAMA: Memastikan canvas patuh pada pembungkus HTML tanpa memaksa tinggi mutlak di CSS */
+.print-page canvas {
     width: 100% !important;
+    height: 100% !important;
     display: block;
     margin: 0 auto;
 }
@@ -289,56 +287,61 @@
 /* =======================================================
    ATURAN KHUSUS SAAT TOMBOL CETAK BROWSER DITEKAN
    ======================================================= */
-  @media print {
-      body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-      }
-      .print-controls-bar { display: none !important; }
-      #printPreviewModal { 
-          background: none !important; 
-          padding: 0 !important; 
-          position: static !important; 
-          overflow: visible !important; 
-      }
-      .print-modal-content { 
-          box-shadow: none !important; 
-          margin: 0 !important; 
-          width: 100% !important; 
-          padding: 0 !important; 
-      }
-      .print-page { 
-          box-shadow: none !important;
-          margin: 0 !important;
-          width: 210mm !important; /* Tetapkan ukurannya sesuai A4 */
-          height: 297mm !important; /* Tetapkan ukurannya sesuai A4 */
-          page-break-after: always !important;
-          break-after: page !important;
-          border: none !important;
-          display: block !important; 
-      }
-      canvas {
-          max-width: 100% !important;
-          page-break-inside: avoid !important;
-      }
+@media print {
+    body {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .print-controls-bar { display: none !important; }
+    
+    #printPreviewModal { 
+        background: none !important; 
+        padding: 0 !important; 
+        position: static !important; 
+        overflow: visible !important; 
+    }
+    
+    .print-modal-content { 
+        box-shadow: none !important; 
+        margin: 0 !important; 
+        width: 100% !important; 
+        padding: 0 !important; 
+    }
+    
+    .print-page { 
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        height: auto !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        border: none !important;
+        display: block !important; 
+    }
+    
+    canvas {
+        max-width: 100% !important;
+        page-break-inside: avoid !important;
+    }
 
-      .cegah-terpotong {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-      }
+    .cegah-terpotong {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
 
-      @page {
-          size: A4 portrait; /* Paksa kertas ke A4 Portrait */
-          margin: 8mm; 
-      }
-  }
+    @page {
+        size: A4 portrait;
+        margin: 8mm; 
+    }
+}
 
 /* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
 .printClinicLogoBox {
-    max-height: 60px;       /* Batasi tinggi maksimum agar tidak merusak kop surat */
-    width: auto !important;  /* Lebar otomatis menyesuaikan bentuk logo (persegi/panjang) */
+    max-height: 60px;
+    width: auto !important;
     min-width: 50px;
-    border: none !important; /* Hilangkan border kotak jika tidak diinginkan */
+    border: none !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -347,8 +350,8 @@
 }
 
 .printClinicLogoImg {
-    max-height: 58px !important; /* Menyesuaikan tinggi kontainer cetak */
-    width: auto !important;      /* Menjaga rasio Asli logo agar tidak gepeng */
+    max-height: 58px !important;
+    width: auto !important;
     object-fit: contain;
 }
 
@@ -990,13 +993,13 @@ canvas#rightChart, canvas#leftChart {
         <!-- GRAFIK PTA KANAN & KIRI -->
         <div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;" class="cegah-terpotong">
             
-            <!-- KOTAK KANAN: Kembali bersih tanpa paksaan tinggi (height) -->
-            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; padding: 2px;">
+            <!-- KOTAK KANAN: Ditambahkan position: relative dan height: 220px -->
+            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; padding: 2px; position: relative; height: 220px;">
                 <canvas id="prevRightChart"></canvas>
             </div>
 
-            <!-- KOTAK KIRI: Kembali bersih tanpa paksaan tinggi (height) -->
-            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; padding: 2px;">
+            <!-- KOTAK KIRI: Ditambahkan position: relative dan height: 220px -->
+            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; padding: 2px; position: relative; height: 220px;">
                 <canvas id="prevLeftChart"></canvas>
             </div>
 
@@ -1115,7 +1118,8 @@ canvas#rightChart, canvas#leftChart {
 
         <!-- Grafik Speech -->
         <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">SPEECH (PI-FUNCTION)</div>
-        <div style="border: 1px solid #000; width: 100%; margin-bottom: 6px; padding: 2px;">
+        <!-- KOTAK SPEECH: Ditambahkan position: relative dan height: 180px -->
+        <div style="border: 1px solid #000; width: 100%; margin-bottom: 6px; padding: 2px; position: relative; height: 180px;">
             <canvas id="prevSpeechChart"></canvas>
         </div>
 
@@ -1130,8 +1134,14 @@ canvas#rightChart, canvas#leftChart {
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">TYMPANOMETRY & ACOUSTIC REFLEX</h3>
         
         <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px;"><canvas id="prevTympRightChart" style="width:100%; height:100%;"></canvas></div>
-            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px;"><canvas id="prevTympLeftChart" style="width:100%; height:100%;"></canvas></div>
+            <!-- KOTAK TYMP: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px; position: relative;">
+                <canvas id="prevTympRightChart" style="width:100%; height:100%;"></canvas>
+            </div>
+            <!-- KOTAK TYMP: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px; position: relative;">
+                <canvas id="prevTympLeftChart" style="width:100%; height:100%;"></canvas>
+            </div>
         </div>
 
         <div style="font-weight: bold; font-size: 11px; margin-top: 10px; margin-bottom: 3px;">TYMPANOMETRY DATA</div>
@@ -1182,12 +1192,13 @@ canvas#rightChart, canvas#leftChart {
     <div id="print_page3" class="print-page">
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">OTOACOUSTIC EMISSIONS (OAE)</h3>
         
-        <!-- PERBAIKAN: Tinggi kanvas diubah dari 50mm menjadi 80mm agar tidak rapat -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px;">
+            <!-- KOTAK OAE: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px; position: relative;">
                 <canvas id="prevOaeRightChart" style="width:100%; height:100%;"></canvas>
             </div>
-            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px;">
+            <!-- KOTAK OAE: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px; position: relative;">
                 <canvas id="prevOaeLeftChart" style="width:100%; height:100%;"></canvas>
             </div>
         </div>
@@ -1228,8 +1239,14 @@ canvas#rightChart, canvas#leftChart {
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">AUDITORY BRAINSTEM RESPONSE (ABR)</h3>
         
         <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px;"><canvas id="prevAbrRightChart" style="width:100%; height:100%;"></canvas></div>
-            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px;"><canvas id="prevAbrLeftChart" style="width:100%; height:100%;"></canvas></div>
+            <!-- KOTAK ABR: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px; position: relative;">
+                <canvas id="prevAbrRightChart" style="width:100%; height:100%;"></canvas>
+            </div>
+            <!-- KOTAK ABR: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px; position: relative;">
+                <canvas id="prevAbrLeftChart" style="width:100%; height:100%;"></canvas>
+            </div>
         </div>
 
         <div style="font-weight: bold; font-size: 11px; margin-top: 10px; margin-bottom: 3px;">ABR LATENCY & THRESHOLD SUMMARY</div>
@@ -1252,12 +1269,13 @@ canvas#rightChart, canvas#leftChart {
     <div id="print_page5" class="print-page">
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">AUDITORY STEADY-STATE RESPONSE (ASSR)</h3>
         
-        <!-- PERBAIKAN: aspect-ratio dihapus, diganti dengan height tetap dalam satuan mm -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px;">
+            <!-- KOTAK ASSR: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px; position: relative;">
                 <canvas id="prevAssrRightChart" style="width: 100%; height: 100%;"></canvas>
             </div>
-            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px;">
+            <!-- KOTAK ASSR: Ditambahkan position: relative -->
+            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px; position: relative;">
                 <canvas id="prevAssrLeftChart" style="width: 100%; height: 100%;"></canvas>
             </div>
         </div>
@@ -2863,11 +2881,10 @@ window.onload = function() {
 
 
 // =================================================================
-// 3. SINKRONISASI DATA KE GRAFIK CETAK (FINAL & BEBAS CRASH)
+// 3. SINKRONISASI DATA KE GRAFIK CETAK (FINAL & AMAN UNTUK LAYOUT)
 // =================================================================
 function updatePrintChartsData() {
     const syncChart = (mainChart, printChart, chartType) => {
-        // Pengecekan ketat untuk mencegah TypeError
         if (!mainChart || !printChart) return;
         
         try {
@@ -2898,21 +2915,13 @@ function updatePrintChartsData() {
             }
             
             // =========================================================
-            // 4. PENGATURAN RASIO PROPORSIONAL DARI JAVASCRIPT
+            // 4. KUNCI STABILITAS HALAMAN (MENJAGA LAYOUT TIDAK HANCUR)
             // =========================================================
             if (printChart.options) {
                 printChart.options.animation = false;
                 printChart.options.responsive = true;
-                printChart.options.maintainAspectRatio = true; 
-                
-                // Atur bentuk berdasarkan jenis grafik
-                if (chartType === 'audiogram') {
-                    printChart.options.aspectRatio = 1.35; // Kotak proporsional
-                } else if (chartType === 'speech') {
-                    printChart.options.aspectRatio = 3.5; // Sangat lebar
-                } else {
-                    printChart.options.aspectRatio = 2.0; // Melebar normal
-                }
+                // WAJIB FALSE agar grafik mengikuti tinggi kotak di HTML, bukan merusak halaman
+                printChart.options.maintainAspectRatio = false; 
                 
                 printChart.update();
             }
