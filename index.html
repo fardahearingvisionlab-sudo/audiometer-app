@@ -3174,11 +3174,22 @@ function setCalibStim(stimType) {
 }
 
         function stopCalibrationSound() {
-        if (typeof calibOsc !== 'undefined' && calibOsc) { try { calibOsc.stop(); calibOsc.disconnect(); } catch(e){} calibOsc = null; }
-        if (typeof calibLfo !== 'undefined' && calibLfo) { try { calibLfo.stop(); calibLfo.disconnect(); } catch(e){} calibLfo = null; }
-        if (typeof calibNoiseSource !== 'undefined' && calibNoiseSource) { try { calibNoiseSource.stop(); calibNoiseSource.disconnect(); } catch(e){} calibNoiseSource = null; }
-        if (typeof calibrationNoiseNode !== 'undefined' && calibrationNoiseNode) { try { calibrationNoiseNode.stop(); calibrationNoiseNode.disconnect(); } catch(e){} calibrationNoiseNode = null; }
+    // 1. Matikan semua sumber suara di Web Audio API
+    if (typeof calibOsc !== 'undefined' && calibOsc) { try { calibOsc.stop(); calibOsc.disconnect(); } catch(e){} calibOsc = null; }
+    if (typeof calibLfo !== 'undefined' && calibLfo) { try { calibLfo.stop(); calibLfo.disconnect(); } catch(e){} calibLfo = null; }
+    if (typeof calibNoiseSource !== 'undefined' && calibNoiseSource) { try { calibNoiseSource.stop(); calibNoiseSource.disconnect(); } catch(e){} calibNoiseSource = null; }
+    if (typeof calibrationNoiseNode !== 'undefined' && calibrationNoiseNode) { try { calibrationNoiseNode.stop(); calibrationNoiseNode.disconnect(); } catch(e){} calibrationNoiseNode = null; }
+    
+    // =========================================================
+    // 2. MATIKAN RELAY ARDUINO VIA QUEUE SERIAL
+    // =========================================================
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer("STOP,0,0,0\n");
+    } else {
+        console.warn("Fungsi kirimDataAudiometer tidak ditemukan saat mencoba STOP!");
     }
+    // =========================================================
+}
 
     function startCalibrationSound() {
         stopCalibrationSound();
@@ -3218,7 +3229,17 @@ function executeCalibrationAudio() {
     let freq = Number(calState.freq) || 1000; 
     let side = calState.ear;
 
-    if (stim === 'wn') { playCalibrationWhiteNoise(side); return; }
+    // Jika stimulus adalah White Noise, alihkan ke fungsinya khusus
+    if (stim === 'wn') { 
+        playCalibrationWhiteNoise(side); 
+        
+        // --- SUNTIKAN SERIAL UNTUK WHITE NOISE ---
+        let modeWN = (calState.trans === 'SPKR') ? 'FFT' : calState.trans;
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer(`${modeWN},${side},${freq},70\n`);
+        }
+        return; 
+    }
 
     let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
     let standardData = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
@@ -3234,6 +3255,25 @@ function executeCalibrationAudio() {
     
     // Kalkulasi Total Output Murni
     let targetOutput = targetBaseline + offset; 
+    
+    // =========================================================
+    // SUNTIKAN BARU: KIRIM DATA KE ARDUINO MENGGUNAKAN QUEUE
+    // =========================================================
+    let modeArduino = calState.trans;
+    // Arduino Anda mengenali mode speaker sebagai "FFT", bukan "SPKR"
+    if (modeArduino === 'SPKR') {
+        modeArduino = 'FFT'; 
+    }
+    
+    // Format pengiriman ke Arduino: MODE,TELINGA,FREKUENSI,INTENSITAS\n
+    let perintahKalibrasi = `${modeArduino},${side},${freq},${Math.round(targetOutput)}\n`;
+    
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer(perintahKalibrasi);
+    } else {
+        console.warn("Fungsi kirimDataAudiometer tidak ditemukan!");
+    }
+    // =========================================================
     
     // === PERBAIKAN UTAMA ===
     // Menurunkan SYSTEM_MAX_SPL menjadi 95. Ini mengizinkan gain berada 
