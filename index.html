@@ -958,19 +958,15 @@ canvas#rightChart, canvas#leftChart {
         <h3 style="text-align: center; margin: 0 0 6px 0; font-size: 12px;">PURE TONE & SPEECH AUDIOMETRY SUMMARY</h3>
         
         <!-- GRAFIK PTA KANAN & KIRI -->
-<div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;" class="cegah-terpotong">
-    
-    <!-- KOTAK KANAN: Kunci tinggi 220px -->
-    <div style="flex: 1; border: 2px solid #dc2626; background: #fff; padding: 2px; position: relative; height: 220px;">
-        <canvas id="prevRightChart"></canvas>
-    </div>
-
-    <!-- KOTAK KIRI: Kunci tinggi 220px -->
-    <div style="flex: 1; border: 2px solid #0284c7; background: #fff; padding: 2px; position: relative; height: 220px;">
-        <canvas id="prevLeftChart"></canvas>
-    </div>
-
-</div>
+        <!-- KODE BARU -->
+        <div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;">
+            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 2px;">
+                <canvas id="prevRightChart" style="width: 100%; height: 100%;"></canvas>
+            </div>
+            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 2px;">
+                <canvas id="prevLeftChart" style="width: 100%; height: 100%;"></canvas>
+            </div>
+        </div>
 
         <!-- LEGEND AUDIOGRAM (Lebih Rapi dengan Layout Fixed) -->
         <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 10px; margin-bottom: 8px; table-layout: fixed;">
@@ -1085,9 +1081,8 @@ canvas#rightChart, canvas#leftChart {
 
         <!-- Grafik Speech -->
         <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">SPEECH (PI-FUNCTION)</div>
-        <!-- KOTAK SPEECH: Ditambahkan position: relative dan height: 180px -->
-        <div style="border: 1px solid #000; width: 100%; margin-bottom: 6px; padding: 2px; position: relative; height: 180px;">
-            <canvas id="prevSpeechChart"></canvas>
+        <div style="border: 1px solid #000; height: 35mm; width: 100%; margin-bottom: 6px;">
+            <canvas id="prevSpeechChart" style="width: 100%; height: 100%;"></canvas>
         </div>
 
         <!-- Diagnosis -->
