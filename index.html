@@ -660,12 +660,16 @@ canvas#rightChart, canvas#leftChart {
 
             <!-- Speech Chart View -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px; overflow: hidden;">
-                <div style="flex: 3; display: flex; flex-direction: column; width: 100%; min-width: 0;">
-                    <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px;">Speech Audiometry PI-Function Chart</div>
-                    <div style="position: relative; width: 100%; height: 100%; flex: 1; min-height: 400px;">
-    <canvas id="speechChart"></canvas>
-</div>
+            <div style="flex: 3; display: flex; flex-direction: column; width: 100%; min-width: 0;">
+                <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px;">Speech Audiometry PI-Function Chart</div>
+                
+                <!-- PERBAIKAN DI BARIS INI: Tambahkan height: 100%; dan min-height: 400px; -->
+                <div style="width: 100%; position: relative; flex: 1; height: 100%; min-height: 400px;">
+                    <canvas id="speechChart"></canvas>
                 </div>
+                
+            </div>
+   
                 <div style="flex: 1; min-width: 210px; max-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden;">
                     <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px;">📝 Daftar Kata</div>
                     <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
@@ -4713,6 +4717,14 @@ function loadSessionDataToTable(data) {
 
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("C" + m + "\n");
+    }
+
+    // ---> SOLUSI GRAFIK SPEECH MENGECIL <---
+    // Memaksa grafik untuk meresize dirinya 50 milidetik setelah panel ditampakkan
+    if (m === 'Speech' && typeof speechChartInstance !== 'undefined') {
+        setTimeout(() => {
+            speechChartInstance.resize();
+        }, 50);
     }
 }
 
