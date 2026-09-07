@@ -5536,58 +5536,92 @@ function startTone() {
     }
 
     window.addEventListener('keydown', e => {
-        if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        let key = e.key.toLowerCase();
-        
-        if (e.code === 'Space') { e.preventDefault(); if(currentMode !== 'Speech') startTone(); }
-        else if (e.code === 'Enter') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(); }
-        else if (key === 'r') { e.preventDefault(); setSide('right'); }
-        else if (key === 'l') { e.preventDefault(); setSide('left'); }
-        else if (key === 'a') { e.preventDefault(); setMode('AC'); }
-        else if (key === 'b') { e.preventDefault(); setMode('BC'); }
-        else if (key === 's') { e.preventDefault(); setMode('Speech'); }
-        else if (key === 't') { e.preventDefault(); setMode('Tymp'); }
-        else if (key === 'o') { e.preventDefault(); setMode('OAE'); }
-        else if (key === 'k') { e.preventDefault(); setMode('ABR'); }
-        else if (key === 'm') { e.preventDefault(); let c = document.getElementById('chkMasking'); c.checked = !c.checked; toggleMasking(); }
-        else if (e.code === 'ArrowUp') { e.preventDefault(); adjustDb(5); }
-        else if (e.code === 'ArrowDown') { e.preventDefault(); adjustDb(-5); }
-        
-        // --- PANAH KANAN: NAIK FREKUENSI ---
-        else if (e.code === 'ArrowRight') { 
-            e.preventDefault(); 
-            if (currentFreqIndex < FREQUENCIES.length - 1) { 
-                currentFreqIndex++; 
-                updateDisplayStatus(); 
-                
-                // SUNTIKAN KE ARDUINO
-                if (typeof kirimDataAudiometer === 'function') {
-                    kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
-                }
-            } 
-        }
-        
-        // --- PANAH KIRI: TURUN FREKUENSI ---
-        else if (e.code === 'ArrowLeft') { 
-            e.preventDefault(); 
-            if (currentFreqIndex > 0) { 
-                currentFreqIndex--; 
-                updateDisplayStatus(); 
-                
-                // SUNTIKAN KE ARDUINO
-                if (typeof kirimDataAudiometer === 'function') {
-                    kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
-                }
-            } 
-        }
-    });
-
-    window.addEventListener('keyup', e => { 
-        if (e.code === 'Space') { 
-            e.preventDefault(); 
-            stopTone(); 
+    if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    let key = e.key.toLowerCase();
+    
+    if (e.code === 'Space') { e.preventDefault(); if(currentMode !== 'Speech') startTone(); }
+    else if (e.code === 'Enter') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(); }
+    else if (key === 'r') { e.preventDefault(); setSide('right'); }
+    else if (key === 'l') { e.preventDefault(); setSide('left'); }
+    else if (key === 'a') { e.preventDefault(); setMode('AC'); }
+    else if (key === 'b') { e.preventDefault(); setMode('BC'); }
+    else if (key === 's') { e.preventDefault(); setMode('Speech'); }
+    else if (key === 't') { e.preventDefault(); setMode('Tymp'); }
+    else if (key === 'o') { e.preventDefault(); setMode('OAE'); }
+    else if (key === 'k') { e.preventDefault(); setMode('ABR'); }
+    
+    // --- TAMBAHAN UNTUK FFT DAN VRA ---
+    else if (key === 'f') { e.preventDefault(); setMode('FFT'); }
+    else if (key === 'v') { e.preventDefault(); setMode('VRA'); }
+    
+    // --- TOGGLE MASKING (ON/OFF) ---
+    else if (key === 'm') { 
+        e.preventDefault(); 
+        let c = document.getElementById('chkMasking'); 
+        if(c) { 
+            c.checked = !c.checked; 
+            toggleMasking(); 
         } 
-    });
+    }
+    
+    // --- SHORTCUT INTENSITAS MASKING (Opsi 1: Tombol Kurung Siku [ dan ]) ---
+    else if (key === ']') { e.preventDefault(); changeMaskingDb(5); }
+    else if (key === '[') { e.preventDefault(); changeMaskingDb(-5); }
+    
+    // --- SHORTCUT INTENSITAS UTAMA & MASKING (Opsi 2: Panah Atas/Bawah) ---
+    else if (e.code === 'ArrowUp') { 
+        e.preventDefault(); 
+        if (e.shiftKey) { 
+            changeMaskingDb(5); // Jika Shift ditahan, naikkan db Masking
+        } else { 
+            adjustDb(5);        // Jika tidak, naikkan db Utama
+        } 
+    }
+    else if (e.code === 'ArrowDown') { 
+        e.preventDefault(); 
+        if (e.shiftKey) { 
+            changeMaskingDb(-5); // Jika Shift ditahan, turunkan db Masking
+        } else { 
+            adjustDb(-5);        // Jika tidak, turunkan db Utama
+        } 
+    }
+    
+    // --- PANAH KANAN: NAIK FREKUENSI ---
+    else if (e.code === 'ArrowRight') { 
+        e.preventDefault(); 
+        if (currentFreqIndex < FREQUENCIES.length - 1) { 
+            currentFreqIndex++; 
+            updateDisplayStatus(); 
+            
+            // SUNTIKAN KE ARDUINO
+            if (typeof kirimDataAudiometer === 'function') {
+                kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+            }
+        } 
+    }
+    
+    // --- PANAH KIRI: TURUN FREKUENSI ---
+    else if (e.code === 'ArrowLeft') { 
+        e.preventDefault(); 
+        if (currentFreqIndex > 0) { 
+            currentFreqIndex--; 
+            updateDisplayStatus(); 
+            
+            // SUNTIKAN KE ARDUINO
+            if (typeof kirimDataAudiometer === 'function') {
+                kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+            }
+        } 
+    }
+});
+
+window.addEventListener('keyup', e => { 
+    if (e.code === 'Space') { 
+        e.preventDefault(); 
+        stopTone(); 
+    } 
+});
 
     function recordResponse() {
         if(currentMode === 'Speech') { 
