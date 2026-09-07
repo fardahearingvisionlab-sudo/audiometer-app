@@ -660,13 +660,12 @@ canvas#rightChart, canvas#leftChart {
 
             <!-- Speech Chart View -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px; overflow: hidden;">
-    
                     <!-- Kolom Kiri (Grafik) -->
-                    <div style="flex: 3; display: flex; flex-direction: column; min-width: 0; width: 100%;">
+                    <div style="flex: 3; display: flex; flex-direction: column; width: 100%; min-width: 0;">
                         <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px;">Speech Audiometry PI-Function Chart</div>
                         
-                        <!-- Wadah Grafik -->
-                        <div style="position: relative; width: 100%; flex-grow: 1; min-height: 450px;">
+                        <!-- PERBAIKAN ABSOLUT: Gunakan height: 450px (Bukan min-height, bukan flex) -->
+                        <div style="position: relative; width: 100%; height: 450px;">
                             <canvas id="speechChart"></canvas>
                         </div>
                     </div>
@@ -4596,54 +4595,56 @@ function loadSessionDataToTable(data) {
     type: 'line', 
     data: { 
         datasets: [{ 
-            label: 'Speech Score (%)',  // <--- INI OBAT UNTUK TULISAN "UNDEFINED"
+            label: 'Speech Score (%)', 
             data: [], 
             borderColor: '#0284c7', 
             backgroundColor: '#0284c7', 
             pointRadius: 6, 
             borderWidth: 2.5, 
             fill: false,
-            tension: 0.3                // <--- TAMBAHAN: Membuat garis kurva sedikit halus/melengkung (S-Curve)
+            tension: 0.3 
         }] 
     }, 
     options: { 
         responsive: true, 
         maintainAspectRatio: false, 
         scales: { 
-            x: { 
-                type: 'linear', 
-                min: 0, 
-                max: 110, 
-                title: {display:true, text:'dB HL'} 
-            }, 
-            y: { 
-                min: 0, 
-                max: 100, 
-                title: {display:true, text:'% Correct'} 
-            } 
+            x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, 
+            y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } 
         },
         plugins: {
             legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                    usePointStyle: true, // Membuat ikon legenda jadi bulat, bukan kotak kaku
-                    boxWidth: 8
-                }
+                display: true, position: 'top',
+                labels: { usePointStyle: true, boxWidth: 8 }
             }
         }
     } 
 });
 
-        // ==============================================================
-        // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
-        // ==============================================================
-        setTimeout(() => {
-            let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-            if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
-            if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
-        }, 300);
-    }
+// ==============================================================
+// 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (ANTI-MENGECIL)
+// Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
+// ==============================================================
+const speechWrapper = document.getElementById('speechChart').parentElement;
+if (window.ResizeObserver && speechWrapper) {
+    new ResizeObserver(() => {
+        // Jika elemen sudah punya tinggi/tampil di layar, paksa resize!
+        if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined') {
+            speechChartInstance.resize();
+        }
+    }).observe(speechWrapper);
+}
+// ==============================================================
+
+
+// ==============================================================
+// SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
+// ==============================================================
+setTimeout(() => {
+    let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+    if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
+    if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+}, 300);
 
     function updateGsiCharts() {
         const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
