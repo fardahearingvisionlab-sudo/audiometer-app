@@ -1086,24 +1086,17 @@ canvas#rightChart, canvas#leftChart {
         </div>
 
         <!-- Diagnosis -->
-        <div class="cegah-terpotong">
-            <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">DIAGNOSIS:</div>
-            <div style="border: 1px solid #000; min-height: 12mm; padding: 4px; font-size: 10px;"><span id="prev_diagnosis">-</span></div>
-        </div>
+        <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">DIAGNOSIS:</div>
+        <div style="border: 1px solid #000; min-height: 12mm; padding: 4px; font-size: 10px;"><span id="prev_diagnosis">-</span></div>
+    </div>
 
     <!-- ================= HALAMAN 2: TIMPANOMETRI & REFLEKS ================= -->
     <div id="print_page2" class="print-page">
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">TYMPANOMETRY & ACOUSTIC REFLEX</h3>
         
         <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-            <!-- KOTAK TYMP: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px; position: relative;">
-                <canvas id="prevTympRightChart" style="width:100%; height:100%;"></canvas>
-            </div>
-            <!-- KOTAK TYMP: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px; position: relative;">
-                <canvas id="prevTympLeftChart" style="width:100%; height:100%;"></canvas>
-            </div>
+            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px;"><canvas id="prevTympRightChart" style="width:100%; height:100%;"></canvas></div>
+            <div style="flex: 1; border: 1px solid #000; height: 50mm; padding: 2px;"><canvas id="prevTympLeftChart" style="width:100%; height:100%;"></canvas></div>
         </div>
 
         <div style="font-weight: bold; font-size: 11px; margin-top: 10px; margin-bottom: 3px;">TYMPANOMETRY DATA</div>
@@ -1154,13 +1147,12 @@ canvas#rightChart, canvas#leftChart {
     <div id="print_page3" class="print-page">
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">OTOACOUSTIC EMISSIONS (OAE)</h3>
         
+        <!-- PERBAIKAN: Tinggi kanvas diubah dari 50mm menjadi 80mm agar tidak rapat -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <!-- KOTAK OAE: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px; position: relative;">
+            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px;">
                 <canvas id="prevOaeRightChart" style="width:100%; height:100%;"></canvas>
             </div>
-            <!-- KOTAK OAE: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px; position: relative;">
+            <div style="flex: 1; border: 1px solid #000; height: 80mm; padding: 2px;">
                 <canvas id="prevOaeLeftChart" style="width:100%; height:100%;"></canvas>
             </div>
         </div>
@@ -1201,14 +1193,8 @@ canvas#rightChart, canvas#leftChart {
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">AUDITORY BRAINSTEM RESPONSE (ABR)</h3>
         
         <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-            <!-- KOTAK ABR: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px; position: relative;">
-                <canvas id="prevAbrRightChart" style="width:100%; height:100%;"></canvas>
-            </div>
-            <!-- KOTAK ABR: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px; position: relative;">
-                <canvas id="prevAbrLeftChart" style="width:100%; height:100%;"></canvas>
-            </div>
+            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px;"><canvas id="prevAbrRightChart" style="width:100%; height:100%;"></canvas></div>
+            <div style="flex: 1; border: 1px solid #000; height: 55mm; padding: 2px;"><canvas id="prevAbrLeftChart" style="width:100%; height:100%;"></canvas></div>
         </div>
 
         <div style="font-weight: bold; font-size: 11px; margin-top: 10px; margin-bottom: 3px;">ABR LATENCY & THRESHOLD SUMMARY</div>
@@ -1231,13 +1217,12 @@ canvas#rightChart, canvas#leftChart {
     <div id="print_page5" class="print-page">
         <h3 style="text-align: center; margin: 0 0 10px 0; font-size: 14px;">AUDITORY STEADY-STATE RESPONSE (ASSR)</h3>
         
+        <!-- PERBAIKAN: aspect-ratio dihapus, diganti dengan height tetap dalam satuan mm -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <!-- KOTAK ASSR: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px; position: relative;">
+            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px;">
                 <canvas id="prevAssrRightChart" style="width: 100%; height: 100%;"></canvas>
             </div>
-            <!-- KOTAK ASSR: Ditambahkan position: relative -->
-            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px; position: relative;">
+            <div style="flex: 1; border: 1px solid #000; height: 100mm; padding: 2px;">
                 <canvas id="prevAssrLeftChart" style="width: 100%; height: 100%;"></canvas>
             </div>
         </div>
