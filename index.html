@@ -5536,6 +5536,7 @@ function startTone() {
     }
 
     window.addEventListener('keydown', e => {
+    // Abaikan jika sedang mengetik form/input
     if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     
     let key = e.key.toLowerCase();
@@ -5566,12 +5567,14 @@ function startTone() {
     }
     
     // --- SHORTCUT INTENSITAS MASKING (Opsi 1: Tombol Kurung Siku [ dan ]) ---
-    else if (key === ']') { e.preventDefault(); changeMaskingDb(5); }
-    else if (key === '[') { e.preventDefault(); changeMaskingDb(-5); }
+    else if (key === ']') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(5); }
+    else if (key === '[') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(-5); }
     
     // --- SHORTCUT INTENSITAS UTAMA & MASKING (Opsi 2: Panah Atas/Bawah) ---
     else if (e.code === 'ArrowUp') { 
         e.preventDefault(); 
+        document.activeElement.blur(); // Hapus fokus dari tombol Web agar tidak dobel
+        
         if (e.shiftKey) { 
             changeMaskingDb(5); // Jika Shift ditahan, naikkan db Masking
         } else { 
@@ -5580,6 +5583,8 @@ function startTone() {
     }
     else if (e.code === 'ArrowDown') { 
         e.preventDefault(); 
+        document.activeElement.blur(); // Hapus fokus dari tombol Web agar tidak dobel
+        
         if (e.shiftKey) { 
             changeMaskingDb(-5); // Jika Shift ditahan, turunkan db Masking
         } else { 
@@ -5590,6 +5595,7 @@ function startTone() {
     // --- PANAH KANAN: NAIK FREKUENSI ---
     else if (e.code === 'ArrowRight') { 
         e.preventDefault(); 
+        document.activeElement.blur();
         if (currentFreqIndex < FREQUENCIES.length - 1) { 
             currentFreqIndex++; 
             updateDisplayStatus(); 
@@ -5604,6 +5610,7 @@ function startTone() {
     // --- PANAH KIRI: TURUN FREKUENSI ---
     else if (e.code === 'ArrowLeft') { 
         e.preventDefault(); 
+        document.activeElement.blur();
         if (currentFreqIndex > 0) { 
             currentFreqIndex--; 
             updateDisplayStatus(); 
