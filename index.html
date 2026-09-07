@@ -176,166 +176,141 @@
         .ai-content { background: #ffffff; border: 1px solid var(--win-border-light); padding: 8px; border-radius: 4px; font-size: 10.5px; line-height: 1.4; color: #334155; }
 
         
-    /* ==========================================================
-   STYLING MODAL PRATINJAU CETAK (FIXED & CLEAN)
-   ========================================================== */
-#printPreviewModal {
-    display: none;
-    position: fixed;
-    z-index: 99999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    overflow-y: auto;
-    padding-top: 50px;
-    padding-bottom: 50px;
-}
-
-.print-modal-content {
-    background-color: transparent;
-    margin: 0 auto;
-    width: 210mm;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-.print-page {
-    background: #ffffff;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto 20px auto;
-    padding: 12mm 15mm;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    box-sizing: border-box;
-    page-break-after: always;
-    break-after: page;
-    position: relative;
-    display: block; 
-}
-
-.print-controls-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #1e293b;
-    padding: 8px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 10000;
-    box-sizing: border-box;
-    color: #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
-.print-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-    margin-bottom: 8px;
-    font-size: 10px;
-}
-
-.print-table th, .print-table td {
-    border: 1px solid #000;
-    padding: 3px 5px;
-    text-align: center;
-}
-
-.header-pasien {
-    border: 1px solid #000;
-    padding: 6px;
-    margin-bottom: 10px;
-    font-size: 11px;
-}
-
-/* ==========================================================
-   PERBAIKAN KOTAK GRAFIK (AMAN & TIDAK MERUSAK HALAMAN)
-   ========================================================== */
-.print-chart-container, .chart-container {
-    position: relative;
-    width: 100%;
-    margin: 0 auto 10px auto;
-}
-
-.print-chart-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.print-chart-col {
-    flex: 1;
-    position: relative;
-    width: 100%;
-}
-
-/* Mengunci ukuran canvas agar patuh pada pembungkus HTML dan tidak pipih */
-.print-page canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-    margin: 0 auto;
-}
-
-/* =======================================================
-   ATURAN KHUSUS SAAT TOMBOL CETAK BROWSER DITEKAN
-   ======================================================= */
-@media print {
-    body {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    .print-controls-bar { display: none !important; }
-    
-    #printPreviewModal { 
-        background: none !important; 
-        padding: 0 !important; 
-        position: static !important; 
-        overflow: visible !important; 
-    }
-    
-    .print-modal-content { 
-        box-shadow: none !important; 
-        margin: 0 !important; 
-        width: 100% !important; 
-        padding: 0 !important; 
-    }
-    
-    .print-page { 
-        box-shadow: none !important;
-        margin: 0 auto !important;
-        width: 210mm !important;
-        height: 297mm !important;
-        max-height: 297mm !important;
-        page-break-after: always !important;
-        break-after: page !important;
-        overflow: hidden !important;
-        border: none !important;
-        display: block !important; 
-    }
-    
-    canvas {
-        max-width: 100% !important;
-        page-break-inside: avoid !important;
+    /*==========================================================
+      STYLING MODAL PRATINJAU CETAK (FIXED & CLEAN)
+      ========================================================== */
+    #printPreviewModal {
+        display: none;
+        position: fixed;
+        z-index: 99999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        overflow-y: auto;
+        padding-top: 50px;
+        padding-bottom: 50px;
     }
 
-    .cegah-terpotong {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+    .print-modal-content {
+        background-color: transparent;
+        margin: 0 auto;
+        width: 210mm;
+        padding: 0;
+        box-sizing: border-box;
     }
 
-    @page {
-        size: A4 portrait;
-        margin: 5mm; 
+    .print-page {
+        background: #ffffff;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto 20px auto;
+        padding: 10mm 15mm;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        box-sizing: border-box;
+        page-break-after: always;
+        break-after: page;
+        position: relative;
+        display: block; 
     }
-}
+
+    .print-controls-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #1e293b;
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10000;
+        box-sizing: border-box;
+        color: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 4px;
+        margin-bottom: 8px;
+        font-size: 10px;
+    }
+
+    .print-table th, .print-table td {
+        border: 1px solid #000;
+        padding: 3px 5px;
+        text-align: center;
+    }
+
+    .header-pasien {
+        border: 1px solid #000;
+        padding: 6px;
+        margin-bottom: 10px;
+        font-size: 11px;
+    }
+
+    .print-page canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+        margin: 0 auto;
+    }
+
+    /* =======================================================
+      ATURAN KHUSUS SAAT TOMBOL CETAK BROWSER DITEKAN
+      ======================================================= */
+    @media print {
+        body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .print-controls-bar { display: none !important; }
+        
+        #printPreviewModal { 
+            background: none !important; 
+            padding: 0 !important; 
+            position: static !important; 
+            overflow: visible !important; 
+        }
+        
+        .print-modal-content { 
+            box-shadow: none !important; 
+            margin: 0 !important; 
+            width: 100% !important; 
+            padding: 0 !important; 
+        }
+        
+        .print-page { 
+            box-shadow: none !important;
+            margin: 0 auto !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            overflow: hidden !important;
+            border: none !important;
+            display: block !important; 
+        }
+        
+        canvas {
+            max-width: 100% !important;
+            page-break-inside: avoid !important;
+        }
+
+        .cegah-terpotong {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 0mm; 
+        }
+    }
 
 /* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
 .printClinicLogoBox {
@@ -994,12 +969,12 @@ canvas#rightChart, canvas#leftChart {
         <!-- GRAFIK PTA KANAN & KIRI -->
 <div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;" class="cegah-terpotong">
     
-    <!-- Kotak Kanan dengan tinggi pasti -->
+    <!-- KOTAK KANAN: Kunci tinggi 220px -->
     <div style="flex: 1; border: 2px solid #dc2626; background: #fff; padding: 2px; position: relative; height: 220px;">
         <canvas id="prevRightChart"></canvas>
     </div>
 
-    <!-- Kotak Kiri dengan tinggi pasti -->
+    <!-- KOTAK KIRI: Kunci tinggi 220px -->
     <div style="flex: 1; border: 2px solid #0284c7; background: #fff; padding: 2px; position: relative; height: 220px;">
         <canvas id="prevLeftChart"></canvas>
     </div>
@@ -2882,26 +2857,23 @@ window.onload = function() {
 
 
 // =================================================================
-// 3. SINKRONISASI DATA KE GRAFIK CETAK (FINAL & AMAN UNTUK LAYOUT)
+// 3. SINKRONISASI DATA KE GRAFIK CETAK (FINAL)
 // =================================================================
 function updatePrintChartsData() {
     const syncChart = (mainChart, printChart, chartType) => {
         if (!mainChart || !printChart) return;
         
         try {
-            // 1. Salin Label
             if (mainChart.data && mainChart.data.labels) {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
-            // 2. Salin Data & Buang Zona Abu-abu
             if (mainChart.data && mainChart.data.datasets) {
                 printChart.data.datasets = mainChart.data.datasets
                     .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
                     .map(ds => ({ ...ds, data: [...ds.data] }));
             }
 
-            // 3. Salin Skala
             if (mainChart.options && mainChart.options.scales && printChart.options && printChart.options.scales) {
                 if (mainChart.options.scales.x && printChart.options.scales.x) {
                     printChart.options.scales.x.min = mainChart.options.scales.x.min;
@@ -2915,43 +2887,31 @@ function updatePrintChartsData() {
                 }
             }
             
-            // =========================================================
-            // 4. KUNCI STABILITAS HALAMAN (MENJAGA LAYOUT TIDAK HANCUR)
-            // =========================================================
             if (printChart.options) {
                 printChart.options.animation = false;
                 printChart.options.responsive = true;
-                // WAJIB FALSE agar grafik mengikuti tinggi kotak di HTML, bukan merusak halaman
-                printChart.options.maintainAspectRatio = false; 
-                
+                printChart.options.maintainAspectRatio = false; // Mengikuti tinggi kotak HTML secara akurat
                 printChart.update();
             }
-            
         } catch (err) {
             console.warn("Gagal menyinkronkan grafik:", err);
         }
     };
 
     try {
-        // Eksekusi Sinkronisasi (Dengan Pengecekan NULL yang ketat)
         if (typeof rightChartInstance !== 'undefined' && rightChartInstance && typeof printRightChartInstance !== 'undefined' && printRightChartInstance) syncChart(rightChartInstance, printRightChartInstance, 'audiogram');
         if (typeof leftChartInstance !== 'undefined' && leftChartInstance && typeof printLeftChartInstance !== 'undefined' && printLeftChartInstance) syncChart(leftChartInstance, printLeftChartInstance, 'audiogram');
-        
         if (typeof speechChartInstance !== 'undefined' && speechChartInstance && typeof printSpeechChartInstance !== 'undefined' && printSpeechChartInstance) syncChart(speechChartInstance, printSpeechChartInstance, 'speech');
-        
         if (typeof tympRightChart !== 'undefined' && tympRightChart && typeof printTympRightChartInstance !== 'undefined' && printTympRightChartInstance) syncChart(tympRightChart, printTympRightChartInstance, 'other');
         if (typeof tympLeftChart !== 'undefined' && tympLeftChart && typeof printTympLeftChartInstance !== 'undefined' && printTympLeftChartInstance) syncChart(tympLeftChart, printTympLeftChartInstance, 'other');
-        
         if (typeof oaeRightChart !== 'undefined' && oaeRightChart && typeof printOaeRightChartInstance !== 'undefined' && printOaeRightChartInstance) syncChart(oaeRightChart, printOaeRightChartInstance, 'other');
         if (typeof oaeLeftChart !== 'undefined' && oaeLeftChart && typeof printOaeLeftChartInstance !== 'undefined' && printOaeLeftChartInstance) syncChart(oaeLeftChart, printOaeLeftChartInstance, 'other');
-        
         if (typeof abrRightChart !== 'undefined' && abrRightChart && typeof printAbrRightChartInstance !== 'undefined' && printAbrRightChartInstance) syncChart(abrRightChart, printAbrRightChartInstance, 'other');
         if (typeof abrLeftChart !== 'undefined' && abrLeftChart && typeof printAbrLeftChartInstance !== 'undefined' && printAbrLeftChartInstance) syncChart(abrLeftChart, printAbrLeftChartInstance, 'other');
-        
         if (typeof assrRightChart !== 'undefined' && assrRightChart && typeof printAssrRightChartInstance !== 'undefined' && printAssrRightChartInstance) syncChart(assrRightChart, printAssrRightChartInstance, 'other');
         if (typeof assrLeftChart !== 'undefined' && assrLeftChart && typeof printAssrLeftChartInstance !== 'undefined' && printAssrLeftChartInstance) syncChart(assrLeftChart, printAssrLeftChartInstance, 'other');
 
-        // Paksa Skala ASSR - Pengecekan Aman
+        // Paksa Skala ASSR
         if (typeof printAssrRightChartInstance !== 'undefined' && printAssrRightChartInstance && printAssrRightChartInstance.options && printAssrRightChartInstance.options.scales && printAssrRightChartInstance.options.scales.y) {
             printAssrRightChartInstance.options.scales.y.min = -10; printAssrRightChartInstance.options.scales.y.max = 120; printAssrRightChartInstance.options.scales.y.reverse = true;
             if (!printAssrRightChartInstance.options.scales.y.ticks) printAssrRightChartInstance.options.scales.y.ticks = {}; printAssrRightChartInstance.options.scales.y.ticks.stepSize = 10; printAssrRightChartInstance.options.scales.y.ticks.autoSkip = false; printAssrRightChartInstance.update();
@@ -2961,7 +2921,7 @@ function updatePrintChartsData() {
             if (!printAssrLeftChartInstance.options.scales.y.ticks) printAssrLeftChartInstance.options.scales.y.ticks = {}; printAssrLeftChartInstance.options.scales.y.ticks.stepSize = 10; printAssrLeftChartInstance.options.scales.y.ticks.autoSkip = false; printAssrLeftChartInstance.update();
         }
         
-        // Paksa Skala OAE - Pengecekan Aman
+        // Paksa Skala OAE
         if (typeof printOaeRightChartInstance !== 'undefined' && printOaeRightChartInstance && printOaeRightChartInstance.options && printOaeRightChartInstance.options.scales && printOaeRightChartInstance.options.scales.y) {
             printOaeRightChartInstance.options.scales.y.min = -10; printOaeRightChartInstance.options.scales.y.max = 60; printOaeRightChartInstance.options.scales.y.reverse = false;
             if (!printOaeRightChartInstance.options.scales.y.ticks) printOaeRightChartInstance.options.scales.y.ticks = {}; printOaeRightChartInstance.options.scales.y.ticks.stepSize = 10; printOaeRightChartInstance.options.scales.y.ticks.autoSkip = false; printOaeRightChartInstance.update();
@@ -2970,7 +2930,6 @@ function updatePrintChartsData() {
             printOaeLeftChartInstance.options.scales.y.min = -10; printOaeLeftChartInstance.options.scales.y.max = 60; printOaeLeftChartInstance.options.scales.y.reverse = false;
             if (!printOaeLeftChartInstance.options.scales.y.ticks) printOaeLeftChartInstance.options.scales.y.ticks = {}; printOaeLeftChartInstance.options.scales.y.ticks.stepSize = 10; printOaeLeftChartInstance.options.scales.y.ticks.autoSkip = false; printOaeLeftChartInstance.update();
         }
-
     } catch (error) {
         console.error("Crash sistem sinkronisasi cetak:", error);
     }
