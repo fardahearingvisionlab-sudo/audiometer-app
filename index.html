@@ -4652,6 +4652,7 @@ setTimeout(() => {
     if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
 }, 300);
+} 
 
     function updateGsiCharts() {
         const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
@@ -7031,7 +7032,7 @@ function restoreCalibrationFromCloud() {
             kirimDataAudiometer("X\n"); 
         }
     }, 3000); // Kirim setiap 3000 milidetik (3 detik)
-    }
+    
         
 
     </script>
