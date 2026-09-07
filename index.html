@@ -658,28 +658,35 @@ canvas#rightChart, canvas#leftChart {
                 </div>
             </div>
 
-            <!-- Speech Chart View -->
+            <!-- ======================================================= -->
+            <!-- SPEECH CHART WORKSPACE (DENGAN LAYOUT ANTI-MENGECIL) -->
+            <!-- ======================================================= -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px; overflow: hidden;">
-                    <!-- Kolom Kiri (Grafik) -->
-                    <div style="flex: 3; display: flex; flex-direction: column; width: 100%; min-width: 0;">
-                        <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px;">Speech Audiometry PI-Function Chart</div>
-                        
-                        <!-- PERBAIKAN ABSOLUT: Gunakan height: 450px (Bukan min-height, bukan flex) -->
-                        <div style="position: relative; width: 100%; height: 450px;">
-                            <canvas id="speechChart"></canvas>
-                        </div>
-                    </div>
                 
-                    <!-- Kolom Kanan (Daftar Kata) -->
-                    <div style="flex: 1; min-width: 210px; max-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden;">
+                <!-- KOLOM KIRI (GRAFIK) -->
+                <div style="flex: 1; position: relative;">
+                    <!-- Judul dipaku di atas -->
+                    <div style="font-weight: bold; font-size: 13px; position: absolute; top: 0; left: 0;">Speech Audiometry PI-Function Chart</div>
+                    
+                    <!-- Wadah Grafik: Dipaku secara mutlak ke kiri, kanan, bawah, dan 25px dari atas -->
+                    <div style="position: absolute; top: 25px; left: 0; right: 0; bottom: 0;">
+                        <canvas id="speechChart"></canvas>
+                    </div>
+                </div>
+            
+                <!-- KOLOM KANAN (DAFTAR KATA) -->
+                <div style="width: 250px; min-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden;">
                     <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px;">📝 Daftar Kata</div>
+                    
                     <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
                         <div style="text-align:center; color:#94a3b8; font-style:italic; margin-top:30px; font-size: 10px;">
                             Pilih folder audio untuk menampilkan daftar kata.
                         </div>
                     </div>
                 </div>
+                
             </div>
+            <!-- ======================================================= -->
 
             <!-- Tympanometry Workspace View -->
             <div class="box" id="cardTympWorkspace" style="display: none; flex: 1; padding: 12px; background: white; overflow-y: auto;">
@@ -4690,7 +4697,7 @@ setTimeout(() => {
         if (btn) btn.className = mode === m ? 'win-btn active-mode' : 'win-btn'; 
     });
     
-    // --- TAMBAHKAN KODE INI UNTUK POIN 4 ---
+    // --- LABEL TELINGA / SPEAKER ---
     let rightBtn = document.getElementById('wsEarRight');
     let leftBtn = document.getElementById('wsEarLeft');
     if (m === 'FFT' || m === 'VRA') {
@@ -4700,8 +4707,8 @@ setTimeout(() => {
         rightBtn.innerHTML = 'RIGHT [R]';
         leftBtn.innerHTML = 'LEFT [L]';
     }
-    // --------------------------------------
     
+    // --- MENGATUR TAMPILAN WORKSPACE ---
     let audioWs = document.getElementById('cardAudioWorkspace'); if (audioWs) audioWs.style.display = (m === 'AC' || m === 'BC' || m === 'FFT' || m === 'VRA') ? 'grid' : 'none';
     let speechWs = document.getElementById('cardSpeechWorkspace'); if (speechWs) speechWs.style.display = m === 'Speech' ? 'flex' : 'none';
     let panelSpeech = document.getElementById('panelSpeech'); if (panelSpeech) panelSpeech.style.display = (m === 'Speech') ? 'block' : 'none';
@@ -4715,6 +4722,7 @@ setTimeout(() => {
     let vraCtrl = document.getElementById('vraControls'); if (vraCtrl) vraCtrl.style.display = (m === 'VRA') ? 'block' : 'none';
     showToast(`Mode: ${m}`);
 
+    // --- UPDATE GRAFIK UTAMA & KIRIM DATA KE ARDUINO ---
     if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, m);
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
 
@@ -4722,18 +4730,20 @@ setTimeout(() => {
         kirimDataAudiometer("C" + m + "\n");
     }
 
-    // ---> SOLUSI GRAFIK SPEECH MENGECIL (TRIK NUKLIR) <---
+    // ==============================================================
+    // PENYELESAIAN FINAL GRAFIK SPEECH (BANGUNKAN CHART.JS)
+    // ==============================================================
     if (m === 'Speech') {
         setTimeout(() => {
-            // 1. Paksa chart untuk resize
             if (typeof speechChartInstance !== 'undefined') {
-                speechChartInstance.resize();
+                speechChartInstance.resize(); // Paksa sesuaikan dimensi
+                speechChartInstance.update(); // Paksa gambar ulang garis & titik
             }
-            // 2. Tipu browser seolah-olah window sedang di-resize oleh user
-            window.dispatchEvent(new Event('resize'));
-        }, 150); // Jeda dinaikkan sedikit agar HTML benar-benar sudah tampil
+            // Tetap simpan pemicu ini sebagai pengaman tambahan
+            window.dispatchEvent(new Event('resize')); 
+        }, 100); // Jeda 100ms memberikan waktu HTML terbuka sempurna sebelum grafik di-resize
     }
-} // <-- Penutup fungsi setMode
+}
 
    function setSide(s) { 
     // Panggil toast di paling atas agar pasti tereksekusi duluan
