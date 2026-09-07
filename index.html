@@ -176,9 +176,7 @@
         .ai-content { background: #ffffff; border: 1px solid var(--win-border-light); padding: 8px; border-radius: 4px; font-size: 10.5px; line-height: 1.4; color: #334155; }
 
         
-    /* ==========================================================
-   STYLING MODAL PRATINJAU CETAK (ANTI-OVERLAP)
-   ========================================================== */
+    /* Styling Modal Pratinjau Cetak yang Diperbaiki */
 #printPreviewModal {
     display: none;
     position: fixed;
@@ -205,15 +203,14 @@
     background: #ffffff;
     width: 210mm;
     min-height: 297mm;
-    height: auto !important; /* Wajib AUTO agar jika isinya panjang, kertas memanjang ke bawah dan tidak tumpah menabrak halaman berikutnya */
     margin: 0 auto 20px auto;
-    padding: 10mm 15mm;
+    padding: 12mm 15mm;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     box-sizing: border-box;
     page-break-after: always;
     break-after: page;
     position: relative;
-    display: block; 
+    display: block; /* DIUBAH DARI FLEX KE BLOCK AGAR TIDAK BERTUMPUK/MEREGANG */
 }
 
 .print-controls-bar {
@@ -253,75 +250,65 @@
     font-size: 11px;
 }
 
-/* Mengunci ukuran canvas agar tidak pipih */
+/* ==========================================================
+   PERBAIKAN KOTAK GRAFIK (AGAR PERSEGI & TIDAK GEPENG)
+   ========================================================== */
+.print-chart-container, .chart-container, div[style*="position: relative"] {
+    position: relative;
+    width: 100%;
+    max-width: 480px; /* Batasi lebar maksimal agar kotaknya ideal */
+    margin: 0 auto;   /* Posisi di tengah */
+}
+
+/* Memastikan elemen canvas di dalam preview proporsional */
 .print-page canvas {
     width: 100% !important;
-    height: 100% !important;
     display: block;
     margin: 0 auto;
 }
 
-/* =======================================================
-   ATURAN KHUSUS SAAT TOMBOL CETAK BROWSER DITEKAN (CTRL+P)
-   ======================================================= */
+/* Pengaturan khusus saat tombol cetak browser dijalankan */
 @media print {
     body {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
     .print-controls-bar { display: none !important; }
-    
     #printPreviewModal { 
         background: none !important; 
         padding: 0 !important; 
         position: static !important; 
         overflow: visible !important; 
     }
-    
     .print-modal-content { 
         box-shadow: none !important; 
         margin: 0 !important; 
         width: 100% !important; 
         padding: 0 !important; 
     }
-    
     .print-page { 
         box-shadow: none !important;
         margin: 0 !important;
         width: 100% !important;
-        height: auto !important; /* Wajib AUTO agar browser bisa memisah halaman dengan rapi */
-        max-height: none !important; /* Hapus batasan tinggi */
-        min-height: 0 !important;
-        padding: 0 !important; 
+        height: auto !important;
+        min-height: auto !important;
         page-break-after: always !important;
         break-after: page !important;
-        overflow: visible !important; /* Biarkan konten mengalir alami jika harus pindah kertas */
         border: none !important;
         display: block !important; 
     }
-    
     canvas {
         max-width: 100% !important;
         page-break-inside: avoid !important;
-    }
-
-    .cegah-terpotong {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-    }
-
-    @page {
-        size: A4 portrait;
-        margin: 8mm; /* Cukup beri margin ini saja di kertas asli */
     }
 }
 
 /* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
 .printClinicLogoBox {
-    max-height: 60px;
-    width: auto !important;
+    max-height: 60px;       /* Batasi tinggi maksimum agar tidak merusak kop surat */
+    width: auto !important;  /* Lebar otomatis menyesuaikan bentuk logo (persegi/panjang) */
     min-width: 50px;
-    border: none !important;
+    border: none !important; /* Hilangkan border kotak jika tidak diinginkan */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -330,8 +317,8 @@
 }
 
 .printClinicLogoImg {
-    max-height: 58px !important;
-    width: auto !important;
+    max-height: 58px !important; /* Menyesuaikan tinggi kontainer cetak */
+    width: auto !important;      /* Menjaga rasio Asli logo agar tidak gepeng */
     object-fit: contain;
 }
 
@@ -341,8 +328,8 @@
 @keyframes flashRedBg { from { background-color: rgba(239, 68, 68, 0.02); } to { background-color: rgba(239, 68, 68, 0.22); } }
 @keyframes flashBlueBg { from { background-color: rgba(2, 132, 199, 0.02); } to { background-color: rgba(2, 132, 199, 0.22); } }
 
-#maskingDb::-webkit-outer-spin-button, #maskingDb::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
-#maskingDb { -moz-appearance: textfield; appearance: textfield; }
+#maskingDb::-webkit-outer-spin-button, #maskingDb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+#maskingDb { -moz-appearance: textfield; }
 
 @keyframes pulseVra { 0% { transform: scale(1); box-shadow: 0 0 20px #facc15; } 100% { transform: scale(1.15); box-shadow: 0 0 50px #eab308, 0 0 80px #f59e0b; } }
 .vra-reward { display: none; position: fixed; top: 35%; width: 250px; height: 250px; background: #fef08a; border: 8px solid #eab308; border-radius: 20px; z-index: 99999; text-align: center; line-height: 230px; font-size: 110px; animation: pulseVra 0.4s infinite alternate; user-select: none; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
@@ -2861,23 +2848,28 @@ window.onload = function() {
 
 
 // =================================================================
-// 3. SINKRONISASI DATA KE GRAFIK CETAK (FINAL)
+// 3. SINKRONISASI DATA KE GRAFIK CETAK (UPDATE PRINT DATA)
 // =================================================================
 function updatePrintChartsData() {
-    const syncChart = (mainChart, printChart, chartType) => {
-        if (!mainChart || !printChart) return;
+    const syncChart = (mainChart, printChart) => {
+        // Keamanan tambahan: pastikan kedua chart benar-benar ada dan sudah diinisialisasi
+        if (typeof mainChart === 'undefined' || !mainChart || typeof printChart === 'undefined' || !printChart) return;
         
         try {
+            // 1. Salin Label Sumbu X
             if (mainChart.data && mainChart.data.labels) {
                 printChart.data.labels = [...mainChart.data.labels];
             }
             
+            // 2. Salin Data & Gaya Garis
             if (mainChart.data && mainChart.data.datasets) {
-                printChart.data.datasets = mainChart.data.datasets
-                    .filter(ds => ds.label !== 'MaxLimitZone' && ds.backgroundColor !== 'rgba(203, 213, 225, 0.4)')
-                    .map(ds => ({ ...ds, data: [...ds.data] }));
+                printChart.data.datasets = mainChart.data.datasets.map(ds => ({
+                    ...ds,
+                    data: [...ds.data]
+                }));
             }
 
+            // 3. Salin Skala (Toleransi jika dari mainChart kosong)
             if (mainChart.options && mainChart.options.scales && printChart.options && printChart.options.scales) {
                 if (mainChart.options.scales.x && printChart.options.scales.x) {
                     printChart.options.scales.x.min = mainChart.options.scales.x.min;
@@ -2891,49 +2883,72 @@ function updatePrintChartsData() {
                 }
             }
             
-            if (printChart.options) {
-                printChart.options.animation = false;
-                printChart.options.responsive = true;
-                printChart.options.maintainAspectRatio = false; // Mengikuti tinggi kotak HTML secara akurat
-                printChart.update();
-            }
+            printChart.options.animation = false;
+            printChart.options.maintainAspectRatio = false;
+            printChart.update();
         } catch (err) {
-            console.warn("Gagal menyinkronkan grafik:", err);
+            console.warn("Gagal menyinkronkan satu grafik:", err);
         }
     };
 
     try {
-        if (typeof rightChartInstance !== 'undefined' && rightChartInstance && typeof printRightChartInstance !== 'undefined' && printRightChartInstance) syncChart(rightChartInstance, printRightChartInstance, 'audiogram');
-        if (typeof leftChartInstance !== 'undefined' && leftChartInstance && typeof printLeftChartInstance !== 'undefined' && printLeftChartInstance) syncChart(leftChartInstance, printLeftChartInstance, 'audiogram');
-        if (typeof speechChartInstance !== 'undefined' && speechChartInstance && typeof printSpeechChartInstance !== 'undefined' && printSpeechChartInstance) syncChart(speechChartInstance, printSpeechChartInstance, 'speech');
-        if (typeof tympRightChart !== 'undefined' && tympRightChart && typeof printTympRightChartInstance !== 'undefined' && printTympRightChartInstance) syncChart(tympRightChart, printTympRightChartInstance, 'other');
-        if (typeof tympLeftChart !== 'undefined' && tympLeftChart && typeof printTympLeftChartInstance !== 'undefined' && printTympLeftChartInstance) syncChart(tympLeftChart, printTympLeftChartInstance, 'other');
-        if (typeof oaeRightChart !== 'undefined' && oaeRightChart && typeof printOaeRightChartInstance !== 'undefined' && printOaeRightChartInstance) syncChart(oaeRightChart, printOaeRightChartInstance, 'other');
-        if (typeof oaeLeftChart !== 'undefined' && oaeLeftChart && typeof printOaeLeftChartInstance !== 'undefined' && printOaeLeftChartInstance) syncChart(oaeLeftChart, printOaeLeftChartInstance, 'other');
-        if (typeof abrRightChart !== 'undefined' && abrRightChart && typeof printAbrRightChartInstance !== 'undefined' && printAbrRightChartInstance) syncChart(abrRightChart, printAbrRightChartInstance, 'other');
-        if (typeof abrLeftChart !== 'undefined' && abrLeftChart && typeof printAbrLeftChartInstance !== 'undefined' && printAbrLeftChartInstance) syncChart(abrLeftChart, printAbrLeftChartInstance, 'other');
-        if (typeof assrRightChart !== 'undefined' && assrRightChart && typeof printAssrRightChartInstance !== 'undefined' && printAssrRightChartInstance) syncChart(assrRightChart, printAssrRightChartInstance, 'other');
-        if (typeof assrLeftChart !== 'undefined' && assrLeftChart && typeof printAssrLeftChartInstance !== 'undefined' && printAssrLeftChartInstance) syncChart(assrLeftChart, printAssrLeftChartInstance, 'other');
-
-        // Paksa Skala ASSR
-        if (typeof printAssrRightChartInstance !== 'undefined' && printAssrRightChartInstance && printAssrRightChartInstance.options && printAssrRightChartInstance.options.scales && printAssrRightChartInstance.options.scales.y) {
-            printAssrRightChartInstance.options.scales.y.min = -10; printAssrRightChartInstance.options.scales.y.max = 120; printAssrRightChartInstance.options.scales.y.reverse = true;
-            if (!printAssrRightChartInstance.options.scales.y.ticks) printAssrRightChartInstance.options.scales.y.ticks = {}; printAssrRightChartInstance.options.scales.y.ticks.stepSize = 10; printAssrRightChartInstance.options.scales.y.ticks.autoSkip = false; printAssrRightChartInstance.update();
-        }
-        if (typeof printAssrLeftChartInstance !== 'undefined' && printAssrLeftChartInstance && printAssrLeftChartInstance.options && printAssrLeftChartInstance.options.scales && printAssrLeftChartInstance.options.scales.y) {
-            printAssrLeftChartInstance.options.scales.y.min = -10; printAssrLeftChartInstance.options.scales.y.max = 120; printAssrLeftChartInstance.options.scales.y.reverse = true;
-            if (!printAssrLeftChartInstance.options.scales.y.ticks) printAssrLeftChartInstance.options.scales.y.ticks = {}; printAssrLeftChartInstance.options.scales.y.ticks.stepSize = 10; printAssrLeftChartInstance.options.scales.y.ticks.autoSkip = false; printAssrLeftChartInstance.update();
-        }
+        // Sinkronisasi aman untuk setiap chart (menggunakan variabel yang ada di script Anda)
+        if (typeof rightChartInstance !== 'undefined' && typeof printRightChartInstance !== 'undefined') syncChart(rightChartInstance, printRightChartInstance);
+        if (typeof leftChartInstance !== 'undefined' && typeof printLeftChartInstance !== 'undefined') syncChart(leftChartInstance, printLeftChartInstance);
+        if (typeof speechChartInstance !== 'undefined' && typeof printSpeechChartInstance !== 'undefined') syncChart(speechChartInstance, printSpeechChartInstance);
         
-        // Paksa Skala OAE
-        if (typeof printOaeRightChartInstance !== 'undefined' && printOaeRightChartInstance && printOaeRightChartInstance.options && printOaeRightChartInstance.options.scales && printOaeRightChartInstance.options.scales.y) {
-            printOaeRightChartInstance.options.scales.y.min = -10; printOaeRightChartInstance.options.scales.y.max = 60; printOaeRightChartInstance.options.scales.y.reverse = false;
-            if (!printOaeRightChartInstance.options.scales.y.ticks) printOaeRightChartInstance.options.scales.y.ticks = {}; printOaeRightChartInstance.options.scales.y.ticks.stepSize = 10; printOaeRightChartInstance.options.scales.y.ticks.autoSkip = false; printOaeRightChartInstance.update();
-        }
-        if (typeof printOaeLeftChartInstance !== 'undefined' && printOaeLeftChartInstance && printOaeLeftChartInstance.options && printOaeLeftChartInstance.options.scales && printOaeLeftChartInstance.options.scales.y) {
-            printOaeLeftChartInstance.options.scales.y.min = -10; printOaeLeftChartInstance.options.scales.y.max = 60; printOaeLeftChartInstance.options.scales.y.reverse = false;
-            if (!printOaeLeftChartInstance.options.scales.y.ticks) printOaeLeftChartInstance.options.scales.y.ticks = {}; printOaeLeftChartInstance.options.scales.y.ticks.stepSize = 10; printOaeLeftChartInstance.options.scales.y.ticks.autoSkip = false; printOaeLeftChartInstance.update();
-        }
+        if (typeof tympRightChart !== 'undefined' && typeof printTympRightChartInstance !== 'undefined') syncChart(tympRightChart, printTympRightChartInstance);
+        if (typeof tympLeftChart !== 'undefined' && typeof printTympLeftChartInstance !== 'undefined') syncChart(tympLeftChart, printTympLeftChartInstance);
+        
+        if (typeof oaeRightChart !== 'undefined' && typeof printOaeRightChartInstance !== 'undefined') syncChart(oaeRightChart, printOaeRightChartInstance);
+        if (typeof oaeLeftChart !== 'undefined' && typeof printOaeLeftChartInstance !== 'undefined') syncChart(oaeLeftChart, printOaeLeftChartInstance);
+        
+        if (typeof abrRightChart !== 'undefined' && typeof printAbrRightChartInstance !== 'undefined') syncChart(abrRightChart, printAbrRightChartInstance);
+        if (typeof abrLeftChart !== 'undefined' && typeof printAbrLeftChartInstance !== 'undefined') syncChart(abrLeftChart, printAbrLeftChartInstance);
+        
+        if (typeof assrRightChart !== 'undefined' && typeof printAssrRightChartInstance !== 'undefined') syncChart(assrRightChart, printAssrRightChartInstance);
+        if (typeof assrLeftChart !== 'undefined' && typeof printAssrLeftChartInstance !== 'undefined') syncChart(assrLeftChart, printAssrLeftChartInstance);
+
+        // =================================================================
+        // PAKSA SKALA ASSR MENGGUNAKAN STANDAR AUDIOGRAM
+        // =================================================================
+        const forceAudiogramScale = (chartInstance) => {
+            if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
+                chartInstance.options.scales.y.min = -10;        
+                chartInstance.options.scales.y.max = 120;        
+                chartInstance.options.scales.y.reverse = true;    
+                
+                if (!chartInstance.options.scales.y.ticks) chartInstance.options.scales.y.ticks = {};
+                chartInstance.options.scales.y.ticks.stepSize = 10;
+                chartInstance.options.scales.y.ticks.autoSkip = false;
+                
+                chartInstance.update();
+            }
+        };
+
+        if (typeof printAssrRightChartInstance !== 'undefined') forceAudiogramScale(printAssrRightChartInstance);
+        if (typeof printAssrLeftChartInstance !== 'undefined') forceAudiogramScale(printAssrLeftChartInstance);
+        
+        // =================================================================
+        // PAKSA SKALA OAE AGAR TIDAK BERHENTI DI 30 dB
+        // =================================================================
+        const forceOAEScale = (chartInstance) => {
+            if (typeof chartInstance !== 'undefined' && chartInstance && chartInstance.options && chartInstance.options.scales && chartInstance.options.scales.y) {
+                chartInstance.options.scales.y.min = -10; 
+                chartInstance.options.scales.y.max = 60;          
+                chartInstance.options.scales.y.reverse = false;   
+                
+                if (!chartInstance.options.scales.y.ticks) chartInstance.options.scales.y.ticks = {};
+                chartInstance.options.scales.y.ticks.stepSize = 10;
+                chartInstance.options.scales.y.ticks.autoSkip = false;
+                
+                chartInstance.update();
+            }
+        };
+
+        if (typeof printOaeRightChartInstance !== 'undefined') forceOAEScale(printOaeRightChartInstance);
+        if (typeof printOaeLeftChartInstance !== 'undefined') forceOAEScale(printOaeLeftChartInstance);
+
     } catch (error) {
         console.error("Crash sistem sinkronisasi cetak:", error);
     }
