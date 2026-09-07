@@ -4638,7 +4638,10 @@ function loadSessionDataToTable(data) {
 
     function setMode(m) {
     currentMode = m;
-    ['AC', 'BC', 'FFT', 'VRA', 'Speech', 'Tymp', 'OAE', 'ABR'].forEach(mode => { let btn = document.getElementById('btnMode' + mode); if (btn) btn.className = mode === m ? 'win-btn active-mode' : 'win-btn'; });
+    ['AC', 'BC', 'FFT', 'VRA', 'Speech', 'Tymp', 'OAE', 'ABR'].forEach(mode => { 
+        let btn = document.getElementById('btnMode' + mode); 
+        if (btn) btn.className = mode === m ? 'win-btn active-mode' : 'win-btn'; 
+    });
     
     // --- TAMBAHKAN KODE INI UNTUK POIN 4 ---
     let rightBtn = document.getElementById('wsEarRight');
@@ -4667,6 +4670,10 @@ function loadSessionDataToTable(data) {
 
     if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, m);
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
+
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer("C" + m + "\n");
+    }
 }
 
    function setSide(s) { 
