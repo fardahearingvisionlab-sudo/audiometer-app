@@ -1002,26 +1002,35 @@ canvas#rightChart, canvas#leftChart {
         </div>
 
         
-        <!-- LEGEND AUDIOGRAM (Desain Bersih & Simbol Seimbang) -->
+        <!-- LEGEND AUDIOGRAM (Ukuran Simbol Mutlak Presisi) -->
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: bold; margin-bottom: 12px; padding: 4px 5px; background: transparent; border-bottom: 1px solid #cbd5e1;">
             <span style="color: #475569;">LEGEND:</span>
             
-            <span style="color: #dc2626;">
-                RIGHT AC: <span style="font-size: 13px;">○</span> / <span style="font-size: 12px;">△</span>
+            <!-- RIGHT AC -->
+            <span style="color: #dc2626; display: inline-flex; align-items: center;">
+                RIGHT AC: 
+                <span style="font-size: 17px; margin: 0 4px; font-weight: normal;">○</span> / 
+                <span style="font-size: 12px; margin: 0 4px;">△</span>
             </span>
             
+            <!-- RIGHT BC -->
             <span style="color: #dc2626;">
                 RIGHT BC: <span style="font-size: 12px;">&lt; / [</span>
             </span>
             
-            <span style="color: #0284c7;">
-                LEFT AC: <span style="font-size: 12px;">✕</span> / <span style="font-size: 14px;">□</span>
+            <!-- LEFT AC -->
+            <span style="color: #0284c7; display: inline-flex; align-items: center;">
+                LEFT AC: 
+                <span style="font-size: 12px; margin: 0 4px;">✕</span> / 
+                <span style="font-size: 17px; margin: 0 4px; font-weight: normal;">□</span>
             </span>
             
+            <!-- LEFT BC -->
             <span style="color: #0284c7;">
                 LEFT BC: <span style="font-size: 12px;">&gt; / ]</span>
             </span>
             
+            <!-- SF -->
             <span style="color: #475569;">
                 SF: <span style="font-size: 12px;">S / A</span>
             </span>
