@@ -659,16 +659,16 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (FLEXBOX & CHART.JS FIX) -->
+            <!-- SPEECH CHART WORKSPACE -->
             <!-- ======================================================= -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px;">
                 
-                <!-- KOLOM KIRI (GRAFIK) -> KUNCI 1: min-width: 0 -->
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                <!-- KOLOM KIRI (GRAFIK) -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- WADAH GRAFIK -> KUNCI 2: flex: 1 dan min-height: 0 -->
-                    <div style="flex: 1; min-height: 0; position: relative; width: 100%;">
+                    <!-- WADAH GRAFIK MUTLAK (TINGGI 550px) -->
+                    <div style="width: 100%; height: 550px; position: relative;">
                         <canvas id="speechChart"></canvas>
                     </div>
                 </div>
@@ -685,7 +685,6 @@ canvas#rightChart, canvas#leftChart {
                 </div>
                 
             </div>
-            <!-- ======================================================= -->
 
             <!-- Tympanometry Workspace View -->
             <div class="box" id="cardTympWorkspace" style="display: none; flex: 1; padding: 12px; background: white; overflow-y: auto;">
