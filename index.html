@@ -4716,7 +4716,19 @@ setTimeout(() => {
     if (audioWs) audioWs.style.display = (m === 'AC' || m === 'BC' || m === 'FFT' || m === 'VRA') ? 'grid' : 'none';
     
     let speechWs = document.getElementById('cardSpeechWorkspace'); 
-    if (speechWs) speechWs.style.display = m === 'Speech' ? 'flex' : 'none';
+    if (speechWs) {
+        speechWs.style.display = m === 'Speech' ? 'flex' : 'none';
+        
+        // --- JIKA MASUK KE MODE SPEECH, PAKSA GRAFIKNYA MELEBAR! ---
+        if (m === 'Speech') {
+            setTimeout(() => {
+                if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                    speechChartInstance.resize();
+                    speechChartInstance.update();
+                }
+            }, 50); // Jeda sangat singkat 50ms agar DOM sempat merender flex
+        }
+    }
     
     let panelSpeech = document.getElementById('panelSpeech'); 
     if (panelSpeech) panelSpeech.style.display = (m === 'Speech') ? 'block' : 'none';
