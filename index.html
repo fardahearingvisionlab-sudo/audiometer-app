@@ -985,18 +985,22 @@ canvas#rightChart, canvas#leftChart {
         <!-- 🟢 AKHIR PEMBUNGKUS HEADER -->
 
         <h3 style="text-align: center; margin: 0 0 6px 0; font-size: 12px;">PURE TONE & SPEECH AUDIOMETRY SUMMARY</h3>
-        
+    
         <!-- GRAFIK PTA KANAN & KIRI -->
-        <!-- KODE BARU -->
-        <div style="display: flex; gap: 8px; margin-bottom: 6px; justify-content: center; width: 100%;">
-            <div style="flex: 1; border: 2px solid #dc2626; background: #fff; height: 150px; display: flex; align-items: center; justify-content: center; padding: 2px;">
+        <div style="display: flex; gap: 20px; margin-bottom: 6px; justify-content: center; width: 100%;">
+            
+            <!-- Kotak Kanan (Mutlak Persegi) -->
+            <div style="border: 2px solid #dc2626; background: #fff; width: 200px; height: 200px; padding: 2px; position: relative;">
                 <canvas id="prevRightChart" style="width: 100%; height: 100%;"></canvas>
             </div>
-            <div style="flex: 1; border: 2px solid #0284c7; background: #fff; height: 150px; display: flex; align-items: center; justify-content: center; padding: 2px;">
+            
+            <!-- Kotak Kiri (Mutlak Persegi) -->
+            <div style="border: 2px solid #0284c7; background: #fff; width: 200px; height: 200px; padding: 2px; position: relative;">
                 <canvas id="prevLeftChart" style="width: 100%; height: 100%;"></canvas>
             </div>
+            
         </div>
-
+        
         <!-- LEGEND AUDIOGRAM (Lebih Rapi dengan Layout Fixed) -->
         <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 10px; margin-bottom: 8px; table-layout: fixed;">
             <tr style="background-color: #ffffff; font-weight: bold;">
