@@ -4669,7 +4669,7 @@ function loadSessionDataToTable(data) {
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
 }
 
-    function setSide(s) { 
+   function setSide(s) { 
     // Panggil toast di paling atas agar pasti tereksekusi duluan
     showToast(`Active Ear: ${s.toUpperCase()}`); 
 
@@ -4677,6 +4677,11 @@ function loadSessionDataToTable(data) {
     document.getElementById('wsEarRight').style.border = s==='right' ? '2px solid #000' : '1px solid var(--win-border)'; 
     document.getElementById('wsEarLeft').style.border = s==='left' ? '2px solid #000' : '1px solid var(--win-border)'; 
     updateMaskingDisplayUI(); 
+
+    // ---> SUNTIKAN: Kirim perubahan Telinga ke Arduino <---
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer("E" + (s === 'right' ? "R" : "L") + "\n");
+    }
 }
 
     function updateDisplayStatus() { 
@@ -4687,23 +4692,28 @@ function loadSessionDataToTable(data) {
 
     // PERBAIKAN: Fungsi adjustDb sekarang pintar dan tahu batas maksimal!
     function adjustDb(val) {
-    let freqAktif = FREQUENCIES[currentFreqIndex];
-    let batasMaksimal = getMaximumLimit(currentMode, freqAktif);
-    
-    let nv = currentDb + val;
-    
-    if (nv > batasMaksimal) {
-        currentDb = batasMaksimal; // Kunci di batas mentok
-        if (typeof showToast === 'function') {
-            showToast(`⚠️ Batas maksimal ${currentMode} untuk ${freqAktif} Hz adalah ${batasMaksimal} dB HL`);
+        let freqAktif = FREQUENCIES[currentFreqIndex];
+        let batasMaksimal = getMaximumLimit(currentMode, freqAktif);
+        
+        let nv = currentDb + val;
+        
+        if (nv > batasMaksimal) {
+            currentDb = batasMaksimal; // Kunci di batas mentok
+            if (typeof showToast === 'function') {
+                showToast(`⚠️ Batas maksimal ${currentMode} untuk ${freqAktif} Hz adalah ${batasMaksimal} dB HL`);
+            }
+        } else if (nv < -10) {
+            currentDb = -10; // Kunci batas bawah minimum
+        } else {
+            currentDb = nv;
         }
-    } else if (nv < -10) {
-        currentDb = -10; // Kunci batas bawah minimum
-    } else {
-        currentDb = nv;
+        updateDisplayStatus();
+
+        // ---> SUNTIKAN: Kirim perubahan DB ke Arduino <---
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("I" + currentDb + "\n");
+        }
     }
-    updateDisplayStatus();
-}
     
     function updateMaskingDisplayUI() {
     let chkMasking = document.getElementById('chkMasking');
@@ -4724,19 +4734,25 @@ function loadSessionDataToTable(data) {
     }
 }
     
-    function toggleMaskingBtn() { let chk = document.getElementById('chkMasking'); if (chk) { chk.checked = !chk.checked; toggleMasking(); } }
+function toggleMaskingBtn() { 
+    let chk = document.getElementById('chkMasking'); 
+    if (chk) { 
+        chk.checked = !chk.checked; 
+        toggleMasking(); 
+    } 
+}
 
-    function changeMaskingDb(delta) {
+function changeMaskingDb(delta) {
     let input = document.getElementById('maskingDb');
     if(!input) return;
     let newVal = parseInt(input.value) + delta;
     if(newVal >= -10 && newVal <= 120) {
         input.value = newVal;
-        updateMaskingVolume();
+        updateMaskingVolume(); // Fungsi ini yang akan meneruskan data ke Arduino
     }
 }
 
-    function toggleMasking() { 
+function toggleMasking() { 
     let isEnabled = document.getElementById('chkMasking')?.checked || false; 
     let btn = document.getElementById('btnMaskingToggle'); 
     let maskRow = document.getElementById('maskingStatusRow'); 
@@ -4756,6 +4772,11 @@ function loadSessionDataToTable(data) {
         // Nyalakan Contralateral Noise secara kontinu
         startContinuousMaskingNoise();
 
+        // ---> SUNTIKAN: Kirim status Masking ON ke Arduino <---
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("M1\n");
+        }
+
     } else { 
         if (btn) { 
             btn.innerHTML = "⚪ MASKING: OFF [M]"; 
@@ -4769,6 +4790,11 @@ function loadSessionDataToTable(data) {
 
         // Matikan noise Contralateral
         stopContinuousMaskingNoise();
+
+        // ---> SUNTIKAN: Kirim status Masking OFF ke Arduino <---
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("M0\n");
+        }
     } 
     if (typeof updateMaskingDisplayUI === 'function') { 
         updateMaskingDisplayUI(); 
@@ -4862,13 +4888,20 @@ function stopContinuousMaskingNoise() {
     }
 }
 
-    function updateMaskingVolume() {
+function updateMaskingVolume() {
     let maskInput = document.getElementById('maskingDb'); 
     if (!maskInput) return;
     
     let val = parseInt(maskInput.value);
     if (isNaN(val)) { val = 30; } else if (val < -10) { val = -10; } else if (val > 120) { val = 120; }
+    
+    // Update angka di layar Web
     maskInput.value = val;
+
+    // ---> SUNTIKAN BARU: Kirim nilai DB Masking ke Arduino <---
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer("N" + val + "\n");
+    }
 
     if (window.activeNoiseGain && typeof audioCtx !== 'undefined' && audioCtx) {
         
@@ -5498,6 +5531,7 @@ function startTone() {
     window.addEventListener('keydown', e => {
         if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         let key = e.key.toLowerCase();
+        
         if (e.code === 'Space') { e.preventDefault(); if(currentMode !== 'Speech') startTone(); }
         else if (e.code === 'Enter') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(); }
         else if (key === 'r') { e.preventDefault(); setSide('right'); }
@@ -5511,10 +5545,42 @@ function startTone() {
         else if (key === 'm') { e.preventDefault(); let c = document.getElementById('chkMasking'); c.checked = !c.checked; toggleMasking(); }
         else if (e.code === 'ArrowUp') { e.preventDefault(); adjustDb(5); }
         else if (e.code === 'ArrowDown') { e.preventDefault(); adjustDb(-5); }
-        else if (e.code === 'ArrowRight') { e.preventDefault(); if(currentFreqIndex < FREQUENCIES.length - 1) { currentFreqIndex++; updateDisplayStatus(); } }
-        else if (e.code === 'ArrowLeft') { e.preventDefault(); if(currentFreqIndex > 0) { currentFreqIndex--; updateDisplayStatus(); } }
+        
+        // --- PANAH KANAN: NAIK FREKUENSI ---
+        else if (e.code === 'ArrowRight') { 
+            e.preventDefault(); 
+            if (currentFreqIndex < FREQUENCIES.length - 1) { 
+                currentFreqIndex++; 
+                updateDisplayStatus(); 
+                
+                // SUNTIKAN KE ARDUINO
+                if (typeof kirimDataAudiometer === 'function') {
+                    kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+                }
+            } 
+        }
+        
+        // --- PANAH KIRI: TURUN FREKUENSI ---
+        else if (e.code === 'ArrowLeft') { 
+            e.preventDefault(); 
+            if (currentFreqIndex > 0) { 
+                currentFreqIndex--; 
+                updateDisplayStatus(); 
+                
+                // SUNTIKAN KE ARDUINO
+                if (typeof kirimDataAudiometer === 'function') {
+                    kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+                }
+            } 
+        }
     });
-    window.addEventListener('keyup', e => { if (e.code === 'Space') { e.preventDefault(); stopTone(); } });
+
+    window.addEventListener('keyup', e => { 
+        if (e.code === 'Space') { 
+            e.preventDefault(); 
+            stopTone(); 
+        } 
+    });
 
     function recordResponse() {
         if(currentMode === 'Speech') { 
