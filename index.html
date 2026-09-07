@@ -659,17 +659,16 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (DENGAN LAYOUT ANTI-MENGECIL) -->
+            <!-- SPEECH CHART WORKSPACE (DENGAN TINGGI FIX 550px) -->
             <!-- ======================================================= -->
-            <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px; overflow: hidden;">
+            <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px;">
                 
                 <!-- KOLOM KIRI (GRAFIK) -->
-                <div style="flex: 1; position: relative;">
-                    <!-- Judul dipaku di atas -->
-                    <div style="font-weight: bold; font-size: 13px; position: absolute; top: 0; left: 0;">Speech Audiometry PI-Function Chart</div>
+                <div style="flex: 1; display: flex; flex-direction: column; width: 100%;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- Wadah Grafik: Dipaku secara mutlak ke kiri, kanan, bawah, dan 25px dari atas -->
-                    <div style="position: absolute; top: 25px; left: 0; right: 0; bottom: 0;">
+                    <!-- INI KUNCINYA: WADAH DENGAN TINGGI MUTLAK (550px) -->
+                    <div style="position: relative; width: 100%; height: 550px;">
                         <canvas id="speechChart"></canvas>
                     </div>
                 </div>
