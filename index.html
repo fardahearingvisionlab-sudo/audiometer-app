@@ -4692,56 +4692,75 @@ setTimeout(() => {
 
     function setMode(m) {
     currentMode = m;
+    
+    // --- 1. HIGHLIGHT TOMBOL MODE ---
     ['AC', 'BC', 'FFT', 'VRA', 'Speech', 'Tymp', 'OAE', 'ABR'].forEach(mode => { 
         let btn = document.getElementById('btnMode' + mode); 
         if (btn) btn.className = mode === m ? 'win-btn active-mode' : 'win-btn'; 
     });
     
-    // --- LABEL TELINGA / SPEAKER ---
+    // --- 2. LABEL TELINGA / SPEAKER ---
     let rightBtn = document.getElementById('wsEarRight');
     let leftBtn = document.getElementById('wsEarLeft');
     if (m === 'FFT' || m === 'VRA') {
-        rightBtn.innerHTML = '🔊 RIGHT SPEAKER';
-        leftBtn.innerHTML = '🔊 LEFT SPEAKER';
+        if (rightBtn) rightBtn.innerHTML = '🔊 RIGHT SPEAKER';
+        if (leftBtn) leftBtn.innerHTML = '🔊 LEFT SPEAKER';
     } else {
-        rightBtn.innerHTML = 'RIGHT [R]';
-        leftBtn.innerHTML = 'LEFT [L]';
+        if (rightBtn) rightBtn.innerHTML = 'RIGHT [R]';
+        if (leftBtn) leftBtn.innerHTML = 'LEFT [L]';
     }
     
-    // --- MENGATUR TAMPILAN WORKSPACE ---
-    let audioWs = document.getElementById('cardAudioWorkspace'); if (audioWs) audioWs.style.display = (m === 'AC' || m === 'BC' || m === 'FFT' || m === 'VRA') ? 'grid' : 'none';
-    let speechWs = document.getElementById('cardSpeechWorkspace'); if (speechWs) speechWs.style.display = m === 'Speech' ? 'flex' : 'none';
-    let panelSpeech = document.getElementById('panelSpeech'); if (panelSpeech) panelSpeech.style.display = (m === 'Speech') ? 'block' : 'none';
-    let tympWs = document.getElementById('cardTympWorkspace'); if (tympWs) tympWs.style.display = m === 'Tymp' ? 'block' : 'none';
-    let oaeWs = document.getElementById('cardOaeWorkspace'); if (oaeWs) oaeWs.style.display = m === 'OAE' ? 'block' : 'none';
-    let abrWs = document.getElementById('cardAbrWorkspace'); if (abrWs) abrWs.style.display = m === 'ABR' ? 'block' : 'none';
-    let assrWs = document.getElementById('cardAssrWorkspace'); if (assrWs) assrWs.style.display = m === 'ASSR' ? 'block' : 'none';
+    // --- 3. MENGATUR TAMPILAN WORKSPACE ---
+    let audioWs = document.getElementById('cardAudioWorkspace'); 
+    if (audioWs) audioWs.style.display = (m === 'AC' || m === 'BC' || m === 'FFT' || m === 'VRA') ? 'grid' : 'none';
     
-    let qa = document.getElementById('toneQuickActions'); if (qa) qa.style.display = m === 'Speech' ? 'none' : 'flex';
-    if ((m === 'FFT' || m === 'VRA') && typeof setExamStimulus === 'function') { setExamStimulus('warble'); }
-    let vraCtrl = document.getElementById('vraControls'); if (vraCtrl) vraCtrl.style.display = (m === 'VRA') ? 'block' : 'none';
+    let speechWs = document.getElementById('cardSpeechWorkspace'); 
+    if (speechWs) speechWs.style.display = m === 'Speech' ? 'flex' : 'none';
+    
+    let panelSpeech = document.getElementById('panelSpeech'); 
+    if (panelSpeech) panelSpeech.style.display = (m === 'Speech') ? 'block' : 'none';
+    
+    let tympWs = document.getElementById('cardTympWorkspace'); 
+    if (tympWs) tympWs.style.display = m === 'Tymp' ? 'block' : 'none';
+    
+    let oaeWs = document.getElementById('cardOaeWorkspace'); 
+    if (oaeWs) oaeWs.style.display = m === 'OAE' ? 'block' : 'none';
+    
+    let abrWs = document.getElementById('cardAbrWorkspace'); 
+    if (abrWs) abrWs.style.display = m === 'ABR' ? 'block' : 'none';
+    
+    let assrWs = document.getElementById('cardAssrWorkspace'); 
+    if (assrWs) assrWs.style.display = m === 'ASSR' ? 'block' : 'none';
+    
+    // --- 4. ATURAN KHUSUS (QUICK ACTIONS & VRA) ---
+    let qa = document.getElementById('toneQuickActions'); 
+    if (qa) qa.style.display = m === 'Speech' ? 'none' : 'flex';
+    
+    if ((m === 'FFT' || m === 'VRA') && typeof setExamStimulus === 'function') { 
+        setExamStimulus('warble'); 
+    }
+    
+    let vraCtrl = document.getElementById('vraControls'); 
+    if (vraCtrl) vraCtrl.style.display = (m === 'VRA') ? 'block' : 'none';
+    
     showToast(`Mode: ${m}`);
 
-    // --- UPDATE GRAFIK UTAMA & KIRIM DATA KE ARDUINO ---
+    // --- 5. UPDATE GRAFIK UTAMA & KIRIM DATA KE ARDUINO ---
     if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, m);
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
 
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("C" + m + "\n");
-    }
+    }    
 
-    // ==============================================================
-    // PENYELESAIAN FINAL GRAFIK SPEECH (BANGUNKAN CHART.JS)
-    // ==============================================================
+    // --- 6. SUNTIKAN AMAN UNTUK RESIZE GRAFIK SPEECH ---
     if (m === 'Speech') {
         setTimeout(() => {
-            if (typeof speechChartInstance !== 'undefined') {
-                speechChartInstance.resize(); // Paksa sesuaikan dimensi
-                speechChartInstance.update(); // Paksa gambar ulang garis & titik
+            // Pastikan variabel speechChartInstance ada sebelum di-resize
+            if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                speechChartInstance.resize();
             }
-            // Tetap simpan pemicu ini sebagai pengaman tambahan
-            window.dispatchEvent(new Event('resize')); 
-        }, 100); // Jeda 100ms memberikan waktu HTML terbuka sempurna sebelum grafik di-resize
+        }, 100); 
     }
 }
 
@@ -7012,8 +7031,8 @@ function restoreCalibrationFromCloud() {
             kirimDataAudiometer("X\n"); 
         }
     }, 3000); // Kirim setiap 3000 milidetik (3 detik)
-    }
-    }    
+    
+        
 
     </script>
 </body>
