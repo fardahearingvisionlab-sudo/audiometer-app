@@ -659,16 +659,16 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (DENGAN TINGGI FIX 550px) -->
+            <!-- SPEECH CHART WORKSPACE (FLEXBOX & CHART.JS FIX) -->
             <!-- ======================================================= -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px;">
                 
-                <!-- KOLOM KIRI (GRAFIK) -->
-                <div style="flex: 1; display: flex; flex-direction: column; width: 100%;">
+                <!-- KOLOM KIRI (GRAFIK) -> KUNCI 1: min-width: 0 -->
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- INI KUNCINYA: WADAH DENGAN TINGGI MUTLAK (550px) -->
-                    <div style="position: relative; width: 100%; height: 550px;">
+                    <!-- WADAH GRAFIK -> KUNCI 2: flex: 1 dan min-height: 0 -->
+                    <div style="flex: 1; min-height: 0; position: relative; width: 100%;">
                         <canvas id="speechChart"></canvas>
                     </div>
                 </div>
