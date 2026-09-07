@@ -1114,9 +1114,13 @@ canvas#rightChart, canvas#leftChart {
             <canvas id="prevSpeechChart" style="width: 100%; height: 100%;"></canvas>
         </div>
 
-        <!-- Diagnosis -->
-        <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">DIAGNOSIS:</div>
-        <div style="border: 1px solid #000; min-height: 12mm; padding: 4px; font-size: 10px;"><span id="prev_diagnosis">-</span></div>
+       <!-- Diagnosis (Otomatis dari WHO Classification) -->
+        <div style="font-size: 10.5px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 4px; padding-bottom: 4px; page-break-inside: avoid;">
+            <b style="text-decoration: underline;">DIAGNOSIS (WHO):</b> 
+            <b style="color: #dc2626; margin-left: 8px;">RIGHT:</b> <span id="print_diag_right">-</span> 
+            <b style="margin: 0 6px;">|</b>
+            <b style="color: #0284c7;">LEFT:</b> <span id="print_diag_left">-</span>
+        </div>
     </div>
 
     <!-- ================= HALAMAN 2: TIMPANOMETRI & REFLEKS ================= -->
@@ -2671,13 +2675,28 @@ function openPrintPreview() {
     }
 
     // UPDATE BARU: Sinkronisasi nilai PTA AC dan PTA BC ke tabel Print Preview
-    // Mengambil teks dari elemen ID kalkulasi utama (misal: 'rAcPta') dan memindahkannya ke tabel preview ('pta_r_ac')
     document.getElementById('pta_r_ac').innerText = document.getElementById('rAcPta') ? document.getElementById('rAcPta').innerText : '-';
     document.getElementById('pta_r_bc').innerText = document.getElementById('rBcPta') ? document.getElementById('rBcPta').innerText : '-';
     document.getElementById('pta_l_ac').innerText = document.getElementById('lAcPta') ? document.getElementById('lAcPta').innerText : '-';
     document.getElementById('pta_l_bc').innerText = document.getElementById('lBcPta') ? document.getElementById('lBcPta').innerText : '-';
+
+    // --- 3. SINKRONISASI OTOMATIS DIAGNOSA WHO KE PRINT OUT ---
+    try {
+        let badgeRight = document.getElementById('rClassificationBadge');
+        let badgeLeft = document.getElementById('lClassificationBadge');
+        
+        // Ambil teks, hapus tulisan "WHO Classification:", dan bersihkan spasi
+        let textRight = badgeRight ? badgeRight.innerText.replace("WHO Classification:", "").trim() : "-";
+        let textLeft = badgeLeft ? badgeLeft.innerText.replace("WHO Classification:", "").trim() : "-";
+        
+        // Masukkan ke cetakan HTML
+        if (document.getElementById('print_diag_right')) document.getElementById('print_diag_right').innerText = textRight;
+        if (document.getElementById('print_diag_left')) document.getElementById('print_diag_left').innerText = textLeft;
+    } catch(err) {
+        console.warn("Gagal menarik data diagnosa WHO:", err);
+    }
     
-    // --- 3. Render Grafik / Charts ---
+    // --- 4. Render Grafik / Charts ---
     if (typeof initPrintCharts === 'function') {
         initPrintCharts(); // Inisialisasi kanvas grafik kosong
     }
@@ -2691,7 +2710,7 @@ function openPrintPreview() {
         }
     }, 200); // Jeda 200ms agar aman saat merender banyak grafik
 }
-
+        
 // =================================================================
 // 5. FUNGSI TUTUP PRATINJAU CETAK
 // =================================================================
