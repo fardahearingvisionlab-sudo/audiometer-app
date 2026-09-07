@@ -6882,6 +6882,19 @@ function restoreCalibrationFromCloud() {
         document.addEventListener('click', () => setTimeout(updateTxPreview, 100));
         document.addEventListener('keydown', () => setTimeout(updateTxPreview, 100));
     });
+    
+    // ============================================================
+    // FITUR KEEP-ALIVE (MENCEGAH USB IDLE / SLEEP)
+    // ============================================================
+    setInterval(() => {
+        // Cek apakah koneksi USB masih ada dan bisa ditulisi
+        if (typeof kirimDataAudiometer === 'function' && typeof portAudiometer !== 'undefined' && portAudiometer && portAudiometer.writable) {
+            // Kirim karakter "X" sebagai sinyal detak jantung
+            // Arduino akan menerima "X" lalu mengabaikannya, 
+            // tapi ini cukup untuk membuat kabel USB tetap "sibuk"
+            kirimDataAudiometer("X\n"); 
+        }
+    }, 3000); // Kirim setiap 3000 milidetik (3 detik)
 
     </script>
 </body>
