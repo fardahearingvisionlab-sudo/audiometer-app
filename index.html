@@ -6967,12 +6967,12 @@ function restoreCalibrationFromCloud() {
     // =========================================================
 
     let portAudiometer;
-    let writerAudiometer;
     let readerAudiometer; 
     let readableStreamClosed; 
-    let isConnectedArduino = false; // <--- TAMBAHAN: Variabel global penanda koneksi
+    let isConnectedArduino = false;
+    let isDisconnecting = false; // <--- KUNCI BARU: Mencegah tabrakan perintah
 
-    // 1. AUTO-CONNECT SAAT HALAMAN DIMUAT (TANPA POP-UP)
+    // 1. AUTO-CONNECT SAAT HALAMAN DIMUAT
     window.addEventListener('DOMContentLoaded', async () => {
         if ("serial" in navigator) {
             try {
@@ -6980,7 +6980,7 @@ function restoreCalibrationFromCloud() {
                 if (authorizedPorts.length > 0) {
                     portAudiometer = authorizedPorts[0]; 
                     await portAudiometer.open({ baudRate: 9600 });
-                    updateConnectionUI(true, "Auto-Connected ke Arduino Leonardo");
+                    updateConnectionUI(true);
                     if (typeof showToast === 'function') showToast("Auto-Connected ke Arduino Leonardo");
                     bacaDataSerial(); 
                 }
@@ -6998,64 +6998,59 @@ function restoreCalibrationFromCloud() {
                 return;
             }
 
-            const filters = [
-                { usbVendorId: 0x2341, usbProductId: 0x8036 }
-            ];
-
+            const filters = [{ usbVendorId: 0x2341, usbProductId: 0x8036 }];
             portAudiometer = await navigator.serial.requestPort({ filters });
             await portAudiometer.open({ baudRate: 9600 });
             
-            updateConnectionUI(true, "Audiometer Terhubung! Siap digunakan.");
+            updateConnectionUI(true);
             if (typeof showToast === 'function') showToast("Audiometer Terhubung! Siap digunakan.");
             
             bacaDataSerial(); 
         } catch (err) {
             if (err.name !== 'NotFoundError') {
-                updateConnectionUI(false, "Gagal: " + err.message);
+                updateConnectionUI(false);
                 console.error(err);
             } else {
-                updateConnectionUI(false, "Pemilihan alat dibatalkan.");
+                updateConnectionUI(false);
             }
         }
     });
 
-    // 2B. TOMBOL DISCONNECT (DENGAN PESAN PERPISAHAN KE LCD ARDUINO)
+    // 2B. TOMBOL DISCONNECT (PERBAIKAN MUTLAK 1X KLIK)
     document.getElementById('btnDisconnectAudio').addEventListener('click', async () => {
+        // Cegah klik ganda / spam klik
+        if (isDisconnecting) return;
+        isDisconnecting = true;
+        
         try {
-            // =======================================================
-            // 🛑 1. KIRIM PESAN PERPISAHAN KE ARDUINO SEBELUM DIPUTUS
-            // =======================================================
-            if (writerAudiometer) {
-                try {
-                    const encoder = new TextEncoder();
-                    // Kita kirim kata "STANDBY", Arduino Anda harus diprogram untuk membaca ini
-                    await writerAudiometer.write(encoder.encode("STANDBY\n")); 
-                    
-                    // Beri jeda 100 milidetik agar data sempat meluncur di kabel USB sebelum port ditutup
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (e) {
-                    console.warn("Gagal mengirim pesan standby ke Arduino");
-                }
-            }
-            // =======================================================
+            // 1. Kosongkan semua antrean pengiriman secara instan
+            serialQueue = []; 
 
-            // 2. Batalkan pembaca secara paksa
+            // 2. Tunggu sejenak jika sedang ada data yang meluncur di kabel
+            while (isSerialWriting) {
+                await new Promise(r => setTimeout(r, 10));
+            }
+
+            // 3. Kirim pesan "STANDBY" lalu langsung lepas kuncinya
+            if (portAudiometer && portAudiometer.writable) {
+                const writer = portAudiometer.writable.getWriter();
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode("STANDBY\n"));
+                writer.releaseLock(); 
+                await new Promise(r => setTimeout(r, 50)); // Beri napas 50ms agar pesan sampai
+            }
+
+            // 4. Tutup paksa fungsi pendengar (Reader)
             if (readerAudiometer) {
                 await readerAudiometer.cancel();
+                readerAudiometer = null;
             }
-            
-            // 3. TUNGGU sampai "pipa" pembaca benar-benar dihancurkan
             if (readableStreamClosed) {
-                await readableStreamClosed.catch(() => { /* Abaikan error pembatalan */ });
+                await readableStreamClosed.catch(() => {});
+                readableStreamClosed = null;
             }
 
-            // 4. Lepaskan kunci penulis (pengirim data)
-            if (writerAudiometer) {
-                writerAudiometer.releaseLock();
-                writerAudiometer = null;
-            }
-
-            // 5. Setelah semua aman, BARU tutup Port-nya
+            // 5. Terakhir, tutup gerbang Port dengan aman
             if (portAudiometer) {
                 await portAudiometer.close();
                 portAudiometer = null;
@@ -7063,39 +7058,40 @@ function restoreCalibrationFromCloud() {
             
             updateConnectionUI(false);
             if (typeof showToast === 'function') showToast("Koneksi Arduino Diputuskan.");
+            
         } catch (err) {
             console.error("Gagal memutuskan koneksi:", err);
-            if (typeof showToast === 'function') showToast("Gagal memutuskan koneksi secara normal.");
+            if (typeof showToast === 'function') showToast("Terputus paksa. Silakan cabut/pasang kabel USB.");
+            // Pastikan UI tetap dimatikan meskipun ada error
+            updateConnectionUI(false); 
+        } finally {
+            isDisconnecting = false; // Reset penanda
         }
     });
 
-    // 2C. FUNGSI UPDATE UI (TOMBOL GANTI STATUS)
+    // 2C. FUNGSI UPDATE UI (TOMBOL)
     function updateConnectionUI(isConnected) {
         const btnConnect = document.getElementById('btnConnectAudio');
         const btnDisconnect = document.getElementById('btnDisconnectAudio');
-
-        // Jika salah satu tombol tidak ada di HTML, jangan lakukan apa-apa
         if (!btnConnect || !btnDisconnect) return;
 
-        isConnectedArduino = isConnected; // Set penanda global
+        isConnectedArduino = isConnected; 
 
         if (isConnected) {
-            // MATIKAN tombol connect, AKTIFKAN tombol disconnect
             btnConnect.disabled = true;
             btnConnect.style.opacity = '0.5';
             btnConnect.style.cursor = 'not-allowed';
-            btnConnect.style.background = "#10b981"; // Berubah Hijau
+            btnConnect.style.background = "#10b981"; 
             btnConnect.innerText = "🟢 Connected";
 
             btnDisconnect.disabled = false;
             btnDisconnect.style.opacity = '1';
             btnDisconnect.style.cursor = 'pointer';
         } else {
-            // AKTIFKAN tombol connect, MATIKAN tombol disconnect
             btnConnect.disabled = false;
             btnConnect.style.opacity = '1';
             btnConnect.style.cursor = 'pointer';
-            btnConnect.style.background = "#f59e0b"; // Kembali Orange
+            btnConnect.style.background = "#f59e0b"; 
             btnConnect.innerText = "🔌 Connect";
 
             btnDisconnect.disabled = true;
@@ -7105,13 +7101,14 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
-    // 3. SISTEM ANTREAN SERIAL (MENGIRIM DATA KE ARDUINO)
+    // 3. SISTEM ANTREAN SERIAL (DIROMBAK: AMAN DARI LOCK-CRASH)
     // ============================================================
     let isSerialWriting = false;
     let serialQueue = []; 
 
     async function prosesAntreanSerial() {
-        if (isSerialWriting || serialQueue.length === 0) return;
+        // Jangan proses jika sedang menulis, antrean kosong, atau sedang proses disconnect
+        if (isSerialWriting || serialQueue.length === 0 || isDisconnecting) return;
         
         if (typeof portAudiometer === 'undefined' || !portAudiometer || !portAudiometer.writable) {
             serialQueue = []; 
@@ -7120,40 +7117,44 @@ function restoreCalibrationFromCloud() {
 
         isSerialWriting = true;
         let dataKeKirim = serialQueue.shift(); 
+        let localWriter = null;
 
         try {
-            if (!writerAudiometer) {
-                writerAudiometer = portAudiometer.writable.getWriter();
-            }
+            // Pinjam pipa pengirim, kirim data, lalu SIAPKAN UNTUK DILEPAS
+            localWriter = portAudiometer.writable.getWriter();
             const encoder = new TextEncoder();
-            await writerAudiometer.write(encoder.encode(dataKeKirim));
+            await localWriter.write(encoder.encode(dataKeKirim));
         } catch (err) {
             console.warn("Gagal mengirim:", err);
-            if (writerAudiometer) {
-                writerAudiometer.releaseLock();
-                writerAudiometer = null;
-            }
         } finally {
+            // SELALU lepas pipa pengirim setiap kali selesai kirim 1 baris
+            if (localWriter) {
+                try { localWriter.releaseLock(); } catch(e) {}
+            }
+            
             isSerialWriting = false;
-            if (serialQueue.length > 0) {
+            
+            // Lanjut ke antrean berikutnya jika belum disuruh putus
+            if (serialQueue.length > 0 && !isDisconnecting) {
                 setTimeout(prosesAntreanSerial, 10); 
             }
         }
     }
 
     function kirimDataAudiometer(data) {
-        serialQueue.push(data);
-        prosesAntreanSerial();
+        if (!isDisconnecting) {
+            serialQueue.push(data);
+            prosesAntreanSerial();
+        }
     }
 
     // ============================================================
-    // 4. FUNGSI PEMBACA SERIAL (SUDAH DIPERBAIKI)
+    // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN)
     // ============================================================
     async function bacaDataSerial() {
         while (portAudiometer && portAudiometer.readable) {
             const textDecoder = new TextDecoderStream();
-            // Simpan pipa ke variabel global agar bisa ditunggu saat disconnect
-            readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable); 
+            readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
             readerAudiometer = textDecoder.readable.getReader(); 
 
             try {
@@ -7179,15 +7180,24 @@ function restoreCalibrationFromCloud() {
                     }
                 }
             } catch (error) {
-                console.log("Sesi pembacaan serial diakhiri.");
+                console.log("Sesi pembacaan serial dihentikan secara normal.");
             } finally {
                 if (readerAudiometer) {
-                    readerAudiometer.releaseLock();
-                    readerAudiometer = null;
+                    try { readerAudiometer.releaseLock(); } catch(e) {}
                 }
             }
         }
     }
+
+    // ============================================================
+    // FITUR KEEP-ALIVE (MENCEGAH USB IDLE / SLEEP)
+    // ============================================================
+    setInterval(() => {
+        // Jangan kirim Ping "X" jika sedang proses Disconnect
+        if (!isDisconnecting && typeof kirimDataAudiometer === 'function' && typeof portAudiometer !== 'undefined' && portAudiometer && portAudiometer.writable) {
+            kirimDataAudiometer("X\n"); 
+        }
+    }, 3000);
 
     
 
