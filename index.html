@@ -4597,63 +4597,69 @@ function loadSessionDataToTable(data) {
         rightChartInstance = createChart('rightChart', '#dc2626', true);
         leftChartInstance = createChart('leftChart', '#0284c7', false);
         
-        speechChartInstance = new Chart(document.getElementById('speechChart').getContext('2d'), { 
-    type: 'line', 
-    data: { 
-        datasets: [{ 
-            label: 'Speech Score (%)', 
-            data: [], 
-            borderColor: '#0284c7', 
-            backgroundColor: '#0284c7', 
-            pointRadius: 6, 
-            borderWidth: 2.5, 
-            fill: false,
-            tension: 0.3 
-        }] 
-    }, 
-    options: { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        scales: { 
-            x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, 
-            y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } 
-        },
-        plugins: {
-            legend: {
-                display: true, position: 'top',
-                labels: { usePointStyle: true, boxWidth: 8 }
-            }
-        }
-    } 
-});
-
-        // ==============================================================
-        // 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (DENGAN JEDA RENDER)
-        // Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
-        // ==============================================================
-        const speechWrapper = document.getElementById('speechChart').parentElement;
-        if (window.ResizeObserver && speechWrapper) {
-            new ResizeObserver(() => {
-                // Jika elemen sudah punya tinggi/tampil di layar
-                if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
-                    // Beri jeda 50ms agar HTML selesai merentangkan wadahnya
-                    setTimeout(() => {
-                        speechChartInstance.resize();
-                        speechChartInstance.update(); // Update wajib dipanggil
-                    }, 50);
+       speechChartInstance = new Chart(document.getElementById('speechChart').getContext('2d'), { 
+        type: 'line', 
+        data: { 
+            datasets: [{ 
+                label: 'Speech Score (%)', 
+                data: [], 
+                borderColor: '#0284c7', 
+                backgroundColor: '#0284c7', 
+                pointRadius: 6, 
+                borderWidth: 2.5, 
+                fill: false,
+                tension: 0.3 
+            }] 
+        }, 
+        options: { 
+            responsive: true, 
+            
+            // ==========================================
+            // PERUBAHAN DI SINI: PAKSA BENTUK PERSEGI PANJANG
+            maintainAspectRatio: true, 
+            aspectRatio: 1.9, 
+            // ==========================================
+            
+            scales: { 
+                x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, 
+                y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } 
+            },
+            plugins: {
+                legend: {
+                    display: true, position: 'top',
+                    labels: { usePointStyle: true, boxWidth: 8 }
                 }
-            }).observe(speechWrapper);
-        }
-        // ==============================================================
+            }
+        } 
+    });
 
-        // ==============================================================
-        // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
-        // ==============================================================
-        setTimeout(() => {
-            let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-            if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
-            if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
-        }, 300);
+    // ==============================================================
+    // 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (DENGAN JEDA RENDER)
+    // Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
+    // ==============================================================
+    const speechWrapper = document.getElementById('speechChart').parentElement;
+    if (window.ResizeObserver && speechWrapper) {
+        new ResizeObserver(() => {
+            // Jika elemen sudah punya tinggi/tampil di layar
+            if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                // Beri jeda 50ms agar HTML selesai merentangkan wadahnya
+                setTimeout(() => {
+                    speechChartInstance.resize();
+                    speechChartInstance.update(); // Update wajib dipanggil
+                }, 50);
+            }
+        }).observe(speechWrapper);
+    }
+    // ==============================================================
+
+    // ==============================================================
+    // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
+    // ==============================================================
+    setTimeout(() => {
+        let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+        if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
+        if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+    }, 300);
 
 }
         
