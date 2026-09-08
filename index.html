@@ -664,12 +664,12 @@ canvas#rightChart, canvas#leftChart {
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; height: 550px; max-height: 550px; padding: 10px; flex-direction: row; gap: 10px; box-sizing: border-box;">
                 
                 <!-- KOLOM KIRI (GRAFIK) -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
+                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- WADAH RELATIF & KANVAS ABSOLUT (KUNCI LEBAR PENUH) -->
+                    <!-- WADAH KANVAS BERSIH -->
                     <div style="flex: 1; position: relative; width: 100%; height: 100%;">
-                        <canvas id="speechChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                        <canvas id="speechChart"></canvas>
                     </div>
                 </div>
             
@@ -4613,13 +4613,7 @@ function loadSessionDataToTable(data) {
         }, 
         options: { 
             responsive: true, 
-            
-            // ==========================================
-            // PERUBAHAN DI SINI: PAKSA BENTUK PERSEGI PANJANG
-            maintainAspectRatio: true, 
-            aspectRatio: 1.9, 
-            // ==========================================
-            
+            maintainAspectRatio: false, // <-- KEMBALI KE FALSE MUTLAK
             scales: { 
                 x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, 
                 y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } 
@@ -4634,19 +4628,27 @@ function loadSessionDataToTable(data) {
     });
 
     // ==============================================================
-    // 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (DENGAN JEDA RENDER)
-    // Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
+    // 🚀 SOLUSI HACKER: MANIPULASI WINDOW RESIZE
     // ==============================================================
     const speechWrapper = document.getElementById('speechChart').parentElement;
     if (window.ResizeObserver && speechWrapper) {
+        let isCurrentlyVisible = false;
+        
         new ResizeObserver(() => {
-            // Jika elemen sudah punya tinggi/tampil di layar
-            if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
-                // Beri jeda 50ms agar HTML selesai merentangkan wadahnya
+            let isVisibleNow = speechWrapper.clientHeight > 0;
+            
+            // Jika statusnya BERUBAH dari sembunyi menjadi tampil
+            if (isVisibleNow && !isCurrentlyVisible) {
+                isCurrentlyVisible = true;
+                
+                // Beri jeda sejenak, lalu TIPU BROWSER agar me-resize semua layout!
                 setTimeout(() => {
-                    speechChartInstance.resize();
-                    speechChartInstance.update(); // Update wajib dipanggil
-                }, 50);
+                    window.dispatchEvent(new Event('resize'));
+                }, 80);
+                
+            } else if (!isVisibleNow) {
+                // Jika disembunyikan lagi, reset statusnya
+                isCurrentlyVisible = false;
             }
         }).observe(speechWrapper);
     }
