@@ -4632,7 +4632,7 @@ function loadSessionDataToTable(data) {
         }, 
         options: { 
             responsive: true, 
-            maintainAspectRatio: false, // <-- KEMBALI KE FALSE MUTLAK
+            maintainAspectRatio: false, // <-- KUNCI UTAMA (Wajib False)
             scales: { 
                 x: { type: 'linear', min: 0, max: 110, title: {display:true, text:'dB HL'} }, 
                 y: { min: 0, max: 100, title: {display:true, text:'% Correct'} } 
@@ -4645,35 +4645,6 @@ function loadSessionDataToTable(data) {
             }
         } 
     });
-
-    // ==============================================================
-        // 🚀 SOLUSI MUTLAK: MUTATION OBSERVER
-        // Mendeteksi langsung saat mode "Speech" diklik dan dimunculkan!
-        // ==============================================================
-        const speechCard = document.getElementById('cardSpeechWorkspace');
-        if (speechCard) {
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.attributeName === 'style') {
-                        const displayStyle = window.getComputedStyle(speechCard).display;
-                        
-                        // JIKA WADAHNYA MUNCUL DI LAYAR (Tidak lagi 'none')
-                        if (displayStyle !== 'none' && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
-                            
-                            // Beri jeda 100ms agar browser selesai menggambar tata letak
-                            setTimeout(() => {
-                                speechChartInstance.resize();
-                                speechChartInstance.update();
-                            }, 100);
-                            
-                        }
-                    }
-                });
-            });
-            // Mulai mengawasi perubahan pada atribut style wadahnya
-            observer.observe(speechCard, { attributes: true });
-        }
-        // ==============================================================
 
     // ==============================================================
     // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
