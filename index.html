@@ -667,14 +667,15 @@ canvas#rightChart, canvas#leftChart {
                 <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- WADAH KANVAS (Wajib Relative & Flex 1 agar mengisi sisa ruang bawah) -->
-                    <div style="flex: 1; position: relative; width: 100%;">
+                    <!-- KOLOM KIRI (GRAFIK) -->
+                    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
+                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
                         
-                        <!-- KANVAS (Wajib Absolut menempel di ke-4 sisi wadahnya) -->
-                        <canvas id="speechChart" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%;"></canvas>
-                        
+                        <!-- Wadah Murni Flexbox -->
+                        <div style="flex: 1; position: relative; width: 100%; height: 100%;">
+                            <canvas id="speechChart"></canvas>
+                        </div>
                     </div>
-                </div>
             
                 <!-- KOLOM KANAN (DAFTAR KATA) -->
                 <div style="width: 250px; min-width: 250px; height: 100%; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden;">
@@ -4646,31 +4647,33 @@ function loadSessionDataToTable(data) {
     });
 
     // ==============================================================
-    // 🚀 SOLUSI HACKER: MANIPULASI WINDOW RESIZE
-    // ==============================================================
-    const speechWrapper = document.getElementById('speechChart').parentElement;
-    if (window.ResizeObserver && speechWrapper) {
-        let isCurrentlyVisible = false;
-        
-        new ResizeObserver(() => {
-            let isVisibleNow = speechWrapper.clientHeight > 0;
-            
-            // Jika statusnya BERUBAH dari sembunyi menjadi tampil
-            if (isVisibleNow && !isCurrentlyVisible) {
-                isCurrentlyVisible = true;
-                
-                // Beri jeda sejenak, lalu TIPU BROWSER agar me-resize semua layout!
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 80);
-                
-            } else if (!isVisibleNow) {
-                // Jika disembunyikan lagi, reset statusnya
-                isCurrentlyVisible = false;
-            }
-        }).observe(speechWrapper);
-    }
-    // ==============================================================
+        // 🚀 SOLUSI MUTLAK: MUTATION OBSERVER
+        // Mendeteksi langsung saat mode "Speech" diklik dan dimunculkan!
+        // ==============================================================
+        const speechCard = document.getElementById('cardSpeechWorkspace');
+        if (speechCard) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'style') {
+                        const displayStyle = window.getComputedStyle(speechCard).display;
+                        
+                        // JIKA WADAHNYA MUNCUL DI LAYAR (Tidak lagi 'none')
+                        if (displayStyle !== 'none' && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                            
+                            // Beri jeda 100ms agar browser selesai menggambar tata letak
+                            setTimeout(() => {
+                                speechChartInstance.resize();
+                                speechChartInstance.update();
+                            }, 100);
+                            
+                        }
+                    }
+                });
+            });
+            // Mulai mengawasi perubahan pada atribut style wadahnya
+            observer.observe(speechCard, { attributes: true });
+        }
+        // ==============================================================
 
     // ==============================================================
     // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
