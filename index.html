@@ -7023,49 +7023,58 @@ function restoreCalibrationFromCloud() {
         bacaDataSerial(); 
     }
 
-    // 2B. TOMBOL DISCONNECT (1X KLIK, AMAN DARI CRASH)
+    // 2B. TOMBOL DISCONNECT (ANTI-ZOMBIE PORT)
     document.getElementById('btnDisconnectAudio').addEventListener('click', async () => {
         if (isDisconnecting || !portAudiometer) return;
         isDisconnecting = true;
         
         try {
-            // 1. Bersihkan semua antrean pengiriman secara instan
+            // 1. Kosongkan antrean agar tidak ada data baru yang masuk
             serialQueue = []; 
 
-            // 2. Kirim pesan "STANDBY" menggunakan kunci yang sudah ada
+            // 2. 🛑 REM OTOMATIS: Tunggu sampai antrean yang sedang berjalan benar-benar selesai
+            // (Ini kunci utama agar tidak terjadi tabrakan data!)
+            while (isSerialWriting) {
+                await new Promise(r => setTimeout(r, 10));
+            }
+
+            // 3. Kirim pesan "STANDBY"
             if (writerAudiometer) {
                 try {
                     const encoder = new TextEncoder();
                     await writerAudiometer.write(encoder.encode("STANDBY\n"));
-                    // Beri waktu 150ms agar pesan benar-benar masuk ke LCD Arduino
-                    await new Promise(r => setTimeout(r, 150)); 
-                } catch(e) {}
+                    await new Promise(r => setTimeout(r, 100)); // Beri waktu pesan meluncur
+                } catch(e) { 
+                    console.warn("Gagal mengirim STANDBY."); 
+                }
                 
-                // Lepaskan kunci pengirim (Hanya dilepas saat disconnect)
-                writerAudiometer.releaseLock(); 
+                // Lepaskan gembok pengirim dengan aman
+                try { writerAudiometer.releaseLock(); } catch(e) {}
                 writerAudiometer = null;
             }
 
-            // 3. Matikan secara paksa pendengar respon pasien (Reader)
+            // 4. Matikan fungsi pendengar (Reader)
             if (readerAudiometer) {
-                await readerAudiometer.cancel();
+                try { await readerAudiometer.cancel(); } catch(e) {}
                 readerAudiometer = null;
             }
             if (readableStreamClosed) {
-                await readableStreamClosed.catch(() => {});
+                try { await readableStreamClosed.catch(() => {}); } catch(e) {}
                 readableStreamClosed = null;
             }
 
-            // 4. Tutup gerbang Port dengan aman
-            await portAudiometer.close();
-            portAudiometer = null;
+            // 5. Tutup gerbang Port USB sepenuhnya
+            if (portAudiometer) {
+                try { await portAudiometer.close(); } catch(e) {}
+                portAudiometer = null;
+            }
             
             updateConnectionUI(false);
             if (typeof showToast === 'function') showToast("Koneksi Arduino Diputuskan.");
             
         } catch (err) {
-            console.error("Gagal memutuskan:", err);
-            if (typeof showToast === 'function') showToast("Terputus paksa. UI Di-reset.");
+            console.error("Sistem memaksa putus koneksi:", err);
+            // Tetap reset UI dan hapus port jika terjadi error di luar dugaan
             updateConnectionUI(false); 
             portAudiometer = null;
         } finally {
