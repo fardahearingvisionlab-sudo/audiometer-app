@@ -659,17 +659,17 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (LOCKED HEIGHT & SCROLLABLE) -->
+            <!-- SPEECH CHART WORKSPACE (FINAL LAYOUT FIX) -->
             <!-- ======================================================= -->
             <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; height: 550px; max-height: 550px; padding: 10px; flex-direction: row; gap: 10px; box-sizing: border-box;">
                 
                 <!-- KOLOM KIRI (GRAFIK) -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;">
-                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
+                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- WADAH KANVAS (Dikunci agar tidak jebol ke bawah) -->
-                    <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
-                        <canvas id="speechChart"></canvas>
+                    <!-- WADAH RELATIF & KANVAS ABSOLUT (KUNCI LEBAR PENUH) -->
+                    <div style="flex: 1; position: relative; width: 100%; height: 100%;">
+                        <canvas id="speechChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
                     </div>
                 </div>
             
@@ -677,7 +677,6 @@ canvas#rightChart, canvas#leftChart {
                 <div style="width: 250px; min-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden; min-height: 0;">
                     <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px; flex-shrink: 0;">📝 Daftar Kata</div>
                     
-                    <!-- DAFTAR KATA (Otomatis muncul Scrollbar jika kepanjangan) -->
                     <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
                         <div style="text-align:center; color:#94a3b8; font-style:italic; margin-top:30px; font-size: 10px;">
                             Pilih folder audio untuk menampilkan daftar kata.
@@ -4628,32 +4627,36 @@ function loadSessionDataToTable(data) {
     } 
 });
 
-// ==============================================================
-// 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (ANTI-MENGECIL)
-// Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
-// ==============================================================
-const speechWrapper = document.getElementById('speechChart').parentElement;
-if (window.ResizeObserver && speechWrapper) {
-    new ResizeObserver(() => {
-        // Jika elemen sudah punya tinggi/tampil di layar, paksa resize!
-        if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined') {
-            speechChartInstance.resize();
+        // ==============================================================
+        // 🚀 SOLUSI PAMUNGKAS: RESIZE OBSERVER (DENGAN JEDA RENDER)
+        // Mengawasi pembungkus kanvas, paksa resize saat dimunculkan!
+        // ==============================================================
+        const speechWrapper = document.getElementById('speechChart').parentElement;
+        if (window.ResizeObserver && speechWrapper) {
+            new ResizeObserver(() => {
+                // Jika elemen sudah punya tinggi/tampil di layar
+                if (speechWrapper.clientHeight > 0 && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                    // Beri jeda 50ms agar HTML selesai merentangkan wadahnya
+                    setTimeout(() => {
+                        speechChartInstance.resize();
+                        speechChartInstance.update(); // Update wajib dipanggil
+                    }, 50);
+                }
+            }).observe(speechWrapper);
         }
-    }).observe(speechWrapper);
+        // ==============================================================
+
+        // ==============================================================
+        // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
+        // ==============================================================
+        setTimeout(() => {
+            let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+            if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
+            if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+        }, 300);
+
 }
-// ==============================================================
-
-
-// ==============================================================
-// SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
-// ==============================================================
-setTimeout(() => {
-    let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-    if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
-    if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
-}, 300);
-} 
-
+        
     function updateGsiCharts() {
         const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
         
