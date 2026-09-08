@@ -501,23 +501,30 @@ canvas#rightChart, canvas#leftChart {
             </div>
         </div>
 
-            <!-- ========================================== -->
-            <!-- PANEL KONEKSI USB (2 TOMBOL KOMPAK)        -->
-            <!-- ========================================== -->
-            <div style="margin-top: 4px; padding: 4px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; gap: 4px;">
+            <!-- ======================================================= -->
+            <!-- PANEL KONEKSI USB (STRUKTUR FINAL & RAPI) -->
+            <!-- ======================================================= -->
+            <div style="margin-top: 4px; padding: 6px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; display: flex; flex-direction: column; gap: 4px;">
                 
-                <!-- Tombol Connect -->
-                <button type="button" id="btnConnectAudio" class="win-btn" style="flex: 1; font-weight: bold; background: #f59e0b; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 3px; cursor: pointer; transition: 0.2s;">
-                    🔌 Connect
-                </button>
+                    <div style="display: flex; gap: 4px;">
+                        <!-- Tombol Connect -->
+                        <button type="button" id="btnConnectAudio" class="win-btn" style="flex: 1; font-weight: bold; background: #f59e0b; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 4px; cursor: pointer; transition: 0.2s;">
+                            🔌 Connect
+                        </button>
+                        
+                        <!-- Tombol Disconnect -->
+                        <button type="button" id="btnDisconnectAudio" class="win-btn" disabled style="flex: 1; font-weight: bold; background: #ef4444; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 4px; cursor: not-allowed; opacity: 0.5; transition: 0.2s;">
+                            ❌ Disconnect
+                        </button>
+                    </div>
+                    
+                    <!-- Baris Status Dedicated (BARU) -->
+                    <div id="arduinoStatusLine" style="font-size: 10px; font-weight: bold; color: #92400e; padding: 3px 6px; background: #fef3c7; border-radius: 3px; text-align: center; border: 1px solid #fde68a;">
+                        Disconnected
+                    </div>
                 
-                <!-- Tombol Disconnect (Default mati/redup sebelum terhubung) -->
-                <button type="button" id="btnDisconnectAudio" class="win-btn" disabled style="flex: 1; font-weight: bold; background: #ef4444; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 3px; cursor: not-allowed; opacity: 0.5; transition: 0.2s;">
-                    ❌ Disconnect
-                </button>
-            
-            </div>
-            <!-- ========================================== -->
+                </div>
+             <!-- ======================================================= -->
 
         <!-- 3. BAGIAN BAWAH: Quick Actions -->
         <div style="flex-shrink: 0; border-top: 1px solid var(--win-border); padding-top: 4px; background: #f8fafc;">
@@ -6967,10 +6974,15 @@ function restoreCalibrationFromCloud() {
 
 
 
+    // =========================================================
+    // FUNGSI KONTROL HARDWARE AUDIOMETER (WEB SERIAL API)
+    // =========================================================
+
     let portAudiometer;
     let writerAudiometer;
     let readerAudiometer; 
-    let readableStreamClosed; // <--- TAMBAHAN KUNCI: Untuk melacak "pipa" koneksi
+    let readableStreamClosed; 
+    let isConnectedArduino = false; // <--- TAMBAHAN: Variabel global penanda koneksi
 
     // 1. AUTO-CONNECT SAAT HALAMAN DIMUAT (TANPA POP-UP)
     window.addEventListener('DOMContentLoaded', async () => {
@@ -6980,7 +6992,7 @@ function restoreCalibrationFromCloud() {
                 if (authorizedPorts.length > 0) {
                     portAudiometer = authorizedPorts[0]; 
                     await portAudiometer.open({ baudRate: 9600 });
-                    updateConnectionUI(true);
+                    updateConnectionUI(true, "Auto-Connected ke Arduino Leonardo");
                     if (typeof showToast === 'function') showToast("Auto-Connected ke Arduino Leonardo");
                     bacaDataSerial(); 
                 }
@@ -7005,46 +7017,39 @@ function restoreCalibrationFromCloud() {
             portAudiometer = await navigator.serial.requestPort({ filters });
             await portAudiometer.open({ baudRate: 9600 });
             
-            updateConnectionUI(true);
+            updateConnectionUI(true, "Audiometer Terhubung! Siap digunakan.");
             if (typeof showToast === 'function') showToast("Audiometer Terhubung! Siap digunakan.");
             
             bacaDataSerial(); 
         } catch (err) {
             if (err.name !== 'NotFoundError') {
-                updateConnectionUI(false);
+                updateConnectionUI(false, "Gagal: " + err.message);
                 console.error(err);
             } else {
-                updateConnectionUI(false);
+                updateConnectionUI(false, "Pemilihan alat dibatalkan.");
             }
         }
     });
 
-    // 2B. TOMBOL DISCONNECT (SUDAH DIPERBAIKI)
+    // 2B. TOMBOL DISCONNECT (PEMBERSIHAN TOTAL)
     document.getElementById('btnDisconnectAudio').addEventListener('click', async () => {
         try {
-            // 1. Batalkan pembaca secara paksa
             if (readerAudiometer) {
                 await readerAudiometer.cancel();
             }
-            
-            // 2. TUNGGU sampai "pipa" pembaca benar-benar dihancurkan oleh browser
             if (readableStreamClosed) {
                 await readableStreamClosed.catch(() => { /* Abaikan error pembatalan */ });
             }
-
-            // 3. Lepaskan kunci penulis (pengirim data)
             if (writerAudiometer) {
                 writerAudiometer.releaseLock();
                 writerAudiometer = null;
             }
-
-            // 4. Setelah semua aman, BARU tutup Port-nya
             if (portAudiometer) {
                 await portAudiometer.close();
                 portAudiometer = null;
             }
             
-            updateConnectionUI(false);
+            updateConnectionUI(false, "Koneksi Arduino Diputuskan."); // <--- Memberikan pesan untuk membersihkan teks status
             if (typeof showToast === 'function') showToast("Koneksi Arduino Diputuskan.");
         } catch (err) {
             console.error("Gagal memutuskan koneksi:", err);
@@ -7052,37 +7057,50 @@ function restoreCalibrationFromCloud() {
         }
     });
 
-    // 2C. FUNGSI UPDATE UI (TOMBOL GANTI STATUS)
-    function updateConnectionUI(isConnected) {
+    // 2C. FUNGSI UPDATE UI (TOMBOL & BARIS STATUS BERUBAH)
+    function updateConnectionUI(isConnected, message) {
         const btnConnect = document.getElementById('btnConnectAudio');
         const btnDisconnect = document.getElementById('btnDisconnectAudio');
+        const statusLine = document.getElementById('arduinoStatusLine');
+
+        if (!btnConnect || !btnDisconnect || !statusLine) return;
+
+        isConnectedArduino = isConnected; // Set the global flag
 
         if (isConnected) {
-            if (btnConnect) {
-                btnConnect.disabled = true;
-                btnConnect.style.opacity = '0.5';
-                btnConnect.style.cursor = 'not-allowed';
-                btnConnect.style.background = "#10b981"; 
-                btnConnect.innerText = "🟢 Connected";
-            }
-            if (btnDisconnect) {
-                btnDisconnect.disabled = false;
-                btnDisconnect.style.opacity = '1';
-                btnDisconnect.style.cursor = 'pointer';
-            }
+            // MATIKAN tombol connect, AKTIFKAN tombol disconnect
+            btnConnect.disabled = true;
+            btnConnect.style.opacity = '0.5';
+            btnConnect.style.cursor = 'not-allowed';
+            btnConnect.style.background = "#10b981"; // Hijau penanda aktif
+            btnConnect.innerText = "🟢 Connected";
+
+            btnDisconnect.disabled = false;
+            btnDisconnect.style.opacity = '1';
+            btnDisconnect.style.cursor = 'pointer';
+
+            // Update dedicated status line text for connected
+            statusLine.innerText = message || "Connected";
+            statusLine.style.background = "#dcfce7"; // Hijau muda background
+            statusLine.style.color = "#166534"; // Hijau tua text
+            statusLine.style.border = "1px solid #22c55e"; // Hijau border
         } else {
-            if (btnConnect) {
-                btnConnect.disabled = false;
-                btnConnect.style.opacity = '1';
-                btnConnect.style.cursor = 'pointer';
-                btnConnect.style.background = "#f59e0b"; 
-                btnConnect.innerText = "🔌 Connect";
-            }
-            if (btnDisconnect) {
-                btnDisconnect.disabled = true;
-                btnDisconnect.style.opacity = '0.5';
-                btnDisconnect.style.cursor = 'not-allowed';
-            }
+            // AKTIFKAN tombol connect, MATIKAN tombol disconnect
+            btnConnect.disabled = false;
+            btnConnect.style.opacity = '1';
+            btnConnect.style.cursor = 'pointer';
+            btnConnect.style.background = "#f59e0b"; // Kembali orange
+            btnConnect.innerText = "🔌 Connect";
+
+            btnDisconnect.disabled = true;
+            btnDisconnect.style.opacity = '0.5';
+            btnDisconnect.style.cursor = 'not-allowed';
+
+            // Reset status line for disconnected
+            statusLine.innerText = message || "Disconnected";
+            statusLine.style.background = "#fee2e2"; // Merah muda background
+            statusLine.style.color = "#991b1b"; // Merah tua text
+            statusLine.style.border = "1px solid #fca5a5"; // Merah border
         }
     }
 
@@ -7172,6 +7190,49 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
+    // FITUR PREVIEW TX DINAMIS (SINKRONISASI UI REAL-TIME)
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+        const freqEl = document.getElementById('lblFreqSide');
+        const dbEl = document.getElementById('lblIntensitySide');
+        const statusLine = document.getElementById('arduinoStatusLine');
+
+        if (!freqEl || !dbEl || !statusLine) return;
+
+        const updateTxPreview = () => {
+            if (typeof isPlaying !== 'undefined' && isPlaying) return; 
+            
+            // ====================================================
+            // 🛑 JIKA ARDUINO TIDAK TERHUBUNG, JANGAN UPDATE TEKS!
+            // ====================================================
+            if (!isConnectedArduino) return;
+            // ====================================================
+
+            let freqText = freqEl.innerText.toLowerCase();
+            let numFreq = parseFloat(freqText.replace(/[^0-9.]/g, '')) || 1000;
+            let finalFreq = (freqText.includes('k') && numFreq < 1000) ? numFreq * 1000 : numFreq;
+
+            let dbText = dbEl.innerText;
+            let finalDb = parseFloat(dbText.replace(/[^0-9.-]/g, '')) || 40;
+
+            let finalSide = (typeof currentSide !== 'undefined' && currentSide.toLowerCase() === 'left') ? 'L' : 'R';
+            let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+            let finalMasking = (typeof contralateralMasking === 'object' && contralateralMasking[currentSide] === 'ON') ? 'ON' : 'OFF';
+
+            // Update dedicated status line text for preview
+            statusLine.innerText = `Siap: ${finalMode},${finalSide},${finalFreq}Hz,${finalDb}dB,M:${finalMasking}`;
+        };
+
+        const observer = new MutationObserver(updateTxPreview);
+        const config = { characterData: true, childList: true, subtree: true };
+        observer.observe(freqEl, config);
+        observer.observe(dbEl, config);
+
+        document.addEventListener('click', () => setTimeout(updateTxPreview, 100));
+        document.addEventListener('keydown', () => setTimeout(updateTxPreview, 100));
+    });    
+
+    // ============================================================
     // FITUR KEEP-ALIVE (MENCEGAH USB IDLE / SLEEP)
     // ============================================================
     setInterval(() => {
@@ -7179,6 +7240,8 @@ function restoreCalibrationFromCloud() {
             kirimDataAudiometer("X\n"); 
         }
     }, 3000);
+
+        
     
         
 
