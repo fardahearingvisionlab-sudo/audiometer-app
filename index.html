@@ -7069,50 +7069,38 @@ function restoreCalibrationFromCloud() {
         }
     });
 
-    // 2C. FUNGSI UPDATE UI (TOMBOL & BARIS STATUS BERUBAH)
-    function updateConnectionUI(isConnected, message) {
+    // 2C. FUNGSI UPDATE UI (TOMBOL GANTI STATUS)
+    function updateConnectionUI(isConnected) {
         const btnConnect = document.getElementById('btnConnectAudio');
         const btnDisconnect = document.getElementById('btnDisconnectAudio');
-        const statusLine = document.getElementById('arduinoStatusLine');
 
-        if (!btnConnect || !btnDisconnect || !statusLine) return;
+        // Jika salah satu tombol tidak ada di HTML, jangan lakukan apa-apa
+        if (!btnConnect || !btnDisconnect) return;
 
-        isConnectedArduino = isConnected; // Set the global flag
+        isConnectedArduino = isConnected; // Set penanda global
 
         if (isConnected) {
             // MATIKAN tombol connect, AKTIFKAN tombol disconnect
             btnConnect.disabled = true;
             btnConnect.style.opacity = '0.5';
             btnConnect.style.cursor = 'not-allowed';
-            btnConnect.style.background = "#10b981"; // Hijau penanda aktif
+            btnConnect.style.background = "#10b981"; // Berubah Hijau
             btnConnect.innerText = "🟢 Connected";
 
             btnDisconnect.disabled = false;
             btnDisconnect.style.opacity = '1';
             btnDisconnect.style.cursor = 'pointer';
-
-            // Update dedicated status line text for connected
-            statusLine.innerText = message || "Connected";
-            statusLine.style.background = "#dcfce7"; // Hijau muda background
-            statusLine.style.color = "#166534"; // Hijau tua text
-            statusLine.style.border = "1px solid #22c55e"; // Hijau border
         } else {
             // AKTIFKAN tombol connect, MATIKAN tombol disconnect
             btnConnect.disabled = false;
             btnConnect.style.opacity = '1';
             btnConnect.style.cursor = 'pointer';
-            btnConnect.style.background = "#f59e0b"; // Kembali orange
+            btnConnect.style.background = "#f59e0b"; // Kembali Orange
             btnConnect.innerText = "🔌 Connect";
 
             btnDisconnect.disabled = true;
             btnDisconnect.style.opacity = '0.5';
             btnDisconnect.style.cursor = 'not-allowed';
-
-            // Reset status line for disconnected
-            statusLine.innerText = message || "Disconnected";
-            statusLine.style.background = "#fee2e2"; // Merah muda background
-            statusLine.style.color = "#991b1b"; // Merah tua text
-            statusLine.style.border = "1px solid #fca5a5"; // Merah border
         }
     }
 
