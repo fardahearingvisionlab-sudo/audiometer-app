@@ -4647,6 +4647,31 @@ function loadSessionDataToTable(data) {
     });
 
     // ==============================================================
+        // 🚀 SOLUSI FINAL: INTERSECTION OBSERVER
+        // Mendeteksi secara fisik kapan grafik muncul di layar komputer
+        // ==============================================================
+        const speechCard = document.getElementById('cardSpeechWorkspace');
+        if (speechCard && window.IntersectionObserver) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    // JIKA KOTAK SPEECH TERLIHAT DI LAYAR (Is Intersecting)
+                    if (entry.isIntersecting && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                        
+                        // Beri waktu 50 milidetik untuk bernapas, lalu PAKSA RESIZE!
+                        setTimeout(() => {
+                            speechChartInstance.resize();
+                            speechChartInstance.update();
+                        }, 50);
+                        
+                    }
+                });
+            });
+            // Mulai pantau kotak Speech
+            observer.observe(speechCard);
+        }
+        // ==============================================================    
+
+    // ==============================================================
     // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
     // ==============================================================
     setTimeout(() => {
