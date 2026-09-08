@@ -5485,103 +5485,88 @@ function startTone() {
     }
         
     function playNextWord() {
-    let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
-    let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
-    
-    if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
-        isPlaylistRunning = false; 
-        let wordListContainer = document.getElementById('speechWordList'); 
-        if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-        if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
-        return; 
+        let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
+        let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
+        
+        if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
+            isPlaylistRunning = false; 
+            let wordListContainer = document.getElementById('speechWordList'); 
+            if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+            if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
+            return; 
+        }
+
+        let reader = new FileReader();
+        reader.onload = e => {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioCtx.decodeAudioData(e.target.result, buffer => {
+                if(!isPlaylistRunning) return;
+                speechSourceNode = audioCtx.createBufferSource(); 
+                speechSourceNode.buffer = buffer; 
+                
+                let speechPanner = audioCtx.createStereoPanner(); 
+                speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
+                
+                speechGainNode = audioCtx.createGain(); 
+                const SYSTEM_MAX_SPL = 95; 
+                let targetGain = Math.min(Math.max(Math.pow(10, (currentDb - SYSTEM_MAX_SPL) / 20), 0.0001), 15.0);
+                speechGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime); 
+                
+                speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); 
+                speechSourceNode.start(0); 
+                
+                let playingDiv = wordUIs[currentPlaylistIndex]; 
+                if(playingDiv) playingDiv.classList.add('playing');
+                
+                // ==========================================================
+                // 🚀 KUNCI UTAMA: KOTAK BIRU OTOMATIS TERSERET AUDIO
+                // Jika audiolog tertinggal mengeklik, kotak biru akan
+                // otomatis melompat mengejar audio yang sedang berbunyi!
+                // ==========================================================
+                if (currentEvaluationIndex < currentPlaylistIndex) {
+                    currentEvaluationIndex = currentPlaylistIndex;
+                    updateWordListHighlight();
+                }
+                // ==========================================================
+                
+                currentPlaylistIndex++; 
+                wordsPlayedInCurrentBatch++;
+                
+                speechSourceNode.onended = () => { 
+                    if(playingDiv) playingDiv.classList.remove('playing');
+                    if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
+                        let delayMs = customDelaySec * 1000; 
+                        setTimeout(playNextWord, delayMs);
+                    } else {
+                        isPlaylistRunning = false; 
+                        let wordListContainer = document.getElementById('speechWordList'); 
+                        if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+                        showToast(`Deret kata selesai dimainkan.`);
+                    }
+                };
+            });
+        };
+        reader.readAsArrayBuffer(playlistQueue[currentPlaylistIndex]);
     }
 
-    let reader = new FileReader();
-    reader.onload = e => {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audioCtx.decodeAudioData(e.target.result, buffer => {
-            if(!isPlaylistRunning) return;
-            speechSourceNode = audioCtx.createBufferSource(); 
-            speechSourceNode.buffer = buffer; 
-            
-            let speechPanner = audioCtx.createStereoPanner(); 
-            speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
-            
-            speechGainNode = audioCtx.createGain(); 
-            
-            // ==============================================================
-            // PERBAIKAN UTAMA: KALKULASI VOLUME SPEECH
-            // ==============================================================
-            const SYSTEM_MAX_SPL = 95; 
-            // Mengubah referensi 60 menjadi SYSTEM_MAX_SPL (95) agar selaras dengan Pure Tone
-            let targetGain = Math.min(Math.max(Math.pow(10, (currentDb - SYSTEM_MAX_SPL) / 20), 0.0001), 15.0);
-            
-            speechGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime); 
-            // ==============================================================
-            
-            speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); 
-            speechSourceNode.start(0); 
-            
-            let playingDiv = wordUIs[currentPlaylistIndex]; 
-            if(playingDiv) playingDiv.classList.add('playing');
-            
-            currentPlaylistIndex++; 
-            wordsPlayedInCurrentBatch++;
-            
-            speechSourceNode.onended = () => { 
-                if(playingDiv) playingDiv.classList.remove('playing');
-                if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
-                    let delayMs = customDelaySec * 1000; 
-                    setTimeout(playNextWord, delayMs);
-                } else {
-                    isPlaylistRunning = false; 
-                    let wordListContainer = document.getElementById('speechWordList'); 
-                    if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-                    showToast(`Deret kata selesai dimainkan.`);
-                }
-            };
-        });
-    };
-    reader.readAsArrayBuffer(playlistQueue[currentPlaylistIndex]);
-}
-
     function markWord(isCorrect) {
-        let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
+        if (currentEvaluationIndex >= playlistQueue.length) return showToast("Semua kata telah dinilai.");
         
-        // ==============================================================
-        // KECERDASAN MUTLAK: DETEKSI POSISI AUDIO (ANTI-LOMPAT)
-        // Kita paksa kotak penilai mengikuti deret audio yang aktif.
-        // ==============================================================
-        let activeAudioIndex = (currentPlaylistIndex > 0) ? currentPlaylistIndex - 1 : 0;
-        let currentBatchStart = Math.floor(activeAudioIndex / batchSize) * batchSize;
-        
-        // Jika kotak biru tertinggal di deret sebelumnya (misal di nomor 1),
-        // LANGSUNG tarik paksa ke awal deret yang sedang aktif dites!
-        if (currentEvaluationIndex < currentBatchStart) {
-            currentEvaluationIndex = currentBatchStart;
-            correctWordCount = 0; 
-            totalEvaluatedCount = 0;
-        }
-        // ==============================================================
-
-        if (currentEvaluationIndex >= playlistQueue.length) {
-            return showToast("Semua kata telah dinilai.");
-        }
-
-        // 1. Warnai kata yang dinilai
         let div = wordUIs[currentEvaluationIndex];
+        
         if (isCorrect) { 
-            div.style.background = "#dcfce7"; div.style.borderColor = "#16a34a"; div.style.color = "#166534"; correctWordCount++; 
+            div.style.background = "#dcfce7"; div.style.borderColor = "#16a34a"; div.style.color = "#166534"; 
+            correctWordCount++; 
         } else { 
             div.style.background = "#fee2e2"; div.style.borderColor = "#dc2626"; div.style.color = "#991b1b"; 
         }
         div.style.borderLeft = ""; 
         totalEvaluatedCount++;
         
-        // 2. Hitung Persentase
+        let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
         document.getElementById('speechPct').value = Math.min(Math.round((correctWordCount / batchSize) * 100), 100);
         
-        // 3. Maju ke kata berikutnya & pindahkan sorotan
+        // Pindah ke kata berikutnya (Hanya jika audio belum mendahului)
         currentEvaluationIndex++; 
         updateWordListHighlight();
     }
