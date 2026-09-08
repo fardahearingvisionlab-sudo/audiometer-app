@@ -635,81 +635,100 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (DESAIN DASHBOARD BARU) -->
-            <!-- ======================================================= -->
-            <div class="box" id="cardSpeechWorkspace" style="display: none; flex-direction: column; min-height: 550px; padding: 10px; gap: 15px; box-sizing: border-box;">
-                
-                <!-- BARIS 1: AREA VISUAL (Grafik & Daftar Kata) -->
-                <div style="display: flex; flex-direction: row; gap: 15px; flex: 1; min-height: 350px;">
-                    
-                    <!-- KOLOM KIRI: Grafik (Dibiarkan rapi di tengah) -->
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--win-border-light); border-radius: 4px; padding: 10px;">
-                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; width: 100%; text-align: left;">Speech Audiometry PI-Function Chart</div>
-                        
-                        <!-- Wadah grafik dikunci ukurannya agar Chart.js tidak error / menciut -->
-                        <div style="position: relative; width: 100%; max-width: 450px; aspect-ratio: 1/1;">
-                            <canvas id="speechChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
-                        </div>
-                    </div>
+<!-- SPEECH CHART WORKSPACE (DESAIN DASHBOARD FINAL & RAPI) -->
+<!-- ======================================================= -->
+<div class="box" id="cardSpeechWorkspace" style="display: none; flex-direction: column; flex: 1; height: 100%; min-height: 550px; padding: 15px; box-sizing: border-box; background: #ffffff;">
+    
+    <!-- BARIS 1: AREA VISUAL (Grafik & Daftar Kata) -->
+    <div style="display: flex; flex-direction: row; gap: 15px; flex: 1; min-height: 320px;">
+        
+        <!-- KOLOM KIRI: Grafik -->
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--win-border-light); border-radius: 6px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px; width: 100%; text-align: left; color: var(--win-blue);">Speech Audiometry PI-Function Chart</div>
+            <div style="position: relative; width: 100%; max-width: 450px; aspect-ratio: 1/1;">
+                <canvas id="speechChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+            </div>
+        </div>
+
+        <!-- KOLOM KANAN: Daftar Kata -->
+        <div style="width: 260px; min-width: 260px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-weight: bold; padding: 8px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 11px; flex-shrink: 0;">📝 Daftar Kata Target</div>
             
-                    <!-- KOLOM KANAN: Daftar Kata -->
-                    <div style="width: 250px; min-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden; height: 100%;">
-                        <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px; flex-shrink: 0;">📝 Daftar Kata</div>
-                        
-                        <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
-                            <div style="text-align:center; color:#94a3b8; font-style:italic; margin-top:30px; font-size: 10px;">
-                                Pilih folder audio untuk menampilkan daftar kata.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            
-                <!-- BARIS 2: PANEL KONTROL EKSEKUSI (Lebih Besar & Horizontal) -->
-                <div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 15px; padding: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; align-items: center;">
-                    
-                    <!-- Input File Tersembunyi (Wajib Ada) -->
-                    <input type="file" id="speechFolderReal" webkitdirectory directory multiple style="display: none;" onchange="handleCustomFolderSelected(event)">
-            
-                    <!-- Grup 1: Pengaturan Angka -->
-                    <div style="display: flex; flex-direction: row; gap: 10px;">
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Target / Deret</label>
-                            <input type="number" id="batchSize" value="10" step="1" style="width: 75px; padding: 6px; font-size: 12px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Jeda (Detik)</label>
-                            <input type="number" id="speechDelay" value="2.5" min="0.5" max="10" step="0.5" style="width: 75px; padding: 6px; font-size: 12px; text-align: center; font-weight: bold; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="font-size: 11px; font-weight: bold; color: #0284c7;">Score (%)</label>
-                            <input type="number" id="speechPct" value="0" readonly style="width: 75px; padding: 6px; font-size: 13px; font-weight: bold; text-align: center; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px;">
-                        </div>
-                    </div>
-            
-                    <!-- Garis Pemisah Vertikal -->
-                    <div style="width: 1px; height: 45px; background: #cbd5e1; margin: 0 5px;"></div>
-            
-                    <!-- Grup 2: Input Audio & Mic -->
-                    <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px;">
-                        <button class="win-btn" onclick="document.getElementById('speechFolderReal').click()" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: bold; padding: 8px; cursor: pointer; border-radius: 4px;">📂 Pilih Folder Audio (.mp3/.wav)</button>
-                        <button class="win-btn" onclick="toggleMicLiveVoice()" id="btnMicLive" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: bold; padding: 8px; cursor: pointer; border-radius: 4px;">🎙️ Live Mic (SDT/SRT)</button>
-                    </div>
-            
-                    <!-- Grup 3: Eksekusi Utama (Tombol Besar Correct/Wrong) -->
-                    <div style="display: flex; flex-direction: column; gap: 6px; flex: 2; min-width: 300px;">
-                        <div style="display: flex; gap: 8px;">
-                            <button class="win-btn" onclick="markWord(true)" style="flex: 1; background: #dcfce7; color: #166534; border: 2px solid #22c55e; font-weight: bold; font-size: 15px; padding: 12px; cursor: pointer; border-radius: 4px; transition: 0.2s;">✔ Correct</button>
-                            <button class="win-btn" onclick="markWord(false)" style="flex: 1; background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; font-weight: bold; font-size: 15px; padding: 12px; cursor: pointer; border-radius: 4px; transition: 0.2s;">✖ Wrong</button>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="win-btn" onclick="startPlaylist()" style="flex: 1; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-weight: bold; padding: 8px; cursor: pointer; border-radius: 4px;">▶ Play Playlist (1 Deret)</button>
-                            <button class="win-btn" onclick="recordSpeechPoint()" style="flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: bold; padding: 8px; cursor: pointer; border-radius: 4px;">+ Plot Speech Point & Next</button>
-                        </div>
-                    </div>
-            
+            <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="text-align:center; color:#94a3b8; font-style:italic; margin-top:30px; font-size: 11px;">
+                    Pilih folder audio untuk memuat daftar kata.
                 </div>
             </div>
-            <!-- ======================================================= -->
+        </div>
+    </div>
+
+    <!-- BARIS 2: PANEL KONTROL EKSEKUSI (Dikelompokkan Lebih Rapi) -->
+    <div style="margin-top: 15px; display: flex; flex-direction: row; gap: 15px;">
+        
+        <!-- Input File Tersembunyi -->
+        <input type="file" id="speechFolderReal" webkitdirectory directory multiple style="display: none;" onchange="handleCustomFolderSelected(event)">
+
+        <!-- BLOK 1: PENGATURAN ANGKA & AUDIO -->
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
+            <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 2px;">⚙️ Setup & Sumber Suara</div>
+            <div style="display: flex; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                    <label style="font-size: 10px; font-weight: bold; color: #475569;">Target / Deret</label>
+                    <input type="number" id="batchSize" value="10" step="1" style="width: 100%; padding: 6px; font-size: 12px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                    <label style="font-size: 10px; font-weight: bold; color: #475569;">Jeda (Detik)</label>
+                    <input type="number" id="speechDelay" value="2.5" min="0.5" max="10" step="0.5" style="width: 100%; padding: 6px; font-size: 12px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1.2;">
+                    <label style="font-size: 10px; font-weight: bold; color: #0284c7;">Score (%)</label>
+                    <input type="number" id="speechPct" value="0" readonly style="width: 100%; padding: 6px; font-size: 13px; font-weight: bold; text-align: center; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="win-btn" onclick="document.getElementById('speechFolderReal').click()" style="flex: 1; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: bold; padding: 8px; border-radius: 4px; font-size: 11px;">📂 Pilih Folder (.mp3/.wav)</button>
+                <button class="win-btn" onclick="toggleMicLiveVoice()" id="btnMicLive" style="flex: 1; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: bold; padding: 8px; border-radius: 4px; font-size: 11px;">🎙️ Live Mic</button>
+            </div>
+        </div>
+
+        <!-- BLOK 2: EKSEKUSI PENILAIAN (Fokus Utama) -->
+        <div style="flex: 1.5; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px;">
+            <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 2px;">🎯 Evaluasi Pasien</div>
+            <div style="display: flex; gap: 10px; flex: 1;">
+                <button class="win-btn" onclick="markWord(true)" style="flex: 1; background: #dcfce7; color: #166534; border: 2px solid #22c55e; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; transition: 0.2s;">✔ Correct</button>
+                <button class="win-btn" onclick="markWord(false)" style="flex: 1; background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; font-weight: bold; font-size: 16px; border-radius: 6px; cursor: pointer; transition: 0.2s;">✖ Wrong</button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="win-btn" onclick="startPlaylist()" style="flex: 1; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-weight: bold; padding: 8px; border-radius: 4px; font-size: 12px;">▶ Play Playlist (1 Deret)</button>
+                <button class="win-btn" onclick="recordSpeechPoint()" style="flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: bold; padding: 8px; border-radius: 4px; font-size: 12px;">+ Plot Speech Point & Next</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- BARIS 3: RUANG PENGISI (PANDUAN & TIPS CEPAT) -->
+    <div style="margin-top: 15px; padding: 12px 15px; background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; gap: 20px; color: #475569; font-size: 11px;">
+        <div style="flex: 1;">
+            <strong style="color: #334155; font-size: 12px;">💡 Alur Pemeriksaan Speech:</strong>
+            <ol style="margin: 4px 0 0 16px; padding: 0; line-height: 1.6;">
+                <li>Pilih <b>Folder Audio</b> yang berisi daftar kata.</li>
+                <li>Atur Intensitas & Telinga Target di panel kiri.</li>
+                <li>Klik <b>Play Playlist</b> dan nilai respon dengan <b>Correct/Wrong</b>.</li>
+                <li>Setelah 1 deret selesai, klik <b>+ Plot Speech Point</b> untuk menyimpan.</li>
+            </ol>
+        </div>
+        <div style="flex: 1;">
+             <strong style="color: #334155; font-size: 12px;">⌨️ Tips Cerdas:</strong>
+             <ul style="margin: 4px 0 0 16px; padding: 0; line-height: 1.6;">
+                <li>Anda bisa menekan teks daftar kata di sebelah kanan untuk memindahkan fokus penilaian (kotak biru) secara manual.</li>
+                <li>Sistem akan otomatis menyesuaikan penilaian dengan audio yang sedang berbunyi meskipun Anda terlambat mengeklik.</li>
+                <li>Pastikan speaker telah dikalibrasi sesuai standar klinik.</li>
+             </ul>
+        </div>
+    </div>
+
+</div>
+<!-- ======================================================= -->
                         
             <!-- Tympanometry Workspace View -->
             <div class="box" id="cardTympWorkspace" style="display: none; flex: 1; padding: 12px; background: white; overflow-y: auto;">
