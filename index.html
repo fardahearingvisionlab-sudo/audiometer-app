@@ -4647,29 +4647,24 @@ function loadSessionDataToTable(data) {
     });
 
     // ==============================================================
-        // 🚀 SOLUSI FINAL: INTERSECTION OBSERVER
-        // Mendeteksi secara fisik kapan grafik muncul di layar komputer
-        // ==============================================================
-        const speechCard = document.getElementById('cardSpeechWorkspace');
-        if (speechCard && window.IntersectionObserver) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    // JIKA KOTAK SPEECH TERLIHAT DI LAYAR (Is Intersecting)
-                    if (entry.isIntersecting && typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
-                        
-                        // Beri waktu 50 milidetik untuk bernapas, lalu PAKSA RESIZE!
-                        setTimeout(() => {
-                            speechChartInstance.resize();
-                            speechChartInstance.update();
-                        }, 50);
-                        
-                    }
-                });
-            });
-            // Mulai pantau kotak Speech
-            observer.observe(speechCard);
-        }
-        // ==============================================================    
+    // 🚀 SOLUSI PAMUNGKAS: PUKULAN GLOBAL (GLOBAL CLICK LISTENER)
+    // Mengakali kelemahan Chart.js pada sistem buka-tutup Tab
+    // ==============================================================
+    document.addEventListener('click', function() {
+        // Setiap ada klik, tunggu 150 milidetik agar transisi tab selesai
+        setTimeout(function() {
+            var speechCard = document.getElementById('cardSpeechWorkspace');
+            
+            // offsetParent !== null artinya Tab Speech sedang TAMPIL di layar
+            if (speechCard && speechCard.offsetParent !== null) {
+                if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+                    // PAKSA RENTANGKAN GRAFIKNYA SEKARANG!
+                    speechChartInstance.resize();
+                }
+            }
+        }, 150); 
+    });
+    // ==============================================================    
 
     // ==============================================================
     // SUNTIKAN BARU: MENGGAMBAR BATAS MAKSIMAL SAAT HALAMAN DIMUAT
