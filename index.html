@@ -5546,47 +5546,72 @@ function startTone() {
 }
 
     function markWord(isCorrect) {
-        if (currentEvaluationIndex >= playlistQueue.length) return showToast("Semua kata telah dinilai.");
-        let div = wordUIs[currentEvaluationIndex];
-        if (isCorrect) { div.style.background = "#dcfce7"; div.style.borderColor = "#16a34a"; div.style.color = "#166534"; correctWordCount++; }
-        else { div.style.background = "#fee2e2"; div.style.borderColor = "#dc2626"; div.style.color = "#991b1b"; }
-        div.style.borderLeft = ""; totalEvaluatedCount++;
         let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
+        
+        // ==============================================================
+        // KECERDASAN MUTLAK: DETEKSI POSISI AUDIO (ANTI-LOMPAT)
+        // Kita paksa kotak penilai mengikuti deret audio yang aktif.
+        // ==============================================================
+        let activeAudioIndex = (currentPlaylistIndex > 0) ? currentPlaylistIndex - 1 : 0;
+        let currentBatchStart = Math.floor(activeAudioIndex / batchSize) * batchSize;
+        
+        // Jika kotak biru tertinggal di deret sebelumnya (misal di nomor 1),
+        // LANGSUNG tarik paksa ke awal deret yang sedang aktif dites!
+        if (currentEvaluationIndex < currentBatchStart) {
+            currentEvaluationIndex = currentBatchStart;
+            correctWordCount = 0; 
+            totalEvaluatedCount = 0;
+        }
+        // ==============================================================
+
+        if (currentEvaluationIndex >= playlistQueue.length) {
+            return showToast("Semua kata telah dinilai.");
+        }
+
+        // 1. Warnai kata yang dinilai
+        let div = wordUIs[currentEvaluationIndex];
+        if (isCorrect) { 
+            div.style.background = "#dcfce7"; div.style.borderColor = "#16a34a"; div.style.color = "#166534"; correctWordCount++; 
+        } else { 
+            div.style.background = "#fee2e2"; div.style.borderColor = "#dc2626"; div.style.color = "#991b1b"; 
+        }
+        div.style.borderLeft = ""; 
+        totalEvaluatedCount++;
+        
+        // 2. Hitung Persentase
         document.getElementById('speechPct').value = Math.min(Math.round((correctWordCount / batchSize) * 100), 100);
-        currentEvaluationIndex++; updateWordListHighlight();
+        
+        // 3. Maju ke kata berikutnya & pindahkan sorotan
+        currentEvaluationIndex++; 
+        updateWordListHighlight();
     }
 
     function recordSpeechPoint() {
         let pct = parseFloat(document.getElementById('speechPct').value);
         if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
             speechChartInstance.data.datasets[0].data.push({x: currentDb, y: pct});
-            speechChartInstance.data.datasets[0].data.sort((a,b)=>a.x-b.x); speechChartInstance.update();
+            speechChartInstance.data.datasets[0].data.sort((a,b)=>a.x-b.x); 
+            speechChartInstance.update();
         }
         showToast(`Tersimpan: Point Speech ${currentDb}dB -> ${pct}%`);
         
+        // Reset skor untuk deret selanjutnya
+        correctWordCount = 0; 
+        totalEvaluatedCount = 0; 
+        document.getElementById('speechPct').value = 0;
+        
         // ==============================================================
-        // KECERDASAN 2: KALKULASI LOMPATAN DERET OTOMATIS
+        // OTOMATIS BERSIAP KE DERET BERIKUTNYA SETELAH DISIMPAN
         // ==============================================================
         let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
-        let remainder = currentEvaluationIndex % batchSize;
-        let wasEvaluated = (totalEvaluatedCount > 0);
-
-        // Bersihkan skor untuk deret berikutnya
-        correctWordCount = 0; totalEvaluatedCount = 0; document.getElementById('speechPct').value = 0;
+        let nextBatchStart = Math.ceil(currentEvaluationIndex / batchSize) * batchSize;
         
-        // Atur posisi kotak biru agar standby di kata pertama Deret berikutnya
-        if (remainder !== 0) { 
-            currentEvaluationIndex += (batchSize - remainder); 
-        } else if (currentEvaluationIndex === 0 && wasEvaluated) { 
-            currentEvaluationIndex += batchSize; 
-        }
-        
-        // Cegah error melebihi daftar
+        currentEvaluationIndex = nextBatchStart;
         if (currentEvaluationIndex >= playlistQueue.length) { 
             currentEvaluationIndex = playlistQueue.length - 1; 
         }
         
-        // Set audio agar juga bersiap di deret yang baru
+        // Samakan juga posisi audio agar bersiap di deret baru
         currentPlaylistIndex = currentEvaluationIndex;
         updateWordListHighlight();
     }
