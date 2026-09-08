@@ -659,24 +659,25 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <!-- ======================================================= -->
-            <!-- SPEECH CHART WORKSPACE (CLEAN FLEXBOX LAYOUT) -->
+            <!-- SPEECH CHART WORKSPACE (LOCKED HEIGHT & SCROLLABLE) -->
             <!-- ======================================================= -->
-            <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; padding: 10px; flex-direction: row; gap: 10px; box-sizing: border-box;">
+            <div class="box" id="cardSpeechWorkspace" style="display: none; flex: 1; height: 550px; max-height: 550px; padding: 10px; flex-direction: row; gap: 10px; box-sizing: border-box;">
                 
                 <!-- KOLOM KIRI (GRAFIK) -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+                <div style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px; flex-shrink: 0;">Speech Audiometry PI-Function Chart</div>
                     
-                    <!-- WADAH KANVAS: Flex 1 murni agar mengisi seluruh sisa ruang secara fleksibel -->
-                    <div style="flex: 1; width: 100%; min-height: 450px; position: relative;">
-                        <canvas id="speechChart" style="display: block; width: 100%; height: 100%;"></canvas>
+                    <!-- WADAH KANVAS (Dikunci agar tidak jebol ke bawah) -->
+                    <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
+                        <canvas id="speechChart"></canvas>
                     </div>
                 </div>
             
                 <!-- KOLOM KANAN (DAFTAR KATA) -->
-                <div style="width: 250px; min-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden;">
-                    <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px;">📝 Daftar Kata</div>
+                <div style="width: 250px; min-width: 250px; display: flex; flex-direction: column; border: 1px solid var(--win-border-light); background: #f8fafc; border-radius: 4px; overflow: hidden; min-height: 0;">
+                    <div style="font-weight: bold; padding: 6px; background: #e2e8f0; border-bottom: 1px solid var(--win-border-light); text-align: center; color: var(--win-blue); font-size: 10.5px; flex-shrink: 0;">📝 Daftar Kata</div>
                     
+                    <!-- DAFTAR KATA (Otomatis muncul Scrollbar jika kepanjangan) -->
                     <div id="speechWordList" style="flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
                         <div style="text-align:center; color:#94a3b8; font-style:italic; margin-top:30px; font-size: 10px;">
                             Pilih folder audio untuk menampilkan daftar kata.
@@ -685,7 +686,7 @@ canvas#rightChart, canvas#leftChart {
                 </div>
                 
             </div>
-            <!-- ======================================================= -->            <!-- ======================================================= -->
+            <!-- ======================================================= -->
                         
             <!-- Tympanometry Workspace View -->
             <div class="box" id="cardTympWorkspace" style="display: none; flex: 1; padding: 12px; background: white; overflow-y: auto;">
@@ -5448,8 +5449,19 @@ function startTone() {
 
     function updateWordListHighlight() {
         wordUIs.forEach((div, idx) => {
-            if (idx === currentEvaluationIndex) { div.style.border = "2px solid #0284c7"; div.style.fontWeight = "bold"; div.style.boxShadow = "0 0 5px rgba(2,132,199,0.3)"; div.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } 
-            else if (idx > currentEvaluationIndex && div.style.background === "") { div.style.border = "1px solid #cbd5e1"; div.style.fontWeight = "normal"; div.style.boxShadow = "none"; }
+            if (idx === currentEvaluationIndex) { 
+                div.style.border = "2px solid #0284c7"; div.style.fontWeight = "bold"; div.style.boxShadow = "0 0 5px rgba(2,132,199,0.3)"; 
+                // Gulir layar otomatis agar kata selalu terlihat
+                div.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); 
+            } 
+            else if (div.style.background === "") { 
+                // Kata yang BELUM dinilai
+                div.style.border = "1px solid #cbd5e1"; div.style.fontWeight = "normal"; div.style.boxShadow = "none"; 
+            } 
+            else {
+                // Kata yang SUDAH dinilai (jangan hapus warna merah/hijaunya)
+                div.style.fontWeight = "normal"; div.style.boxShadow = "none";
+            }
         });
     }
 
@@ -5458,19 +5470,20 @@ function startTone() {
         if (currentPlaylistIndex >= playlistQueue.length) return showToast("Semua kata dalam playlist sudah diputar."); 
         isPlaylistRunning = true; wordsPlayedInCurrentBatch = 0; 
         
-        // --- PERBAIKAN 2: AUTO-SINKRONISASI SAAT PLAY ---
-        // Jika sorotan biru tertinggal di atas, paksa turun mengikuti deret audio!
+        // ==============================================================
+        // KECERDASAN 1: AUTO-SINKRON KOTAK BIRU DENGAN AUDIO
+        // Jika kotak biru tertinggal, paksa dia melompat ke deret audio
+        // ==============================================================
         if (currentEvaluationIndex < currentPlaylistIndex) {
             currentEvaluationIndex = currentPlaylistIndex;
             updateWordListHighlight();
         }
-        // ------------------------------------------------
 
         let wordListContainer = document.getElementById('speechWordList');
         if (wordListContainer) wordListContainer.classList.add('speech-locked'); 
         playNextWord(); 
     }
-
+        
     function playNextWord() {
     let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
     let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
@@ -5545,30 +5558,39 @@ function startTone() {
 
     function recordSpeechPoint() {
         let pct = parseFloat(document.getElementById('speechPct').value);
-        speechChartInstance.data.datasets[0].data.push({x: currentDb, y: pct});
-        speechChartInstance.data.datasets[0].data.sort((a,b)=>a.x-b.x); speechChartInstance.update();
+        if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
+            speechChartInstance.data.datasets[0].data.push({x: currentDb, y: pct});
+            speechChartInstance.data.datasets[0].data.sort((a,b)=>a.x-b.x); speechChartInstance.update();
+        }
         showToast(`Tersimpan: Point Speech ${currentDb}dB -> ${pct}%`);
         
-        correctWordCount = 0; totalEvaluatedCount = 0; document.getElementById('speechPct').value = 0;
-
-        // --- PERBAIKAN 3: OTOMATIS LOMPAT KE AWAL DERET BERIKUTNYA ---
+        // ==============================================================
+        // KECERDASAN 2: KALKULASI LOMPATAN DERET OTOMATIS
+        // ==============================================================
         let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
         let remainder = currentEvaluationIndex % batchSize;
+        let wasEvaluated = (totalEvaluatedCount > 0);
+
+        // Bersihkan skor untuk deret berikutnya
+        correctWordCount = 0; totalEvaluatedCount = 0; document.getElementById('speechPct').value = 0;
         
-        if (remainder !== 0) {
-            currentEvaluationIndex += (batchSize - remainder);
-        } else if (currentEvaluationIndex === 0) {
-            currentEvaluationIndex = batchSize; 
+        // Atur posisi kotak biru agar standby di kata pertama Deret berikutnya
+        if (remainder !== 0) { 
+            currentEvaluationIndex += (batchSize - remainder); 
+        } else if (currentEvaluationIndex === 0 && wasEvaluated) { 
+            currentEvaluationIndex += batchSize; 
         }
-
-        if (currentEvaluationIndex >= playlistQueue.length) {
-            currentEvaluationIndex = playlistQueue.length - 1; // Cegah error melebihi daftar
+        
+        // Cegah error melebihi daftar
+        if (currentEvaluationIndex >= playlistQueue.length) { 
+            currentEvaluationIndex = playlistQueue.length - 1; 
         }
-
-        currentPlaylistIndex = currentEvaluationIndex; // Audio disiapkan untuk deret baru
+        
+        // Set audio agar juga bersiap di deret yang baru
+        currentPlaylistIndex = currentEvaluationIndex;
         updateWordListHighlight();
-        // -------------------------------------------------------------
     }
+        
     let monitorGainNode = null;
     function toggleHeadsetMonitor() {
         let isChecked = document.getElementById('chkHeadsetMonitor').checked;
