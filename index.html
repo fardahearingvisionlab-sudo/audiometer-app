@@ -2646,7 +2646,22 @@ function initPrintCharts() {
     });
 
     const pSpeechCanvas = setCanvasBox('prevSpeechChart', 220);
-    if (pSpeechCanvas) printSpeechChartInstance = new Chart(pSpeechCanvas.getContext('2d'), { type: 'line', data: { datasets: [] }, options: { responsive: true, maintainAspectRatio: false, animation: false, devicePixelRatio: highDPR, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } } });
+    if (pSpeechCanvas) printSpeechChartInstance = new Chart(pSpeechCanvas.getContext('2d'), { 
+        type: 'line', 
+        data: { datasets: [] }, 
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            animation: false, 
+            devicePixelRatio: highDPR, 
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                // PERBAIKAN: Menyamakan sumbu X dengan layar utama agar titiknya presisi
+                x: { type: 'linear', min: 0, max: 110 }, 
+                y: { min: 0, max: 100 } 
+            } 
+        } 
+    });
 
     // B. Tympanometry
     const tympRightCanvas = setCanvasBox('prevTympRightChart', 220); 
