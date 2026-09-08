@@ -5430,6 +5430,17 @@ function startTone() {
                 let deretNum = Math.floor(idx / batchSize) + 1; batchHeader.innerText = `--- Deret ke-${deretNum} - ${typeLabel} ---`; container.appendChild(batchHeader);
             }
             let div = document.createElement('div'); div.className = "word-item"; div.innerText = `${idx + 1}. ${file.name.replace(/\.[^/.]+$/, "")}`; 
+            
+            // --- PERBAIKAN 1: BISA DIKLIK UNTUK PINDAH MANUAL ---
+            div.style.cursor = "pointer"; // Ubah kursor jadi tangan agar terlihat bisa diklik
+            div.onclick = () => {
+                currentEvaluationIndex = idx;
+                currentPlaylistIndex = idx; // Sinkronkan audio juga
+                updateWordListHighlight();
+                showToast(`Pindah penilaian ke kata no. ${idx + 1}`);
+            };
+            // ---------------------------------------------------
+
             container.appendChild(div); wordUIs.push(div); 
         }); 
         updateWordListHighlight(); 
@@ -5446,6 +5457,15 @@ function startTone() {
         if (playlistQueue.length === 0) return showToast("Pilih folder audio speech terlebih dahulu!"); 
         if (currentPlaylistIndex >= playlistQueue.length) return showToast("Semua kata dalam playlist sudah diputar."); 
         isPlaylistRunning = true; wordsPlayedInCurrentBatch = 0; 
+        
+        // --- PERBAIKAN 2: AUTO-SINKRONISASI SAAT PLAY ---
+        // Jika sorotan biru tertinggal di atas, paksa turun mengikuti deret audio!
+        if (currentEvaluationIndex < currentPlaylistIndex) {
+            currentEvaluationIndex = currentPlaylistIndex;
+            updateWordListHighlight();
+        }
+        // ------------------------------------------------
+
         let wordListContainer = document.getElementById('speechWordList');
         if (wordListContainer) wordListContainer.classList.add('speech-locked'); 
         playNextWord(); 
@@ -5528,9 +5548,27 @@ function startTone() {
         speechChartInstance.data.datasets[0].data.push({x: currentDb, y: pct});
         speechChartInstance.data.datasets[0].data.sort((a,b)=>a.x-b.x); speechChartInstance.update();
         showToast(`Tersimpan: Point Speech ${currentDb}dB -> ${pct}%`);
+        
         correctWordCount = 0; totalEvaluatedCount = 0; document.getElementById('speechPct').value = 0;
-    }
 
+        // --- PERBAIKAN 3: OTOMATIS LOMPAT KE AWAL DERET BERIKUTNYA ---
+        let batchSize = parseInt(document.getElementById('batchSize').value) || 10;
+        let remainder = currentEvaluationIndex % batchSize;
+        
+        if (remainder !== 0) {
+            currentEvaluationIndex += (batchSize - remainder);
+        } else if (currentEvaluationIndex === 0) {
+            currentEvaluationIndex = batchSize; 
+        }
+
+        if (currentEvaluationIndex >= playlistQueue.length) {
+            currentEvaluationIndex = playlistQueue.length - 1; // Cegah error melebihi daftar
+        }
+
+        currentPlaylistIndex = currentEvaluationIndex; // Audio disiapkan untuk deret baru
+        updateWordListHighlight();
+        // -------------------------------------------------------------
+    }
     let monitorGainNode = null;
     function toggleHeadsetMonitor() {
         let isChecked = document.getElementById('chkHeadsetMonitor').checked;
