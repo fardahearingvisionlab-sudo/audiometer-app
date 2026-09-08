@@ -502,15 +502,20 @@ canvas#rightChart, canvas#leftChart {
         </div>
 
             <!-- ========================================== -->
-            <!-- PANEL KONEKSI USB (KOMPAK)                 -->
+            <!-- PANEL KONEKSI USB (2 TOMBOL KOMPAK)        -->
             <!-- ========================================== -->
-            <div style="margin-top: 4px; padding: 4px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px;">
-                <button type="button" id="btnConnectAudio" class="win-btn" style="flex: 1; font-weight: bold; background: #f59e0b; color: white; border: none; padding: 4px 6px; font-size: 10.5px;">
-                    🔌 Connect USB
+            <div style="margin-top: 4px; padding: 4px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; gap: 4px;">
+                
+                <!-- Tombol Connect -->
+                <button type="button" id="btnConnectAudio" class="win-btn" style="flex: 1; font-weight: bold; background: #f59e0b; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 3px; cursor: pointer; transition: 0.2s;">
+                    🔌 Connect
                 </button>
-                <div id="statusAudiometer" style="font-size: 9px; font-weight: bold; color: #92400e; width: 85px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Alat belum terhubung">
-                    Disconnected
-                </div>
+                
+                <!-- Tombol Disconnect (Default mati/redup sebelum terhubung) -->
+                <button type="button" id="btnDisconnectAudio" class="win-btn" disabled style="flex: 1; font-weight: bold; background: #ef4444; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 3px; cursor: not-allowed; opacity: 0.5; transition: 0.2s;">
+                    ❌ Disconnect
+                </button>
+            
             </div>
             <!-- ========================================== -->
 
@@ -6968,6 +6973,7 @@ function restoreCalibrationFromCloud() {
 
     let portAudiometer;
     let writerAudiometer;
+    let readerAudiometer; // Tambahan: untuk menyimpan fungsi pembaca agar bisa dihentikan
 
     // 1. AUTO-CONNECT SAAT HALAMAN DIMUAT (TANPA POP-UP)
     window.addEventListener('DOMContentLoaded', async () => {
@@ -6977,8 +6983,9 @@ function restoreCalibrationFromCloud() {
                 if (authorizedPorts.length > 0) {
                     portAudiometer = authorizedPorts[0]; 
                     await portAudiometer.open({ baudRate: 9600 });
-                    updateConnectionUI(true, "Auto-Connected ke Arduino Leonardo");
-                    bacaDataSerial(); // <--- Memanggil fungsi pembaca
+                    updateConnectionUI(true);
+                    if (typeof showToast === 'function') showToast("Auto-Connected ke Arduino Leonardo");
+                    bacaDataSerial(); 
                 }
             } catch (err) {
                 console.log("Belum ada port terhubung otomatis:", err);
@@ -6986,7 +6993,7 @@ function restoreCalibrationFromCloud() {
         }
     });
 
-    // 2. TOMBOL HUBUNGKAN MANUAL (HANYA MENAMPILKAN ARDUINO LEONARDO)
+    // 2A. TOMBOL HUBUNGKAN MANUAL
     document.getElementById('btnConnectAudio').addEventListener('click', async () => {
         try {
             if (!("serial" in navigator)) {
@@ -6995,43 +7002,82 @@ function restoreCalibrationFromCloud() {
             }
 
             const filters = [
-                { usbVendorId: 0x2341, usbProductId: 0x8036 }
+                { usbVendorId: 0x2341, usbProductId: 0x8036 } // Filter Arduino Leonardo
             ];
 
             portAudiometer = await navigator.serial.requestPort({ filters });
             await portAudiometer.open({ baudRate: 9600 });
-            updateConnectionUI(true, "Audiometer Terhubung! Siap digunakan.");
-            bacaDataSerial(); // <--- Memanggil fungsi pembaca
+            
+            updateConnectionUI(true);
+            if (typeof showToast === 'function') showToast("Audiometer Terhubung! Siap digunakan.");
+            
+            bacaDataSerial(); 
         } catch (err) {
             if (err.name !== 'NotFoundError') {
-                updateConnectionUI(false, "Gagal: " + err.message);
+                updateConnectionUI(false);
                 console.error(err);
             } else {
-                updateConnectionUI(false, "Pemilihan alat dibatalkan.");
+                updateConnectionUI(false);
             }
         }
     });
 
-    function updateConnectionUI(isConnected, message) {
-        const statusBox = document.getElementById('statusAudiometer');
-        const btn = document.getElementById('btnConnectAudio');
+    // 2B. TOMBOL DISCONNECT (BARU)
+    document.getElementById('btnDisconnectAudio').addEventListener('click', async () => {
+        try {
+            // Hentikan fungsi pembaca sebelum menutup port
+            if (readerAudiometer) {
+                await readerAudiometer.cancel();
+            }
+            if (writerAudiometer) {
+                writerAudiometer.releaseLock();
+                writerAudiometer = null;
+            }
+            if (portAudiometer) {
+                await portAudiometer.close();
+                portAudiometer = null;
+            }
+            
+            updateConnectionUI(false);
+            if (typeof showToast === 'function') showToast("Koneksi Arduino Diputuskan.");
+        } catch (err) {
+            console.error("Gagal memutuskan koneksi:", err);
+            if (typeof showToast === 'function') showToast("Error saat memutuskan koneksi. Cabut kabel USB manual.");
+        }
+    });
+
+    // 2C. FUNGSI UPDATE UI (TOMBOL GANTI STATUS)
+    function updateConnectionUI(isConnected) {
+        const btnConnect = document.getElementById('btnConnectAudio');
+        const btnDisconnect = document.getElementById('btnDisconnectAudio');
 
         if (isConnected) {
-            if (statusBox) {
-                statusBox.innerText = "Status: " + message;
-                statusBox.style.background = "#dcfce7";
-                statusBox.style.color = "#166534";
-                statusBox.style.borderColor = "#22c55e";
+            // MATIKAN tombol connect, AKTIFKAN tombol disconnect
+            if (btnConnect) {
+                btnConnect.disabled = true;
+                btnConnect.style.opacity = '0.5';
+                btnConnect.style.cursor = 'not-allowed';
+                btnConnect.style.background = "#10b981"; // Hijau penanda aktif
+                btnConnect.innerText = "🟢 Connected";
             }
-            if (btn) {
-                btn.innerText = "🟢 Audiometer Terhubung";
-                btn.style.background = "#10b981";
+            if (btnDisconnect) {
+                btnDisconnect.disabled = false;
+                btnDisconnect.style.opacity = '1';
+                btnDisconnect.style.cursor = 'pointer';
             }
         } else {
-            if (statusBox) {
-                statusBox.innerText = message;
-                statusBox.style.background = "#fee2e2";
-                statusBox.style.color = "#b91c1c";
+            // AKTIFKAN tombol connect, MATIKAN tombol disconnect
+            if (btnConnect) {
+                btnConnect.disabled = false;
+                btnConnect.style.opacity = '1';
+                btnConnect.style.cursor = 'pointer';
+                btnConnect.style.background = "#f59e0b"; // Kembali orange
+                btnConnect.innerText = "🔌 Connect";
+            }
+            if (btnDisconnect) {
+                btnDisconnect.disabled = true;
+                btnDisconnect.style.opacity = '0.5';
+                btnDisconnect.style.cursor = 'not-allowed';
             }
         }
     }
@@ -7079,102 +7125,56 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
-    // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN) -> BARU DITAMBAHKAN
+    // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN)
     // ============================================================
     async function bacaDataSerial() {
-    while (portAudiometer && portAudiometer.readable) {
-        const textDecoder = new TextDecoderStream();
-        const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
-        const reader = textDecoder.readable.getReader();
+        while (portAudiometer && portAudiometer.readable) {
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
+            readerAudiometer = textDecoder.readable.getReader(); // Simpan ke variabel global agar bisa di-cancel
 
-        try {
-            let bufferData = "";
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break; 
-                
-                if (value) {
-                    bufferData += value;
+            try {
+                let bufferData = "";
+                while (true) {
+                    const { value, done } = await readerAudiometer.read();
+                    if (done) break; 
                     
-                    // Pecah data berdasarkan baris baru (\n)
-                    let barisData = bufferData.split('\n');
-                    
-                    // Pindahkan elemen terakhir (yang mungkin belum ada \n / belum utuh) kembali ke buffer
-                    bufferData = barisData.pop();
+                    if (value) {
+                        bufferData += value;
+                        let barisData = bufferData.split('\n');
+                        bufferData = barisData.pop();
 
-                    // Loop untuk mengecek setiap baris yang sudah terkirim utuh
-                    for (let baris of barisData) {
-                        let pesanDiterima = baris.trim();
-                        
-                        // Cek apakah pesan berisi respon pasien
-                        if (pesanDiterima === "RESPON_PASIEN") {
-                            console.log("Sinyal tombol pasien diterima di Web!");
-                            
-                            if (typeof handlePatientResponse === 'function') {
-                                handlePatientResponse(); 
-                            } else {
-                                console.warn("Lampu gagal menyala: Fungsi 'handlePatientResponse' tidak ditemukan.");
+                        for (let baris of barisData) {
+                            let pesanDiterima = baris.trim();
+                            if (pesanDiterima === "RESPON_PASIEN") {
+                                console.log("Sinyal tombol pasien diterima di Web!");
+                                if (typeof handlePatientResponse === 'function') {
+                                    handlePatientResponse(); 
+                                }
                             }
                         }
                     }
                 }
+            } catch (error) {
+                // Error wajar terjadi saat tombol disconnect ditekan (reader di-cancel)
+                console.log("Sesi pembacaan serial diakhiri.");
+            } finally {
+                if (readerAudiometer) {
+                    readerAudiometer.releaseLock();
+                    readerAudiometer = null;
+                }
             }
-        } catch (error) {
-            console.error("Error baca serial:", error);
-        } finally {
-            reader.releaseLock();
         }
     }
-}
 
-    // ============================================================
-    // FITUR PREVIEW TX DINAMIS (SINKRONISASI UI REAL-TIME)
-    // ============================================================
-    window.addEventListener('DOMContentLoaded', () => {
-        const freqEl = document.getElementById('lblFreqSide');
-        const dbEl = document.getElementById('lblIntensitySide');
-        const statusBox = document.getElementById('statusAudiometer');
-
-        if (!freqEl || !dbEl || !statusBox) return;
-
-        const updateTxPreview = () => {
-            if (typeof isPlaying !== 'undefined' && isPlaying) return; 
-            
-            let freqText = freqEl.innerText.toLowerCase();
-            let numFreq = parseFloat(freqText.replace(/[^0-9.]/g, '')) || 1000;
-            let finalFreq = (freqText.includes('k') && numFreq < 1000) ? numFreq * 1000 : numFreq;
-
-            let dbText = dbEl.innerText;
-            let finalDb = parseFloat(dbText.replace(/[^0-9.-]/g, '')) || 40;
-
-            let finalSide = (typeof currentSide !== 'undefined' && currentSide.toLowerCase() === 'left') ? 'L' : 'R';
-            let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-
-            statusBox.innerText = `Siap: ${finalMode},${finalSide},${finalFreq},${finalDb}`;
-        };
-
-        const observer = new MutationObserver(updateTxPreview);
-        const config = { characterData: true, childList: true, subtree: true };
-        
-        observer.observe(freqEl, config);
-        observer.observe(dbEl, config);
-
-        document.addEventListener('click', () => setTimeout(updateTxPreview, 100));
-        document.addEventListener('keydown', () => setTimeout(updateTxPreview, 100));
-    });
-    
     // ============================================================
     // FITUR KEEP-ALIVE (MENCEGAH USB IDLE / SLEEP)
     // ============================================================
     setInterval(() => {
-        // Cek apakah koneksi USB masih ada dan bisa ditulisi
         if (typeof kirimDataAudiometer === 'function' && typeof portAudiometer !== 'undefined' && portAudiometer && portAudiometer.writable) {
-            // Kirim karakter "X" sebagai sinyal detak jantung
-            // Arduino akan menerima "X" lalu mengabaikannya, 
-            // tapi ini cukup untuk membuat kabel USB tetap "sibuk"
             kirimDataAudiometer("X\n"); 
         }
-    }, 3000); // Kirim setiap 3000 milidetik (3 detik)
+    }, 3000);
     
         
 
