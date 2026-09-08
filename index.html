@@ -6967,13 +6967,10 @@ function restoreCalibrationFromCloud() {
 
 
 
-    // =========================================================
-    // FUNGSI KONTROL HARDWARE AUDIOMETER (WEB SERIAL API)
-    // =========================================================
-
     let portAudiometer;
     let writerAudiometer;
-    let readerAudiometer; // Tambahan: untuk menyimpan fungsi pembaca agar bisa dihentikan
+    let readerAudiometer; 
+    let readableStreamClosed; // <--- TAMBAHAN KUNCI: Untuk melacak "pipa" koneksi
 
     // 1. AUTO-CONNECT SAAT HALAMAN DIMUAT (TANPA POP-UP)
     window.addEventListener('DOMContentLoaded', async () => {
@@ -7002,7 +6999,7 @@ function restoreCalibrationFromCloud() {
             }
 
             const filters = [
-                { usbVendorId: 0x2341, usbProductId: 0x8036 } // Filter Arduino Leonardo
+                { usbVendorId: 0x2341, usbProductId: 0x8036 }
             ];
 
             portAudiometer = await navigator.serial.requestPort({ filters });
@@ -7022,17 +7019,26 @@ function restoreCalibrationFromCloud() {
         }
     });
 
-    // 2B. TOMBOL DISCONNECT (BARU)
+    // 2B. TOMBOL DISCONNECT (SUDAH DIPERBAIKI)
     document.getElementById('btnDisconnectAudio').addEventListener('click', async () => {
         try {
-            // Hentikan fungsi pembaca sebelum menutup port
+            // 1. Batalkan pembaca secara paksa
             if (readerAudiometer) {
                 await readerAudiometer.cancel();
             }
+            
+            // 2. TUNGGU sampai "pipa" pembaca benar-benar dihancurkan oleh browser
+            if (readableStreamClosed) {
+                await readableStreamClosed.catch(() => { /* Abaikan error pembatalan */ });
+            }
+
+            // 3. Lepaskan kunci penulis (pengirim data)
             if (writerAudiometer) {
                 writerAudiometer.releaseLock();
                 writerAudiometer = null;
             }
+
+            // 4. Setelah semua aman, BARU tutup Port-nya
             if (portAudiometer) {
                 await portAudiometer.close();
                 portAudiometer = null;
@@ -7042,7 +7048,7 @@ function restoreCalibrationFromCloud() {
             if (typeof showToast === 'function') showToast("Koneksi Arduino Diputuskan.");
         } catch (err) {
             console.error("Gagal memutuskan koneksi:", err);
-            if (typeof showToast === 'function') showToast("Error saat memutuskan koneksi. Cabut kabel USB manual.");
+            if (typeof showToast === 'function') showToast("Gagal: Pastikan tidak ada data yang tersangkut.");
         }
     });
 
@@ -7052,12 +7058,11 @@ function restoreCalibrationFromCloud() {
         const btnDisconnect = document.getElementById('btnDisconnectAudio');
 
         if (isConnected) {
-            // MATIKAN tombol connect, AKTIFKAN tombol disconnect
             if (btnConnect) {
                 btnConnect.disabled = true;
                 btnConnect.style.opacity = '0.5';
                 btnConnect.style.cursor = 'not-allowed';
-                btnConnect.style.background = "#10b981"; // Hijau penanda aktif
+                btnConnect.style.background = "#10b981"; 
                 btnConnect.innerText = "🟢 Connected";
             }
             if (btnDisconnect) {
@@ -7066,12 +7071,11 @@ function restoreCalibrationFromCloud() {
                 btnDisconnect.style.cursor = 'pointer';
             }
         } else {
-            // AKTIFKAN tombol connect, MATIKAN tombol disconnect
             if (btnConnect) {
                 btnConnect.disabled = false;
                 btnConnect.style.opacity = '1';
                 btnConnect.style.cursor = 'pointer';
-                btnConnect.style.background = "#f59e0b"; // Kembali orange
+                btnConnect.style.background = "#f59e0b"; 
                 btnConnect.innerText = "🔌 Connect";
             }
             if (btnDisconnect) {
@@ -7125,13 +7129,14 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
-    // 4. FUNGSI PEMBACA SERIAL (MENDENGARKAN RESPON PASIEN)
+    // 4. FUNGSI PEMBACA SERIAL (SUDAH DIPERBAIKI)
     // ============================================================
     async function bacaDataSerial() {
         while (portAudiometer && portAudiometer.readable) {
             const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable);
-            readerAudiometer = textDecoder.readable.getReader(); // Simpan ke variabel global agar bisa di-cancel
+            // Simpan pipa ke variabel global agar bisa ditunggu saat disconnect
+            readableStreamClosed = portAudiometer.readable.pipeTo(textDecoder.writable); 
+            readerAudiometer = textDecoder.readable.getReader(); 
 
             try {
                 let bufferData = "";
@@ -7156,7 +7161,6 @@ function restoreCalibrationFromCloud() {
                     }
                 }
             } catch (error) {
-                // Error wajar terjadi saat tombol disconnect ditekan (reader di-cancel)
                 console.log("Sesi pembacaan serial diakhiri.");
             } finally {
                 if (readerAudiometer) {
