@@ -7015,9 +7015,20 @@ function restoreCalibrationFromCloud() {
     // FUNGSI INISIALISASI
     async function inisialisasiKoneksi(pesanSukses) {
         writerAudiometer = portAudiometer.writable.getWriter();
-        updateConnectionUI(true);
+        updateConnectionUI(true); // Ini membuat isConnectedArduino menjadi true
         if (typeof showToast === 'function') showToast(pesanSukses);
         
+        // --- TAMBAHAN KODE PENYELAMAT SINKRONISASI ---
+        // Langsung tembak data default ke Arduino agar relay langsung bunyi "klik"
+        // Karena default alat Anda terdeteksi di Kanan (R), kita kirimkan "R\n".
+        setTimeout(() => {
+            kirimDataAudiometer("R\n"); 
+            
+            // Catatan: Jika Arduino Anda membutuhkan format data lengkap untuk pindah channel,
+            // gunakan format tersebut. Contoh: kirimDataAudiometer("AC,R,1000,40\n");
+        }, 500); // Diberi jeda 0.5 detik agar port Arduino benar-benar bernapas dulu
+        // ----------------------------------------------
+
         // Jalankan pembaca
         bacaDataSerial(); 
     }
