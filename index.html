@@ -5387,7 +5387,7 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 }
 
 // ============================================================
-    // 1. FUNGSI START TONE (Diperbaiki & Dioptimalkan Total)
+    // FUNGSI START TONE (Diperbaiki dengan Penanganan AudioContext Promise)
     // ============================================================
     function startTone() {
         if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
@@ -5407,149 +5407,149 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
         let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
         if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
 
-        // Bangkitkan AudioContext (Anti-Sleep)
+        // 1. PASTIKAN AUDIOCONTEXT AKTIF DENGAN BENAR
         if (!audioCtx || audioCtx.state === 'closed') {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume(); 
-        }
 
-        const now = audioCtx.currentTime;
+        // Fungsi pembungkus untuk menjalankan audio setelah konteks dipastikan RUNNING
+        const runAudioGeneration = () => {
+            if (audioCtx.state !== 'running') return;
 
-        // Amankan node lama ke variabel lokal sebelum dibersihkan
-        let oldOsc = typeof osc !== 'undefined' ? osc : null;
-        let oldGain = typeof currentGainNode !== 'undefined' ? currentGainNode : null;
-        let oldMerger = typeof channelMerger !== 'undefined' ? channelMerger : null;
-        let oldLeftGain = typeof leftGainNode !== 'undefined' ? leftGainNode : null;
-        let oldRightGain = typeof rightGainNode !== 'undefined' ? rightGainNode : null;
-        let oldLfo = typeof examLfo !== 'undefined' ? examLfo : null;
+            const now = audioCtx.currentTime;
 
-        // Kosongkan variabel global segera
-        osc = null; currentGainNode = null; channelMerger = null; leftGainNode = null; rightGainNode = null; examLfo = null;
+            // Amankan node lama ke variabel lokal sebelum dibersihkan
+            let oldOsc = typeof osc !== 'undefined' ? osc : null;
+            let oldGain = typeof currentGainNode !== 'undefined' ? currentGainNode : null;
+            let oldMerger = typeof channelMerger !== 'undefined' ? channelMerger : null;
+            let oldLeftGain = typeof leftGainNode !== 'undefined' ? leftGainNode : null;
+            let oldRightGain = typeof rightGainNode !== 'undefined' ? rightGainNode : null;
+            let oldLfo = typeof examLfo !== 'undefined' ? examLfo : null;
 
-        // Matikan node lama dengan Fade-out halus 15ms
-        if (oldGain) {
-            try {
-                oldGain.gain.cancelScheduledValues(now);
-                oldGain.gain.setTargetAtTime(0.00001, now, 0.015);
-            } catch(e) {}
-        }
-        if (oldLeftGain) { try { oldLeftGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {} }
-        if (oldRightGain) { try { oldRightGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {} }
-        if (oldOsc) { try { oldOsc.stop(now + 0.03); } catch(e) {} }
-        if (oldLfo) { try { oldLfo.stop(now + 0.03); } catch(e) {} }
+            // Kosongkan variabel global segera
+            osc = null; currentGainNode = null; channelMerger = null; leftGainNode = null; rightGainNode = null; examLfo = null;
 
-        // Bersihkan memori node lama di latar belakang
-        setTimeout(() => {
-            try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
-            try { if (oldGain) oldGain.disconnect(); } catch(e) {}
-            try { if (oldMerger) oldMerger.disconnect(); } catch(e) {}
-            try { if (oldLeftGain) oldLeftGain.disconnect(); } catch(e) {}
-            try { if (oldRightGain) oldRightGain.disconnect(); } catch(e) {}
-            try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
-        }, 150);
+            // Matikan node lama dengan Fade-out halus 15ms
+            if (oldGain) {
+                try {
+                    oldGain.gain.cancelScheduledValues(now);
+                    oldGain.gain.setTargetAtTime(0.00001, now, 0.015);
+                } catch(e) {}
+            }
+            if (oldLeftGain) { try { oldLeftGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {} }
+            if (oldRightGain) { try { oldRightGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {} }
+            if (oldOsc) { try { oldOsc.stop(now + 0.03); } catch(e) {} }
+            if (oldLfo) { try { oldLfo.stop(now + 0.03); } catch(e) {} }
 
-        // Buat Node Baru
-        let newOsc = audioCtx.createOscillator(); 
-        let newMasterGain = audioCtx.createGain();
-        let merger = audioCtx.createChannelMerger(2);
-        let lGain = audioCtx.createGain();
-        let rGain = audioCtx.createGain();
+            // Bersihkan memori node lama di latar belakang
+            setTimeout(() => {
+                try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
+                try { if (oldGain) oldGain.disconnect(); } catch(e) {}
+                try { if (oldMerger) oldMerger.disconnect(); } catch(e) {}
+                try { if (oldLeftGain) oldLeftGain.disconnect(); } catch(e) {}
+                try { if (oldRightGain) oldRightGain.disconnect(); } catch(e) {}
+                try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
+            }, 150);
 
-        // Masukkan ke variabel global
-        osc = newOsc;
-        currentGainNode = newMasterGain;
-        channelMerger = merger;
-        leftGainNode = lGain;
-        rightGainNode = rGain;
-        
-        let freq = (typeof FREQUENCIES !== 'undefined' && FREQUENCIES[currentFreqIndex]) ? FREQUENCIES[currentFreqIndex] : 1000; 
-        
-        newOsc.type = 'sine';
-        newOsc.frequency.setValueAtTime(freq, now); 
+            // Buat Node Baru
+            let newOsc = audioCtx.createOscillator(); 
+            let newMasterGain = audioCtx.createGain();
+            let merger = audioCtx.createChannelMerger(2);
+            let lGain = audioCtx.createGain();
+            let rGain = audioCtx.createGain();
 
-        if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
-            let lfo = audioCtx.createOscillator();
-            examLfo = lfo;
-            lfo.frequency.setValueAtTime(5, now);
-            let lfoGain = audioCtx.createGain();
-            lfoGain.gain.setValueAtTime(freq * 0.05, now);
+            // Masukkan ke variabel global
+            osc = newOsc;
+            currentGainNode = newMasterGain;
+            channelMerger = merger;
+            leftGainNode = lGain;
+            rightGainNode = rGain;
             
-            lfo.connect(lfoGain);
-            lfoGain.connect(newOsc.frequency);
-            lfo.start(now);
-        }
-        
-        let selectedTransducer = 'DD45';
-        let transSelect = document.getElementById('setAcTransducer');
-        if (transSelect) { selectedTransducer = transSelect.value; }
-        
-        if (typeof currentMode !== 'undefined' && currentMode === 'BC') selectedTransducer = 'BC';
-        if (typeof currentMode !== 'undefined' && currentMode === 'FFT') selectedTransducer = 'SPKR';
+            let freq = (typeof FREQUENCIES !== 'undefined' && FREQUENCIES[currentFreqIndex]) ? FREQUENCIES[currentFreqIndex] : 1000; 
+            
+            newOsc.type = 'sine';
+            newOsc.frequency.setValueAtTime(freq, now); 
 
-        let splAt70dB = 70.0; 
-        if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-            splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
-        }
+            if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
+                let lfo = audioCtx.createOscillator();
+                examLfo = lfo;
+                lfo.frequency.setValueAtTime(5, now);
+                let lfoGain = audioCtx.createGain();
+                lfoGain.gain.setValueAtTime(freq * 0.05, now);
+                
+                lfo.connect(lfoGain);
+                lfoGain.connect(newOsc.frequency);
+                lfo.start(now);
+            }
+            
+            let selectedTransducer = 'DD45';
+            let transSelect = document.getElementById('setAcTransducer');
+            if (transSelect) { selectedTransducer = transSelect.value; }
+            
+            if (typeof currentMode !== 'undefined' && currentMode === 'BC') selectedTransducer = 'BC';
+            if (typeof currentMode !== 'undefined' && currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-        // PERBAIKAN UTAMA: Menggunakan parseFloat dan validasi isNaN agar aman dari string
-        let intensityHL = typeof currentDb !== 'undefined' ? parseFloat(currentDb) : 40;
-        if (isNaN(intensityHL)) intensityHL = 40;
+            let splAt70dB = 70.0; 
+            if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
+                splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
+            }
 
-        let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
-        let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
-        if (isNaN(currentOffset)) currentOffset = 0;
-        
-        let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-        const SYSTEM_MAX_SPL = 95; 
-        
-        let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
-        if (isNaN(targetGain)) targetGain = 0.0001;
-        targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
+            let intensityHL = typeof currentDb !== 'undefined' ? parseFloat(currentDb) : 40;
+            if (isNaN(intensityHL)) intensityHL = 40;
 
-        // LOGGING UNTUK DEBUGGING (Cek di F12 Console browser Anda)
-        console.log("=== AUDIO DEBUG ===", {
-            rawDb: typeof currentDb !== 'undefined' ? currentDb : 'N/A',
-            parsedIntensity: intensityHL,
-            calculatedSPL: actualSPL,
-            finalGain: targetGain,
-            ear: activeEar
-        });
+            let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
+            let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
+            if (isNaN(currentOffset)) currentOffset = 0;
+            
+            let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
+            const SYSTEM_MAX_SPL = 95; 
+            
+            let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+            if (isNaN(targetGain)) targetGain = 0.0001;
+            targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-        // Fade-In Native pada Master Gain
-        newMasterGain.gain.setValueAtTime(0.00001, now);
-        newMasterGain.gain.setTargetAtTime(targetGain, now, 0.015);
+            // Fade-In Native pada Master Gain
+            newMasterGain.gain.setValueAtTime(0.00001, now);
+            newMasterGain.gain.setTargetAtTime(targetGain, now, 0.015);
 
-        // Atur Isolasi Kanal Mutlak
-        let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
-        if (isFreeField) {
-            lGain.gain.setValueAtTime(1.0, now);
-            rGain.gain.setValueAtTime(1.0, now);
-        } else if (activeEar === 'right') {
-            lGain.gain.setValueAtTime(0.0, now); // Kiri mati total
-            rGain.gain.setValueAtTime(1.0, now); // Kanan hidup
+            // Atur Isolasi Kanal Mutlak
+            let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
+            if (isFreeField) {
+                lGain.gain.setValueAtTime(1.0, now);
+                rGain.gain.setValueAtTime(1.0, now);
+            } else if (activeEar === 'right') {
+                lGain.gain.setValueAtTime(0.0, now); 
+                rGain.gain.setValueAtTime(1.0, now); 
+            } else {
+                lGain.gain.setValueAtTime(1.0, now); 
+                rGain.gain.setValueAtTime(0.0, now); 
+            }
+
+            // Rangkai Audio Graph
+            newOsc.connect(newMasterGain);
+            newMasterGain.connect(lGain);
+            newMasterGain.connect(rGain);
+
+            lGain.connect(merger, 0, 0); 
+            rGain.connect(merger, 0, 1); 
+            
+            merger.connect(audioCtx.destination);
+            newOsc.start(now); 
+
+            isPlaying = true;
+            document.getElementById('signalIndicatorBox')?.classList.add('active');
+
+            if (typeof kirimDataAudiometer === 'function') {
+                kirimDataAudiometer("S1\n");
+            }
+        };
+
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().then(() => {
+                runAudioGeneration();
+            });
         } else {
-            lGain.gain.setValueAtTime(1.0, now); // Kiri hidup
-            rGain.gain.setValueAtTime(0.0, now); // Kanan mati total
-        }
-
-        // Rangkai Audio Graph
-        newOsc.connect(newMasterGain);
-        newMasterGain.connect(lGain);
-        newMasterGain.connect(rGain);
-
-        lGain.connect(merger, 0, 0); 
-        rGain.connect(merger, 0, 1); 
-        
-        merger.connect(audioCtx.destination);
-        newOsc.start(now); 
-
-        isPlaying = true;
-        document.getElementById('signalIndicatorBox')?.classList.add('active');
-
-        if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("S1\n");
+            runAudioGeneration();
         }
     }
 
