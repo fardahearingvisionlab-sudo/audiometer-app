@@ -3413,20 +3413,24 @@ function setCalibStim(stimType) {
     }
 
     function startCalibrationSound() {
+        // 1. Matikan suara lama terlebih dahulu dengan mulus
         stopCalibrationSound();
         
-        // 1. Inisialisasi AudioContext global yang aman
+        // 2. Inisialisasi AudioContext global yang aman
         if (!window.audioCtx || window.audioCtx.state === 'closed') {
             window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         
-        // 2. Sinkronkan variabel agar `audioCtx` lokal terbaca
+        // 3. Sinkronkan variabel agar `audioCtx` lokal terbaca
         audioCtx = window.audioCtx;
 
-        // 3. Penanganan Autoplay Policy Browser
+        // 4. Penanganan Autoplay Policy Browser dengan jeda mikro yang aman
         if (audioCtx.state === 'suspended') {
             audioCtx.resume().then(() => { 
-                executeCalibrationAudio(); 
+                // Beri jeda 15ms agar pembersihan memori suara lama selesai sempurna
+                setTimeout(() => {
+                    executeCalibrationAudio(); 
+                }, 15);
             }).catch(e => {
                 console.log("Autoplay diblokir oleh browser.");
                 if (typeof showToast === 'function') {
@@ -3434,10 +3438,12 @@ function setCalibStim(stimType) {
                 }
             });
         } else {
-            executeCalibrationAudio();
+            setTimeout(() => {
+                executeCalibrationAudio();
+            }, 15);
         }
     }
-
+        
    // =================================================================
     // 2. FUNGSI EXECUTE (Fade In Tanpa setTimeout)
     // =================================================================
