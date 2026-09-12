@@ -2281,6 +2281,7 @@ canvas#rightChart, canvas#leftChart {
     window.calState = { freq: 1000, ear: 'R', trans: 'AC', stimType: 'tone' };
     let calibOsc = null, calibLfo = null, calibNoiseSource = null, calibFilter = null, calibGainNode = null;
     let calibrationNoiseNode = null;
+    let calibMerger, calibLeftGain, calibRightGain;    
 
     function loadCalibrationFromStorage() { let saved = localStorage.getItem('gsi_audiology_calibration'); if(saved) { try { return JSON.parse(saved); } catch(e) {} } let def = {}; ['R_AC', 'R_BC', 'L_AC', 'L_BC'].forEach(k => { def[k] = {}; FREQUENCIES.forEach(f => def[k][f] = 0); }); return def; }
     function saveCalibrationToStorage() { localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData)); }
@@ -3353,11 +3354,11 @@ function setCalibStim(stimType) {
 }
 
     // =================================================================
-    // 1. FUNGSI STOP (Menggunakan Native Audio Timeline)
+    // 1. FUNGSI STOP (Menggunakan Native Audio Timeline + Channel Isolator)
     // =================================================================
     function stopCalibrationSound() {
         if (!audioCtx) return;
-        const now = audioCtx.currentTime; // Gunakan jam internal audio
+        const now = audioCtx.currentTime; 
 
         // Tangkap semua node ke variabel lokal
         let oGain = calibGainNode;
@@ -3366,26 +3367,32 @@ function setCalibStim(stimType) {
         let oLfo = calibLfo;
         let oNoiseSrc = calibNoiseSource;
         let oNoiseNode = calibrationNoiseNode;
-        let oPan = calibPanner;
         let oFilt = calibFilter;
+        
+        // Node baru untuk Channel Merger
+        let oMerger = typeof calibMerger !== 'undefined' ? calibMerger : null;
+        let oLeftGain = typeof calibLeftGain !== 'undefined' ? calibLeftGain : null;
+        let oRightGain = typeof calibRightGain !== 'undefined' ? calibRightGain : null;
 
         // Kosongkan global SEKARANG agar tidak bertabrakan dengan klik baru
         calibGainNode = null; calibWnGain = null; calibOsc = null; 
         calibLfo = null; calibNoiseSource = null; calibrationNoiseNode = null; 
-        calibPanner = null; calibFilter = null;
+        calibFilter = null;
+        calibMerger = null; calibLeftGain = null; calibRightGain = null;
 
         // FADE OUT NATIVE (Sangat Mulus, Anti Krek)
         if (oGain) {
-            try {
-                oGain.gain.cancelScheduledValues(now);
-                oGain.gain.setTargetAtTime(0.00001, now, 0.015); // Turun halus dalam 15ms
-            } catch(e){}
+            try { oGain.gain.cancelScheduledValues(now); oGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e){}
         }
         if (oWnGain) {
-            try {
-                oWnGain.gain.cancelScheduledValues(now);
-                oWnGain.gain.setTargetAtTime(0.00001, now, 0.015);
-            } catch(e){}
+            try { oWnGain.gain.cancelScheduledValues(now); oWnGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e){}
+        }
+        // Matikan gain pemisah kanal juga
+        if (oLeftGain) {
+            try { oLeftGain.gain.cancelScheduledValues(now); oLeftGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e){}
+        }
+        if (oRightGain) {
+            try { oRightGain.gain.cancelScheduledValues(now); oRightGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e){}
         }
 
         // BERHENTIKAN SUMBER SUARA (Tepat 50ms setelah fade out di jadwal audio)
@@ -3395,7 +3402,7 @@ function setCalibStim(stimType) {
         if (oNoiseSrc) { try { oNoiseSrc.stop(stopTime); } catch(e){} }
         if (oNoiseNode) { try { oNoiseNode.stop(stopTime); } catch(e){} }
 
-        // BERSIHKAN DARI MEMORI (Garbage Collect di latar belakang, sangat aman di 200ms)
+        // BERSIHKAN DARI MEMORI
         setTimeout(() => {
             try { if(oOsc) oOsc.disconnect(); } catch(e){}
             try { if(oLfo) oLfo.disconnect(); } catch(e){}
@@ -3403,8 +3410,12 @@ function setCalibStim(stimType) {
             try { if(oNoiseNode) oNoiseNode.disconnect(); } catch(e){}
             try { if(oGain) oGain.disconnect(); } catch(e){}
             try { if(oWnGain) oWnGain.disconnect(); } catch(e){}
-            try { if(oPan) oPan.disconnect(); } catch(e){}
             try { if(oFilt) oFilt.disconnect(); } catch(e){}
+            
+            // Bersihkan node isolator memori
+            try { if(oMerger) oMerger.disconnect(); } catch(e){}
+            try { if(oLeftGain) oLeftGain.disconnect(); } catch(e){}
+            try { if(oRightGain) oRightGain.disconnect(); } catch(e){}
         }, 200);
 
         if (typeof kirimDataAudiometer === 'function') {
@@ -3427,7 +3438,6 @@ function setCalibStim(stimType) {
         // 4. Penanganan Autoplay Policy Browser dengan jeda mikro yang aman
         if (audioCtx.state === 'suspended') {
             audioCtx.resume().then(() => { 
-                // Beri jeda 15ms agar pembersihan memori suara lama selesai sempurna
                 setTimeout(() => {
                     executeCalibrationAudio(); 
                 }, 15);
@@ -3445,7 +3455,7 @@ function setCalibStim(stimType) {
     }
         
    // =================================================================
-    // 2. FUNGSI EXECUTE (Fade In Tanpa setTimeout)
+    // 2. FUNGSI EXECUTE (Channel Isolator Mutlak Tanpa Panner)
     // =================================================================
     function executeCalibrationAudio() {
         if (!audioCtx) { audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)(); }
@@ -3486,12 +3496,27 @@ function setCalibStim(stimType) {
         let currentGain = audioCtx.createGain();
         calibGainNode = currentGain; 
 
-        // FADE IN NATIVE (Naik sehalus analog, tanpa intervensi JS event loop)
+        // FADE IN NATIVE
         currentGain.gain.setValueAtTime(0.00001, now);
         currentGain.gain.setTargetAtTime(targetGainVal, now, 0.02);
 
-        calibPanner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
-        if (calibPanner) calibPanner.pan.value = (side === 'R') ? 1 : -1;
+        // --- SISTEM PEMISAH KANAL MUTLAK ---
+        let merger = audioCtx.createChannelMerger(2);
+        let lGain = audioCtx.createGain();
+        let rGain = audioCtx.createGain();
+        
+        calibMerger = merger;
+        calibLeftGain = lGain;
+        calibRightGain = rGain;
+
+        // Kunci total kanal yang tidak digunakan ke 0.0 agar tidak ada crosstalk
+        if (side === 'R') {
+            lGain.gain.setValueAtTime(0.0, now);
+            rGain.gain.setValueAtTime(1.0, now);
+        } else {
+            lGain.gain.setValueAtTime(1.0, now);
+            rGain.gain.setValueAtTime(0.0, now);
+        }
 
         if (stim === 'tone') {
             calibOsc = audioCtx.createOscillator(); 
@@ -3515,7 +3540,6 @@ function setCalibStim(stimType) {
             calibLfo.start(now); 
             calibOsc.start(now);
         } else if (stim === 'nbn') {
-            // Buffer diturunkan jadi 1 detik untuk meringankan kerja memori (CPU)
             let bufferSize = audioCtx.sampleRate; 
             let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
             let data = buffer.getChannelData(0);
@@ -3535,21 +3559,22 @@ function setCalibStim(stimType) {
             calibNoiseSource.start(now);
         }
         
-        if (calibPanner) {
-            currentGain.connect(calibPanner).connect(audioCtx.destination);
-        } else {
-            currentGain.connect(audioCtx.destination);
-        }
+        // --- ROUTING GRAFIK AUDIO ---
+        currentGain.connect(lGain);
+        currentGain.connect(rGain);
+        lGain.connect(merger, 0, 0); // Rute ke Kiri
+        rGain.connect(merger, 0, 1); // Rute ke Kanan
+        merger.connect(audioCtx.destination);
     }
             
     // =================================================================
-    // 3. FUNGSI WHITE NOISE (Optimasi Native Audio)
+    // 3. FUNGSI WHITE NOISE (Optimasi Native Audio + Channel Isolator)
     // =================================================================
     function playCalibrationWhiteNoise(side) {
         if (!audioCtx) audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         const now = audioCtx.currentTime;
 
-        let bufferSize = audioCtx.sampleRate; // Kurangi ke 1 detik loop
+        let bufferSize = audioCtx.sampleRate; 
         let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
         let output = noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
@@ -3558,21 +3583,39 @@ function setCalibStim(stimType) {
         calibrationNoiseNode.buffer = noiseBuffer; 
         calibrationNoiseNode.loop = true;
         
-        calibPanner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
-        if (calibPanner) calibPanner.pan.value = (side === 'R') ? 1 : -1;
-        
         let currentWnGain = audioCtx.createGain(); 
         calibWnGain = currentWnGain; 
 
         // FADE IN NATIVE UNTUK WHITE NOISE
         currentWnGain.gain.setValueAtTime(0.00001, now);
         currentWnGain.gain.setTargetAtTime(0.1, now, 0.02);
+
+        // --- SISTEM PEMISAH KANAL MUTLAK ---
+        let merger = audioCtx.createChannelMerger(2);
+        let lGain = audioCtx.createGain();
+        let rGain = audioCtx.createGain();
         
-        if (calibPanner) {
-            calibrationNoiseNode.connect(currentWnGain).connect(calibPanner).connect(audioCtx.destination); 
+        calibMerger = merger;
+        calibLeftGain = lGain;
+        calibRightGain = rGain;
+
+        // Kunci total kanal
+        if (side === 'R') {
+            lGain.gain.setValueAtTime(0.0, now);
+            rGain.gain.setValueAtTime(1.0, now);
         } else {
-            calibrationNoiseNode.connect(currentWnGain).connect(audioCtx.destination);
+            lGain.gain.setValueAtTime(1.0, now);
+            rGain.gain.setValueAtTime(0.0, now);
         }
+        
+        // --- ROUTING GRAFIK AUDIO ---
+        calibrationNoiseNode.connect(currentWnGain);
+        currentWnGain.connect(lGain);
+        currentWnGain.connect(rGain);
+        lGain.connect(merger, 0, 0);
+        rGain.connect(merger, 0, 1);
+        merger.connect(audioCtx.destination);
+        
         calibrationNoiseNode.start(now);
     }
 
