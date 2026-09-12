@@ -3770,31 +3770,74 @@ function generateDetailedCalibrationReport() {
 }
 
     function saveCurrentCalibration() {
-    let activeModelKey = calState.trans === 'AC' ? (window.currentAcModel || 'SAEP1') : calState.trans;
-    let key = calState.ear + '_' + activeModelKey;
-    if(!calibrationData[key]) calibrationData[key] = {};
-    
-    // 1. Ambil nilai dari input SLM Aktual
-    let slmVal = parseFloat(document.getElementById('c_offset_input').value) || 0;
-    
-    // 2. Ambil nilai Target SPL standar ISO
-    let tableSet = window.TRANSDUCER_REGISTRY[activeModelKey] || window.TRANSDUCER_REGISTRY['SAEP1'];
-    let targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0;
-    
-    // 3. Hitung otomatis offset
-    let calculatedOffset = targetSpl - slmVal;
-    
-    // 4. Simpan ke memori lokal
-    calibrationData[key][calState.freq] = parseFloat(calculatedOffset.toFixed(2));
-    
-    saveCalibrationToStorage();
-    let nowStr = new Date().toLocaleString();
-    localStorage.setItem('gsi_last_calibrated_date', nowStr);
-    renderCalibrationUI();
-    
-    // 👇 BARIS INI YANG DITAMBAHKAN UNTUK AUTO-BACKUP 👇
-    backupCalibrationToCloud();
-    // --------------------------------------------------
+    try {
+        // 1. Identifikasi Transduser Aktif
+        let activeModelKey = calState.trans === 'AC' ? (window.currentAcModel || 'SAEP1') : calState.trans;
+        let key = calState.ear + '_' + activeModelKey;
+        
+        // Buat memori kosong jika belum ada
+        if (typeof calibrationData === 'undefined') window.calibrationData = {};
+        if (!calibrationData[key]) calibrationData[key] = {};
+        
+        // 2. Ambil nilai SLM yang diketik pengguna
+        let offsetInputEl = document.getElementById('c_offset_input');
+        if (!offsetInputEl) {
+            alert("❌ Gagal: Kotak input SLM (c_offset_input) tidak ditemukan di layar.");
+            return;
+        }
+        let slmVal = parseFloat(offsetInputEl.value) || 0;
+        
+        // 3. Ambil Target SPL standar ISO
+        let tableSet = window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[activeModelKey] ? window.TRANSDUCER_REGISTRY[activeModelKey] : (window.TRANSDUCER_REGISTRY['SAEP1'] || {});
+        let targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0;
+        
+        // 4. Hitung dan Simpan Offset Murni
+        let calculatedOffset = targetSpl - slmVal;
+        calibrationData[key][calState.freq] = parseFloat(calculatedOffset.toFixed(2));
+        
+        // Simpan ke Local Storage (Browser)
+        if (typeof saveCalibrationToStorage === 'function') {
+            saveCalibrationToStorage();
+        } else {
+            localStorage.setItem('gsi_calibration_data', JSON.stringify(calibrationData));
+        }
+
+        // 5. Perbarui Tanggal Kalibrasi
+        let nowStr = new Date().toLocaleString('id-ID');
+        localStorage.setItem('gsi_last_calibrated_date', nowStr);
+        window.lastCalDate = nowStr; // Sinkronisasi variabel untuk cetak sertifikat
+        
+        // 👉 PERBARUI TAMPILAN BANNER KUNING SECARA LANGSUNG
+        let labelTanggal = document.getElementById('labelTanggalKalibrasi');
+        if (labelTanggal) {
+            labelTanggal.innerText = nowStr;
+            labelTanggal.style.color = "#16a34a"; // Ubah warnanya jadi hijau
+            labelTanggal.style.fontWeight = "bold";
+        }
+        
+        // 6. Refresh UI
+        if (typeof renderCalibrationUI === 'function') {
+            renderCalibrationUI();
+        }
+        
+        // 7. Auto-Backup ke Cloud
+        if (typeof backupCalibrationToCloud === 'function') {
+            backupCalibrationToCloud();
+        } else {
+            console.warn("Fungsi backupCalibrationToCloud tidak ditemukan. Hanya menyimpan lokal.");
+        }
+        
+        if (typeof showToast === 'function') {
+            showToast("✔ Tersimpan: " + calState.freq + " Hz (" + key + ") -> Offset: " + calculatedOffset.toFixed(2) + " dB");
+        } else {
+            alert("✔ Data kalibrasi berhasil disimpan!");
+        }
+
+    } catch (err) {
+        console.error("Gagal menyimpan kalibrasi:", err);
+        alert("Terjadi kesalahan sistem saat menyimpan: " + err.message);
+    }
+}
     
     showToast("✔ Saved & Calibrated: " + calState.freq + " Hz (" + key + ") -> Offset: " + calculatedOffset.toFixed(2) + " dB");
 }
