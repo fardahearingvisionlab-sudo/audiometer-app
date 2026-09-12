@@ -5322,7 +5322,7 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 }
 
 // ============================================================
-    // 1. FUNGSI START TONE (Dioptimalkan dengan Native Audio Timeline)
+    // 1. FUNGSI START TONE (Dioptimalkan dengan Channel Merger Mutlak)
     // ============================================================
     function startTone() {
         if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
@@ -5355,48 +5355,60 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
         // 2. AMANKAN NODE LAMA KE VARIABEL LOKAL SEBELUM DIBERSIHKAN
         let oldOsc = typeof osc !== 'undefined' ? osc : null;
         let oldGain = typeof currentGainNode !== 'undefined' ? currentGainNode : null;
-        let oldPan = typeof panner !== 'undefined' ? panner : null;
+        let oldMerger = typeof channelMerger !== 'undefined' ? channelMerger : null;
+        let oldLeftGain = typeof leftGainNode !== 'undefined' ? leftGainNode : null;
+        let oldRightGain = typeof rightGainNode !== 'undefined' ? rightGainNode : null;
         let oldLfo = typeof examLfo !== 'undefined' ? examLfo : null;
 
-        // Kosongkan variabel global segera agar tidak konflik
-        osc = null; currentGainNode = null; panner = null; examLfo = null;
+        // Kosongkan variabel global segera
+        osc = null; currentGainNode = null; channelMerger = null; leftGainNode = null; rightGainNode = null; examLfo = null;
 
-        // Matikan node lama dengan Fade-out halus 15ms jika masih aktif
+        // Matikan node lama dengan Fade-out halus 15ms
         if (oldGain) {
             try {
                 oldGain.gain.cancelScheduledValues(now);
                 oldGain.gain.setTargetAtTime(0.00001, now, 0.015);
             } catch(e) {}
         }
+        if (oldLeftGain) {
+            try { oldLeftGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {}
+        }
+        if (oldRightGain) {
+            try { oldRightGain.gain.setTargetAtTime(0.00001, now, 0.015); } catch(e) {}
+        }
         if (oldOsc) { try { oldOsc.stop(now + 0.03); } catch(e) {} }
         if (oldLfo) { try { oldLfo.stop(now + 0.03); } catch(e) {} }
 
-        // Bersihkan memori node lama di latar belakang (aman setelah 150ms)
+        // Bersihkan memori node lama di latar belakang
         setTimeout(() => {
             try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
             try { if (oldGain) oldGain.disconnect(); } catch(e) {}
-            try { if (oldPan) oldPan.disconnect(); } catch(e) {}
+            try { if (oldMerger) oldMerger.disconnect(); } catch(e) {}
+            try { if (oldLeftGain) oldLeftGain.disconnect(); } catch(e) {}
+            try { if (oldRightGain) oldRightGain.disconnect(); } catch(e) {}
             try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
         }, 150);
 
-        // 3. BUAT NODE BARU DENGAN NATIVE TIMELINE
+        // 3. BUAT NODE BARU DENGAN KONTROL KANAL MUTLAK (TANPA PANELLER)
         let newOsc = audioCtx.createOscillator(); 
-        let newPan = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
-        let newGain = audioCtx.createGain();
+        let newMasterGain = audioCtx.createGain();
+        
+        // Pemisah kanal mutlak menggunakan ChannelMerger(2) dan Gain terpisah
+        let merger = audioCtx.createChannelMerger(2);
+        let lGain = audioCtx.createGain();
+        let rGain = audioCtx.createGain();
 
-        // Masukkan ke variabel global
+        // Masukkan ke variabel global agar bisa dibersihkan nanti
         osc = newOsc;
-        panner = newPan;
-        currentGainNode = newGain;
+        currentGainNode = newMasterGain;
+        channelMerger = merger;
+        leftGainNode = lGain;
+        rightGainNode = rGain;
         
         let freq = FREQUENCIES[currentFreqIndex] || 1000; 
         
         newOsc.type = 'sine';
         newOsc.frequency.setValueAtTime(freq, now); 
-        
-        if (newPan) {
-            newPan.pan.value = (currentMode === 'FFT' || currentMode === 'BC') ? 0 : (activeEar === 'right' ? 1 : -1);
-        }
 
         if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
             let lfo = audioCtx.createOscillator();
@@ -5435,15 +5447,33 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
         if (isNaN(targetGain)) targetGain = 0.0001;
         targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-        // FADE-IN NATIVE (Tanpa setTimeout, dijamin mulus tanpa letupan)
-        newGain.gain.setValueAtTime(0.00001, now);
-        newGain.gain.setTargetAtTime(targetGain, now, 0.015); // Naik halus dalam ~15-30ms
-        
-        if (newPan) {
-            newOsc.connect(newGain).connect(newPan).connect(audioCtx.destination); 
+        // FADE-IN NATIVE PADA MASTER GAIN
+        newMasterGain.gain.setValueAtTime(0.00001, now);
+        newMasterGain.gain.setTargetAtTime(targetGain, now, 0.015);
+
+        // ATUR ISOLASI KANAL MUTLAK (Kanal yang tidak dipilih ditutup total ke 0)
+        let isFreeField = (currentMode === 'FFT' || currentMode === 'BC');
+        if (isFreeField) {
+            // Jika Free Field atau Bone Conduction,bunyikan kedua kanal seimbang (Center)
+            lGain.gain.setValueAtTime(1.0, now);
+            rGain.gain.setValueAtTime(1.0, now);
+        } else if (activeEar === 'right') {
+            lGain.gain.setValueAtTime(0.0, now);  // Kiri MATI TOTAL (0 kebocoran)
+            rGain.gain.setValueAtTime(1.0, now);  // Kanan HIDUP
         } else {
-            newOsc.connect(newGain).connect(audioCtx.destination);
+            lGain.gain.setValueAtTime(1.0, now);  // Kiri HIDUP
+            rGain.gain.setValueAtTime(0.0, now);  // Kanan MATI TOTAL (0 kebocoran)
         }
+
+        // RANGKAI AUDIO GRAPH: Oscillator -> MasterGain -> Cabang Kiri/Kanan -> Merger -> Speaker
+        newOsc.connect(newMasterGain);
+        newMasterGain.connect(lGain);
+        newMasterGain.connect(rGain);
+
+        lGain.connect(merger, 0, 0); // Masuk ke slot kanal 0 (Kiri)
+        rGain.connect(merger, 0, 1); // Masuk ke slot kanal 1 (Kanan)
+        
+        merger.connect(audioCtx.destination);
         newOsc.start(now); 
 
         isPlaying = true;
@@ -5455,7 +5485,7 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
     }
 
     // ============================================================
-    // 2. FUNGSI STOP TONE (Dioptimalkan dengan Native Audio Timeline)
+    // 2. FUNGSI STOP TONE (Dioptimalkan dengan Channel Merger Mutlak)
     // ============================================================
     function stopTone() {
         let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
@@ -5475,25 +5505,41 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 
         const now = audioCtx.currentTime;
 
-        // Amankan node aktif ke variabel lokal
+        // Amankan node aktif ke variabel lokal termasuk channel merger & gain terpisah
         let oldOsc = osc;
         let oldGain = currentGainNode;
-        let oldPan = panner;
+        let oldMerger = typeof channelMerger !== 'undefined' ? channelMerger : null;
+        let oldLeftGain = typeof leftGainNode !== 'undefined' ? leftGainNode : null;
+        let oldRightGain = typeof rightGainNode !== 'undefined' ? rightGainNode : null;
         let oldLfo = examLfo;
         let oldSpeech = typeof speechSourceNode !== 'undefined' ? speechSourceNode : null;
 
         // Kosongkan variabel global segera
         osc = null;
         currentGainNode = null;
-        panner = null;
+        channelMerger = null;
+        leftGainNode = null;
+        rightGainNode = null;
         examLfo = null;
         speechSourceNode = null;
 
-        // FADE-OUT NATIVE (Sangat presisi, menurunkan gain ke 0.00001 dalam 20ms)
+        // FADE-OUT NATIVE pada Master Gain & Kanal terpisah
         if (oldGain) {
             try {
                 oldGain.gain.cancelScheduledValues(now);
                 oldGain.gain.setTargetAtTime(0.00001, now, 0.01);
+            } catch(e) {}
+        }
+        if (oldLeftGain) {
+            try {
+                oldLeftGain.gain.cancelScheduledValues(now);
+                oldLeftGain.gain.setTargetAtTime(0.00001, now, 0.01);
+            } catch(e) {}
+        }
+        if (oldRightGain) {
+            try {
+                oldRightGain.gain.cancelScheduledValues(now);
+                oldRightGain.gain.setTargetAtTime(0.00001, now, 0.01);
             } catch(e) {}
         }
 
@@ -5507,7 +5553,9 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
         setTimeout(() => {
             try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
             try { if (oldGain) oldGain.disconnect(); } catch(e) {}
-            try { if (oldPan) oldPan.disconnect(); } catch(e) {}
+            try { if (oldMerger) oldMerger.disconnect(); } catch(e) {}
+            try { if (oldLeftGain) oldLeftGain.disconnect(); } catch(e) {}
+            try { if (oldRightGain) oldRightGain.disconnect(); } catch(e) {}
             try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
             try { if (oldSpeech) oldSpeech.disconnect(); } catch(e) {}
         }, 150);
