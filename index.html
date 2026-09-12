@@ -3354,16 +3354,16 @@ function setCalibStim(stimType) {
 }
 
 // ============================================================
-// FUNGSI KONTROL KALIBRASI (Diperbaiki: Protokol Serial Benar & Fade-In Mulus)
+// FUNGSI KONTROL KALIBRASI (Halus, Bebas Krek, & Serial Murni)
 // ============================================================
 
 function stopCalibrationSound() {
     // Fade out gain secara halus sebelum dimatikan total untuk cegah letupan
-    if (typeof calibGainNode !== 'undefined' && calibGainNode && audioCtx) {
+    if (typeof calibGainNode !== 'undefined' && calibGainNode && window.audioCtx) {
         try {
             calibGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
             calibGainNode.gain.setValueAtTime(calibGainNode.gain.value, audioCtx.currentTime);
-            calibGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+            calibGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05); // Fade-out 50ms
         } catch(e) {}
     }
 
@@ -3373,13 +3373,11 @@ function stopCalibrationSound() {
         if (typeof calibNoiseSource !== 'undefined' && calibNoiseSource) { try { calibNoiseSource.stop(); calibNoiseSource.disconnect(); } catch(e){} calibNoiseSource = null; }
         if (typeof calibrationNoiseNode !== 'undefined' && calibrationNoiseNode) { try { calibrationNoiseNode.stop(); calibrationNoiseNode.disconnect(); } catch(e){} calibrationNoiseNode = null; }
         if (typeof calibGainNode !== 'undefined' && calibGainNode) { try { calibGainNode.disconnect(); } catch(e){} calibGainNode = null; }
-    }, 35);
+    }, 60);
     
     // Kirim status stimulus mati (S0) ke Arduino
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("S0\n");
-    } else {
-        console.warn("Fungsi kirimDataAudiometer tidak ditemukan saat mencoba STOP!");
     }
 }
 
@@ -3407,9 +3405,11 @@ function startCalibrationSound() {
 }
 
 function executeCalibrationAudio() {
-    if (!audioCtx) {
-        audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!window.audioCtx) {
+        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    audioCtx = window.audioCtx;
+    
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
@@ -3458,18 +3458,17 @@ function executeCalibrationAudio() {
                                 "I" + Math.round(targetOutput) + "\n" +
                                 "S1\n";
         kirimDataAudiometer(perintahKalibrasi);
-    } else {
-        console.warn("Fungsi kirimDataAudiometer tidak ditemukan!");
     }
     
     const SYSTEM_MAX_SPL = 95; 
     let gainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
     
-    calibGainNode = audioCtx.createGain(); 
+    // Inisialisasi gain secara global agar terbaca oleh stopCalibrationSound()
+    window.calibGainNode = audioCtx.createGain(); 
     
     // FADE-IN HALUS: Mencegah letupan saat kalibrasi dimulai
-    calibGainNode.gain.setValueAtTime(0.0001, now);
-    calibGainNode.gain.linearRampToValueAtTime(gainVal, now + 0.035);
+    window.calibGainNode.gain.setValueAtTime(0.0001, now);
+    window.calibGainNode.gain.linearRampToValueAtTime(gainVal, now + 0.035);
 
     let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     if (panner) {
@@ -3480,7 +3479,7 @@ function executeCalibrationAudio() {
         calibOsc = audioCtx.createOscillator(); 
         calibOsc.type = 'sine'; 
         calibOsc.frequency.setValueAtTime(freq, now); 
-        calibOsc.connect(calibGainNode); 
+        calibOsc.connect(window.calibGainNode); 
         calibOsc.start(now);
     } else if (stim === 'warble') {
         calibOsc = audioCtx.createOscillator(); 
@@ -3494,7 +3493,7 @@ function executeCalibrationAudio() {
         
         calibLfo.connect(lfoGain); 
         lfoGain.connect(calibOsc.frequency); 
-        calibOsc.connect(calibGainNode);
+        calibOsc.connect(window.calibGainNode);
         calibLfo.start(now); 
         calibOsc.start(now);
     } else if (stim === 'nbn') {
@@ -3513,20 +3512,24 @@ function executeCalibrationAudio() {
         calibFilter.Q.setValueAtTime(10, now);
         
         calibNoiseSource.connect(calibFilter); 
-        calibFilter.connect(calibGainNode); 
+        calibFilter.connect(window.calibGainNode); 
         calibNoiseSource.start(now);
     }
     
     if (panner) {
-        calibGainNode.connect(panner).connect(audioCtx.destination);
+        window.calibGainNode.connect(panner).connect(audioCtx.destination);
     } else {
-        calibGainNode.connect(audioCtx.destination);
+        window.calibGainNode.connect(audioCtx.destination);
     }
 }
 
 function playCalibrationWhiteNoise(side) {
-    if (!audioCtx) audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!window.audioCtx) {
+        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    audioCtx = window.audioCtx;
     const now = audioCtx.currentTime;
+    
     let bufferSize = audioCtx.sampleRate * 2; 
     let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
     let output = noiseBuffer.getChannelData(0);
@@ -3541,18 +3544,18 @@ function playCalibrationWhiteNoise(side) {
         panner.pan.value = (side === 'R') ? 1 : -1;
     }
     
-    let gainNode = audioCtx.createGain(); 
-    gainNode.gain.setValueAtTime(0.0001, now);
-    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.035); 
+    // PERBAIKAN: Gunakan variabel global calibGainNode agar bisa difade-out saat stop
+    window.calibGainNode = audioCtx.createGain(); 
+    window.calibGainNode.gain.setValueAtTime(0.0001, now);
+    window.calibGainNode.gain.linearRampToValueAtTime(0.1, now + 0.035); 
     
     if (panner) {
-        calibrationNoiseNode.connect(gainNode).connect(panner).connect(audioCtx.destination); 
+        calibrationNoiseNode.connect(window.calibGainNode).connect(panner).connect(audioCtx.destination); 
     } else {
-        calibrationNoiseNode.connect(gainNode).connect(audioCtx.destination);
+        calibrationNoiseNode.connect(window.calibGainNode).connect(audioCtx.destination);
     }
     calibrationNoiseNode.start(now);
 }
-
         
     function exportCalibrationReport() {
     let modal = document.getElementById('calibrationSnModal');
