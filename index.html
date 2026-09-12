@@ -7018,15 +7018,16 @@ function restoreCalibrationFromCloud() {
         updateConnectionUI(true); // Ini membuat isConnectedArduino menjadi true
         if (typeof showToast === 'function') showToast(pesanSukses);
         
-        // --- TAMBAHAN KODE PENYELAMAT SINKRONISASI ---
-        // Langsung tembak data default ke Arduino agar relay langsung bunyi "klik"
-        // Karena default alat Anda terdeteksi di Kanan (R), kita kirimkan "R\n".
+        // --- PERBAIKAN SINKRONISASI AMAN TANPA KREK ---
+        // Alih-alih mengirim "R\n" mentah yang membuat Arduino kaget, 
+        // kita kirimkan paket status awal pemeriksaan normal secara bertahap.
         setTimeout(() => {
-            kirimDataAudiometer("R\n"); 
-            
-            // Catatan: Jika Arduino Anda membutuhkan format data lengkap untuk pindah channel,
-            // gunakan format tersebut. Contoh: kirimDataAudiometer("AC,R,1000,40\n");
-        }, 500); // Diberi jeda 0.5 detik agar port Arduino benar-benar bernapas dulu
+            kirimDataAudiometer("CAC\n");     // Pastikan mode AC
+            kirimDataAudiometer("ER\n");     // Telinga Kanan (Right)
+            kirimDataAudiometer("F1000\n");  // Frekuensi 1000 Hz
+            kirimDataAudiometer("I40\n");    // Intensitas 40 dB normal
+            kirimDataAudiometer("X\n");      // Refresh LCD
+        }, 600); // Jeda 0.6 detik agar port siap sepenuhnya
         // ----------------------------------------------
 
         // Jalankan pembaca
