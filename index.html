@@ -3353,23 +3353,31 @@ function setCalibStim(stimType) {
     }
 }
 
-    // ============================================================
-// FUNGSI KONTROL KALIBRASI (Diperbaiki dengan StereoPanner Stabil)
+// ============================================================
+// FUNGSI KONTROL KALIBRASI (Diperbaiki: Protokol Serial Benar & Fade-In Mulus)
 // ============================================================
 
 function stopCalibrationSound() {
-    // 1. Matikan semua sumber suara di Web Audio API dengan aman
-    if (typeof calibOsc !== 'undefined' && calibOsc) { try { calibOsc.stop(); calibOsc.disconnect(); } catch(e){} calibOsc = null; }
-    if (typeof calibLfo !== 'undefined' && calibLfo) { try { calibLfo.stop(); calibLfo.disconnect(); } catch(e){} calibLfo = null; }
-    if (typeof calibNoiseSource !== 'undefined' && calibNoiseSource) { try { calibNoiseSource.stop(); calibNoiseSource.disconnect(); } catch(e){} calibNoiseSource = null; }
-    if (typeof calibrationNoiseNode !== 'undefined' && calibrationNoiseNode) { try { calibrationNoiseNode.stop(); calibrationNoiseNode.disconnect(); } catch(e){} calibrationNoiseNode = null; }
-    if (typeof calibGainNode !== 'undefined' && calibGainNode) { try { calibGainNode.disconnect(); } catch(e){} calibGainNode = null; }
+    // Fade out gain secara halus sebelum dimatikan total untuk cegah letupan
+    if (typeof calibGainNode !== 'undefined' && calibGainNode && audioCtx) {
+        try {
+            calibGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+            calibGainNode.gain.setValueAtTime(calibGainNode.gain.value, audioCtx.currentTime);
+            calibGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+        } catch(e) {}
+    }
+
+    setTimeout(() => {
+        if (typeof calibOsc !== 'undefined' && calibOsc) { try { calibOsc.stop(); calibOsc.disconnect(); } catch(e){} calibOsc = null; }
+        if (typeof calibLfo !== 'undefined' && calibLfo) { try { calibLfo.stop(); calibLfo.disconnect(); } catch(e){} calibLfo = null; }
+        if (typeof calibNoiseSource !== 'undefined' && calibNoiseSource) { try { calibNoiseSource.stop(); calibNoiseSource.disconnect(); } catch(e){} calibNoiseSource = null; }
+        if (typeof calibrationNoiseNode !== 'undefined' && calibrationNoiseNode) { try { calibrationNoiseNode.stop(); calibrationNoiseNode.disconnect(); } catch(e){} calibrationNoiseNode = null; }
+        if (typeof calibGainNode !== 'undefined' && calibGainNode) { try { calibGainNode.disconnect(); } catch(e){} calibGainNode = null; }
+    }, 35);
     
-    // =========================================================
-    // 2. MATIKAN RELAY ARDUINO VIA QUEUE SERIAL
-    // =========================================================
+    // Kirim status stimulus mati (S0) ke Arduino
     if (typeof kirimDataAudiometer === 'function') {
-        kirimDataAudiometer("STOP,0,0,0\n");
+        kirimDataAudiometer("S0\n");
     } else {
         console.warn("Fungsi kirimDataAudiometer tidak ditemukan saat mencoba STOP!");
     }
@@ -3378,15 +3386,12 @@ function stopCalibrationSound() {
 function startCalibrationSound() {
     stopCalibrationSound();
     
-    // 1. Inisialisasi AudioContext global yang aman
     if (!window.audioCtx || window.audioCtx.state === 'closed') {
         window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     
-    // 2. Sinkronkan variabel agar `audioCtx` lokal terbaca
     audioCtx = window.audioCtx;
 
-    // 3. Penanganan Autoplay Policy Browser
     if (audioCtx.state === 'suspended') {
         audioCtx.resume().then(() => { 
             executeCalibrationAudio(); 
@@ -3408,18 +3413,20 @@ function executeCalibrationAudio() {
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
+    const now = audioCtx.currentTime;
 
     let stim = calState.stimType || 'tone'; 
     let freq = Number(calState.freq) || 1000; 
     let side = calState.ear;
 
-    // Jika stimulus adalah White Noise, alihkan ke fungsinya khusus
+    // Jika stimulus adalah White Noise, alihkan ke fungsi khusus
     if (stim === 'wn') { 
         playCalibrationWhiteNoise(side); 
         
         let modeWN = (calState.trans === 'SPKR') ? 'FFT' : calState.trans;
         if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer(`${modeWN},${side},${freq},70\n`);
+            let perintahWN = "C" + modeWN + "\nE" + side + "\nF" + freq + "\nI70\nS1\n";
+            kirimDataAudiometer(perintahWN);
         }
         return; 
     }
@@ -3443,9 +3450,13 @@ function executeCalibrationAudio() {
         modeArduino = 'FFT'; 
     }
     
-    let perintahKalibrasi = `${modeArduino},${side},${freq},${Math.round(targetOutput)}\n`;
-    
+    // Perbaikan Protokol Serial (Single-letter multi-line yang dipahami parser Arduino)
     if (typeof kirimDataAudiometer === 'function') {
+        let perintahKalibrasi = "C" + modeArduino + "\n" +
+                                "E" + side + "\n" +
+                                "F" + freq + "\n" +
+                                "I" + Math.round(targetOutput) + "\n" +
+                                "S1\n";
         kirimDataAudiometer(perintahKalibrasi);
     } else {
         console.warn("Fungsi kirimDataAudiometer tidak ditemukan!");
@@ -3455,7 +3466,10 @@ function executeCalibrationAudio() {
     let gainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
     
     calibGainNode = audioCtx.createGain(); 
-    calibGainNode.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+    
+    // FADE-IN HALUS: Mencegah letupan saat kalibrasi dimulai
+    calibGainNode.gain.setValueAtTime(0.0001, now);
+    calibGainNode.gain.linearRampToValueAtTime(gainVal, now + 0.035);
 
     let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     if (panner) {
@@ -3465,24 +3479,24 @@ function executeCalibrationAudio() {
     if (stim === 'tone') {
         calibOsc = audioCtx.createOscillator(); 
         calibOsc.type = 'sine'; 
-        calibOsc.frequency.setValueAtTime(freq, audioCtx.currentTime); 
+        calibOsc.frequency.setValueAtTime(freq, now); 
         calibOsc.connect(calibGainNode); 
-        calibOsc.start();
+        calibOsc.start(now);
     } else if (stim === 'warble') {
         calibOsc = audioCtx.createOscillator(); 
         calibOsc.type = 'sine'; 
-        calibOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        calibOsc.frequency.setValueAtTime(freq, now);
         
         calibLfo = audioCtx.createOscillator(); 
-        calibLfo.frequency.setValueAtTime(5, audioCtx.currentTime);
+        calibLfo.frequency.setValueAtTime(5, now);
         let lfoGain = audioCtx.createGain(); 
-        lfoGain.gain.setValueAtTime(freq * 0.05, audioCtx.currentTime);
+        lfoGain.gain.setValueAtTime(freq * 0.05, now);
         
         calibLfo.connect(lfoGain); 
         lfoGain.connect(calibOsc.frequency); 
         calibOsc.connect(calibGainNode);
-        calibLfo.start(); 
-        calibOsc.start();
+        calibLfo.start(now); 
+        calibOsc.start(now);
     } else if (stim === 'nbn') {
         let bufferSize = audioCtx.sampleRate * 2; 
         let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
@@ -3495,12 +3509,12 @@ function executeCalibrationAudio() {
         
         let calibFilter = audioCtx.createBiquadFilter(); 
         calibFilter.type = 'bandpass'; 
-        calibFilter.frequency.setValueAtTime(freq, audioCtx.currentTime); 
-        calibFilter.Q.setValueAtTime(10, audioCtx.currentTime);
+        calibFilter.frequency.setValueAtTime(freq, now); 
+        calibFilter.Q.setValueAtTime(10, now);
         
         calibNoiseSource.connect(calibFilter); 
         calibFilter.connect(calibGainNode); 
-        calibNoiseSource.start();
+        calibNoiseSource.start(now);
     }
     
     if (panner) {
@@ -3512,6 +3526,7 @@ function executeCalibrationAudio() {
 
 function playCalibrationWhiteNoise(side) {
     if (!audioCtx) audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
     let bufferSize = audioCtx.sampleRate * 2; 
     let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
     let output = noiseBuffer.getChannelData(0);
@@ -3527,14 +3542,15 @@ function playCalibrationWhiteNoise(side) {
     }
     
     let gainNode = audioCtx.createGain(); 
-    gainNode.gain.value = 0.1; 
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.035); 
     
     if (panner) {
         calibrationNoiseNode.connect(gainNode).connect(panner).connect(audioCtx.destination); 
     } else {
         calibrationNoiseNode.connect(gainNode).connect(audioCtx.destination);
     }
-    calibrationNoiseNode.start();
+    calibrationNoiseNode.start(now);
 }
 
         
@@ -5283,7 +5299,7 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 }
 
 // ============================================================
-// 1. FUNGSI START TONE (Dikembalikan Menggunakan StereoPanner Standar & Aman)
+// 1. FUNGSI START TONE (Dengan Fade-In Mulus & Protokol Serial Arduino yang Benar)
 // ============================================================
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
@@ -5358,8 +5374,9 @@ function startTone() {
         let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
         targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
+        // TRANSISI HALUS (FADE-IN): Mencegah klik/pop digital saat suara mulai
         currentGainNode.gain.setValueAtTime(0.0001, now);
-        currentGainNode.gain.setTargetAtTime(targetGain, now, 0.015);
+        currentGainNode.gain.linearRampToValueAtTime(targetGain, now + 0.035); 
         
         // Rangkai Hubungan Audio
         if (panner) {
@@ -5376,14 +5393,9 @@ function startTone() {
         isPlaying = true;
         document.getElementById('signalIndicatorBox')?.classList.add('active');
 
-        // Kirim Data tunggal ke Arduino via Queue
+        // KIRIM STATUS STIMULUS MENYALA (S1) KE ARDUINO TANPA MERUSAK BUFFER SERIAL
         if (typeof kirimDataAudiometer === 'function') {
-            let finalSide = (activeEar === 'left') ? 'L' : 'R';
-            let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-            if (finalMode === 'SPKR') finalMode = 'FFT';
-            
-            let command = `${finalMode},${finalSide},${freq},${intensityHL}\n`;
-            kirimDataAudiometer(command);
+            kirimDataAudiometer("S1\n");
         }
     };
 
@@ -5396,14 +5408,13 @@ function startTone() {
 
 
 // ============================================================
-// 2. FUNGSI TRIGGER SIGNAL (Dikembalikan Murni Menghidupkan Sinyal & Tombol Spasi)
+// 2. FUNGSI TRIGGER SIGNAL
 // ============================================================
 function triggerSignalPresentation() {
     let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
     let leftEarPanel = document.querySelector('.ear-panel.left-ear');
     let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
 
-    // Nyalakan Indikator Visual / Panel Telinga
     let durationMs = 1000; 
     let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
     
@@ -5424,13 +5435,12 @@ function triggerSignalPresentation() {
         }
     }
 
-    // Panggil fungsi utama pemutar suara
     startTone();
 }
 
 
 // ============================================================
-// 3. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware)
+// 3. FUNGSI STOP TONE (Dengan Fade-Out Lembut & S0)
 // ============================================================
 function stopTone() {
     let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
@@ -5463,9 +5473,9 @@ function stopTone() {
     isPlaying = false; 
     document.getElementById('signalIndicatorBox')?.classList.remove('active');
 
-    // Kirim Perintah Berhenti ke Arduino
+    // KIRIM STATUS STIMULUS MATI (S0) KE ARDUINO
     if (typeof kirimDataAudiometer === 'function') {
-        kirimDataAudiometer("STOP,0,0,0\n"); 
+        kirimDataAudiometer("S0\n"); 
     }
 }
         
