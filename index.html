@@ -3152,16 +3152,29 @@ function updatePrintChartsData() {
     }
 
     function closeCalibrationModal() { 
-        document.getElementById('calibrationModal').style.display = 'none'; 
-        if (calibClockInterval) clearInterval(calibClockInterval); 
-        stopCalibrationSound(); 
-        // 👉 SUNTIKAN: Beritahu LCD Arduino KELUAR dari mode Kalibrasi
-        if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("K0\n"); 
-            // Refresh layar ke posisi normal
-            kirimDataAudiometer("X\n"); 
-        }
+    document.getElementById('calibrationModal').style.display = 'none'; 
+    if (calibClockInterval) clearInterval(calibClockInterval); 
+    stopCalibrationSound(); 
+    
+    if (typeof kirimDataAudiometer === 'function') {
+        // 1. Beritahu Arduino untuk keluar dari Mode Kalibrasi
+        kirimDataAudiometer("K0\n"); 
+        
+        // 2. SINKRONISASI ULANG KONDISI NORMAL
+        // Mengambil variabel global pemeriksaan Anda (sesuaikan jika nama variabelnya berbeda)
+        let dbNormal = (typeof currentIntensity !== 'undefined') ? currentIntensity : 40;
+        let freqNormal = (typeof currentFreq !== 'undefined') ? currentFreq : 1000;
+        let earNormal = (typeof activeEarTarget !== 'undefined') ? activeEarTarget : 'R';
+        
+        // Kirim paksa nilai normal ini ke Arduino agar menimpa sisa angka kalibrasi
+        kirimDataAudiometer("I" + dbNormal + "\n");
+        kirimDataAudiometer("F" + freqNormal + "\n");
+        kirimDataAudiometer("E" + earNormal + "\n");
+        
+        // Refresh layar LCD Arduino
+        kirimDataAudiometer("X\n"); 
     }
+}
 
     function setCalibEar(e) { 
         calState.ear = e; 
