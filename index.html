@@ -5283,16 +5283,15 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 }
 
 // ============================================================
-// 1. FUNGSI START TONE (Pusat Pemutar Sinyal dengan Kanal Mutlak)
+// 1. FUNGSI START TONE (Dikembalikan Menggunakan StereoPanner Standar & Aman)
 // ============================================================
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
 
-    // Ambil sisi telinga aktif secara konsisten ('right' atau 'left')
     let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
 
-    // 1. Pastikan AudioContext Aktif (Anti-Suspended)
+    // 1. Pastikan AudioContext Aktif
     if (!window.audioCtx || window.audioCtx.state === 'closed') {
         window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -5302,30 +5301,27 @@ function startTone() {
         if (audioCtx.state !== 'running') return;
         const now = audioCtx.currentTime;
 
-        // Bersihkan node lama dengan aman sebelum membuat baru
+        // Bersihkan node lama
         if (typeof osc !== 'undefined' && osc) { try { osc.stop(); osc.disconnect(); } catch(e){} osc = null; }
         if (typeof currentGainNode !== 'undefined' && currentGainNode) { try { currentGainNode.disconnect(); } catch(e){} currentGainNode = null; }
-        if (typeof channelMerger !== 'undefined' && channelMerger) { try { channelMerger.disconnect(); } catch(e){} channelMerger = null; }
-        if (typeof leftGainNode !== 'undefined' && leftGainNode) { try { leftGainNode.disconnect(); } catch(e){} leftGainNode = null; }
-        if (typeof rightGainNode !== 'undefined' && rightGainNode) { try { rightGainNode.disconnect(); } catch(e){} rightGainNode = null; }
+        if (typeof panner !== 'undefined' && panner) { try { panner.disconnect(); } catch(e){} panner = null; }
         if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.stop(); examLfo.disconnect(); } catch(e){} examLfo = null; }
 
         // Buat Node Baru
         osc = audioCtx.createOscillator(); 
         currentGainNode = audioCtx.createGain();
-        
-        let merger = audioCtx.createChannelMerger(2);
-        let lGain = audioCtx.createGain();
-        let rGain = audioCtx.createGain();
-        
-        channelMerger = merger;
-        leftGainNode = lGain;
-        rightGainNode = rGain;
+        panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
         
         let freq = (typeof FREQUENCIES !== 'undefined' && FREQUENCIES[currentFreqIndex]) ? FREQUENCIES[currentFreqIndex] : 1000; 
         
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now); 
+        
+        // Atur Panner Kiri/Kanan (-1 untuk Kiri, 1 untuk Kanan, 0 untuk Tengah)
+        if (panner) {
+            let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
+            panner.pan.value = isFreeField ? 0 : (activeEar === 'right' ? 1 : -1);
+        }
 
         // Tangani stimulus Warble jika aktif
         if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
@@ -5365,27 +5361,15 @@ function startTone() {
         currentGainNode.gain.setValueAtTime(0.0001, now);
         currentGainNode.gain.setTargetAtTime(targetGain, now, 0.015);
         
-        // --- SISTEM PEMISAH KANAL MUTLAK (KIRI / KANAN / FREE FIELD) ---
-        let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
-        if (isFreeField) {
-            lGain.gain.setValueAtTime(1.0, now);
-            rGain.gain.setValueAtTime(1.0, now);
-        } else if (activeEar === 'right') {
-            lGain.gain.setValueAtTime(0.0, now); // Kunci total jalur kiri ke 0
-            rGain.gain.setValueAtTime(1.0, now); // Buka jalur kanan penuh
+        // Rangkai Hubungan Audio
+        if (panner) {
+            osc.connect(currentGainNode);
+            currentGainNode.connect(panner);
+            panner.connect(audioCtx.destination);
         } else {
-            lGain.gain.setValueAtTime(1.0, now); // Buka jalur kiri penuh
-            rGain.gain.setValueAtTime(0.0, now); // Kunci total jalur kanan ke 0
+            osc.connect(currentGainNode);
+            currentGainNode.connect(audioCtx.destination);
         }
-
-        // Rangkai Grafik Audio Hubungan Node
-        osc.connect(currentGainNode);
-        currentGainNode.connect(lGain);
-        currentGainNode.connect(rGain);
-
-        lGain.connect(merger, 0, 0); // Kanal 0 = Kiri
-        rGain.connect(merger, 0, 1); // Kanal 1 = Kanan
-        merger.connect(audioCtx.destination);
         
         osc.start(now); 
 
@@ -5412,26 +5396,14 @@ function startTone() {
 
 
 // ============================================================
-// 2. FUNGSI TRIGGER SIGNAL (Pengatur Animasi & Pemancar Sinyal)
+// 2. FUNGSI TRIGGER SIGNAL (Dikembalikan Murni Menghidupkan Sinyal & Tombol Spasi)
 // ============================================================
 function triggerSignalPresentation() {
     let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
     let leftEarPanel = document.querySelector('.ear-panel.left-ear');
     let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
-    let freq = FREQUENCIES[currentFreqIndex] || 1000; 
-    let intensity = typeof currentDb !== 'undefined' ? currentDb : 40;
-    
-    let isMasking = document.getElementById('chkMasking') ? document.getElementById('chkMasking').checked : false;
-    let noiseLvl = document.getElementById('maskingDb') ? parseFloat(document.getElementById('maskingDb').value) : 30;
 
-    // Jika masking aktif, biarkan fungsi masking berjalan; jika tidak, jalankan startTone murni
-    if (isMasking && typeof playToneWithMasking === 'function') {
-        playToneWithMasking(freq, intensity, activeEar, isMasking, noiseLvl);
-    } else {
-        startTone();
-    }
-
-    // Animasi Visual Panel Telinga
+    // Nyalakan Indikator Visual / Panel Telinga
     let durationMs = 1000; 
     let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
     
@@ -5451,6 +5423,9 @@ function triggerSignalPresentation() {
             setTimeout(() => { rightEarPanel.classList.remove('flash-right'); }, durationMs); 
         }
     }
+
+    // Panggil fungsi utama pemutar suara
+    startTone();
 }
 
 
@@ -5493,7 +5468,7 @@ function stopTone() {
         kirimDataAudiometer("STOP,0,0,0\n"); 
     }
 }
-
+        
     document.getElementById('speechFolderReal')?.addEventListener('change', e => { 
         if (!e.target.files || e.target.files.length === 0) return;
         playlistQueue = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.match(/\.(wav|mp3|ogg|m4a)$/i)).sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true})); 
