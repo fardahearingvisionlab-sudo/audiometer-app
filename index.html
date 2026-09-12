@@ -5321,120 +5321,204 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
     chartInstance.update();
 }
 
-function startTone() {
-    if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
-    if (currentMode === 'Speech' || isPlaying) return;
+// ============================================================
+    // 1. FUNGSI START TONE (Dioptimalkan dengan Native Audio Timeline)
+    // ============================================================
+    function startTone() {
+        if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
+        if (currentMode === 'Speech' || isPlaying) return;
 
-    let activeEar = (typeof currentSide !== 'undefined') ? currentSide.toLowerCase() : 'right';
-    let rightEarPanel = document.querySelector('.ear-panel.right-ear');
-    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
+        let activeEar = (typeof currentSide !== 'undefined') ? currentSide.toLowerCase() : 'right';
+        let rightEarPanel = document.querySelector('.ear-panel.right-ear');
+        let leftEarPanel = document.querySelector('.ear-panel.left-ear');
 
-    if (activeEar === 'left') {
-        if (leftEarPanel) leftEarPanel.classList.add('flash-left');
-    } else {
-        if (rightEarPanel) rightEarPanel.classList.add('flash-right');
-    }
+        if (activeEar === 'left') {
+            if (leftEarPanel) leftEarPanel.classList.add('flash-left');
+        } else {
+            if (rightEarPanel) rightEarPanel.classList.add('flash-right');
+        }
 
-    isStimulusActive = true;
-    let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
-    if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
+        isStimulusActive = true;
+        let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
+        if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
 
-    // 1. BANGKITKAN AUDIO (ANTI-SLEEP)
-    if (!audioCtx || audioCtx.state === 'closed') {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume(); 
-    }
+        // 1. BANGKITKAN AUDIO (ANTI-SLEEP)
+        if (!audioCtx || audioCtx.state === 'closed') {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume(); 
+        }
 
-    // 2. [PENTING] BERSIHKAN NODE SEBELUMNYA SECARA TUNTAS 
-    // Ini mencegah suara "krek" akibat penumpukan memori audio
-    if (typeof osc !== 'undefined' && osc) { 
-        try { osc.stop(); osc.disconnect(); } catch(e) {} 
-    }
-    if (typeof currentGainNode !== 'undefined' && currentGainNode) {
-        try { currentGainNode.disconnect(); } catch(e) {}
-    }
-    if (typeof panner !== 'undefined' && panner) {
-        try { panner.disconnect(); } catch(e) {}
-    }
-    if (typeof examLfo !== 'undefined' && examLfo) {
-        try { examLfo.stop(); examLfo.disconnect(); } catch(e) {}
-    }
+        const now = audioCtx.currentTime;
 
-    // 3. BUAT NODE BARU
-    osc = audioCtx.createOscillator(); 
-    panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
-    currentGainNode = audioCtx.createGain();
-    
-    let freq = FREQUENCIES[currentFreqIndex]; 
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime); 
-    
-    if (panner) {
-        panner.pan.value = (currentMode === 'FFT' || currentMode === 'BC') ? 0 : (activeEar === 'right' ? 1 : -1);
-    }
+        // 2. AMANKAN NODE LAMA KE VARIABEL LOKAL SEBELUM DIBERSIHKAN
+        let oldOsc = typeof osc !== 'undefined' ? osc : null;
+        let oldGain = typeof currentGainNode !== 'undefined' ? currentGainNode : null;
+        let oldPan = typeof panner !== 'undefined' ? panner : null;
+        let oldLfo = typeof examLfo !== 'undefined' ? examLfo : null;
 
-    if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
-        examLfo = audioCtx.createOscillator();
-        examLfo.frequency.setValueAtTime(5, audioCtx.currentTime);
-        let lfoGain = audioCtx.createGain();
-        lfoGain.gain.setValueAtTime(freq * 0.05, audioCtx.currentTime);
+        // Kosongkan variabel global segera agar tidak konflik
+        osc = null; currentGainNode = null; panner = null; examLfo = null;
+
+        // Matikan node lama dengan Fade-out halus 15ms jika masih aktif
+        if (oldGain) {
+            try {
+                oldGain.gain.cancelScheduledValues(now);
+                oldGain.gain.setTargetAtTime(0.00001, now, 0.015);
+            } catch(e) {}
+        }
+        if (oldOsc) { try { oldOsc.stop(now + 0.03); } catch(e) {} }
+        if (oldLfo) { try { oldLfo.stop(now + 0.03); } catch(e) {} }
+
+        // Bersihkan memori node lama di latar belakang (aman setelah 150ms)
+        setTimeout(() => {
+            try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
+            try { if (oldGain) oldGain.disconnect(); } catch(e) {}
+            try { if (oldPan) oldPan.disconnect(); } catch(e) {}
+            try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
+        }, 150);
+
+        // 3. BUAT NODE BARU DENGAN NATIVE TIMELINE
+        let newOsc = audioCtx.createOscillator(); 
+        let newPan = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
+        let newGain = audioCtx.createGain();
+
+        // Masukkan ke variabel global
+        osc = newOsc;
+        panner = newPan;
+        currentGainNode = newGain;
         
-        examLfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-        examLfo.start();
+        let freq = FREQUENCIES[currentFreqIndex] || 1000; 
+        
+        newOsc.type = 'sine';
+        newOsc.frequency.setValueAtTime(freq, now); 
+        
+        if (newPan) {
+            newPan.pan.value = (currentMode === 'FFT' || currentMode === 'BC') ? 0 : (activeEar === 'right' ? 1 : -1);
+        }
+
+        if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
+            let lfo = audioCtx.createOscillator();
+            examLfo = lfo;
+            lfo.frequency.setValueAtTime(5, now);
+            let lfoGain = audioCtx.createGain();
+            lfoGain.gain.setValueAtTime(freq * 0.05, now);
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(newOsc.frequency);
+            lfo.start(now);
+        }
+        
+        let selectedTransducer = 'DD45';
+        let transSelect = document.getElementById('setAcTransducer');
+        if (transSelect) { selectedTransducer = transSelect.value; }
+        
+        if (currentMode === 'BC') selectedTransducer = 'BC';
+        if (currentMode === 'FFT') selectedTransducer = 'SPKR';
+
+        let splAt70dB = 70.0; 
+        if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
+            splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
+        }
+
+        let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
+        let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
+        let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
+        
+        if (isNaN(currentOffset)) currentOffset = 0;
+        
+        let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
+        const SYSTEM_MAX_SPL = 95; 
+        
+        let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+        if (isNaN(targetGain)) targetGain = 0.0001;
+        targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
+
+        // FADE-IN NATIVE (Tanpa setTimeout, dijamin mulus tanpa letupan)
+        newGain.gain.setValueAtTime(0.00001, now);
+        newGain.gain.setTargetAtTime(targetGain, now, 0.015); // Naik halus dalam ~15-30ms
+        
+        if (newPan) {
+            newOsc.connect(newGain).connect(newPan).connect(audioCtx.destination); 
+        } else {
+            newOsc.connect(newGain).connect(audioCtx.destination);
+        }
+        newOsc.start(now); 
+
+        isPlaying = true;
+        document.getElementById('signalIndicatorBox')?.classList.add('active');
+
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("S1\n");
+        }
     }
-    
-    let selectedTransducer = 'DD45';
-    let transSelect = document.getElementById('setAcTransducer');
-    if (transSelect) { selectedTransducer = transSelect.value; }
-    
-    if (currentMode === 'BC') selectedTransducer = 'BC';
-    if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-    let splAt70dB = 70.0; 
-    if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
+    // ============================================================
+    // 2. FUNGSI STOP TONE (Dioptimalkan dengan Native Audio Timeline)
+    // ============================================================
+    function stopTone() {
+        let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
+        let leftEarPanel = document.querySelector('.ear-panel.left-ear');
+        if (rightEarPanel) rightEarPanel.classList.remove('flash-right');
+        if (leftEarPanel) leftEarPanel.classList.remove('flash-left');
+
+        isStimulusActive = false;
+        let stL = document.getElementById('stimLightLeft'); if(stL) { stL.style.background = '#cbd5e1'; stL.style.boxShadow = 'none'; }
+        let stR = document.getElementById('stimLightRight'); if(stR) { stR.style.background = '#cbd5e1'; stR.style.boxShadow = 'none'; }
+
+        if (!audioCtx) {
+            isPlaying = false;
+            document.getElementById('signalIndicatorBox')?.classList.remove('active');
+            return;
+        }
+
+        const now = audioCtx.currentTime;
+
+        // Amankan node aktif ke variabel lokal
+        let oldOsc = osc;
+        let oldGain = currentGainNode;
+        let oldPan = panner;
+        let oldLfo = examLfo;
+        let oldSpeech = typeof speechSourceNode !== 'undefined' ? speechSourceNode : null;
+
+        // Kosongkan variabel global segera
+        osc = null;
+        currentGainNode = null;
+        panner = null;
+        examLfo = null;
+        speechSourceNode = null;
+
+        // FADE-OUT NATIVE (Sangat presisi, menurunkan gain ke 0.00001 dalam 20ms)
+        if (oldGain) {
+            try {
+                oldGain.gain.cancelScheduledValues(now);
+                oldGain.gain.setTargetAtTime(0.00001, now, 0.01);
+            } catch(e) {}
+        }
+
+        // Jadwalkan pemberhentian sumber suara
+        const stopTime = now + 0.04;
+        if (oldOsc) { try { oldOsc.stop(stopTime); } catch(e) {} }
+        if (oldLfo) { try { oldLfo.stop(stopTime); } catch(e) {} }
+        if (oldSpeech) { try { oldSpeech.stop(stopTime); } catch(e) {} }
+
+        // Disconnect node dari memori setelah suara benar-benar senyap
+        setTimeout(() => {
+            try { if (oldOsc) oldOsc.disconnect(); } catch(e) {}
+            try { if (oldGain) oldGain.disconnect(); } catch(e) {}
+            try { if (oldPan) oldPan.disconnect(); } catch(e) {}
+            try { if (oldLfo) oldLfo.disconnect(); } catch(e) {}
+            try { if (oldSpeech) oldSpeech.disconnect(); } catch(e) {}
+        }, 150);
+
+        isPlaying = false; 
+        document.getElementById('signalIndicatorBox')?.classList.remove('active');
+
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("STOP,0,0,0\n"); 
+        }
     }
-
-    let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
-    
-    let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
-    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
-    
-    // [PENTING] Cegah NaN (Not a Number) dari data kalibrasi yang tidak valid
-    if (isNaN(currentOffset)) currentOffset = 0;
-    
-    let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-    const SYSTEM_MAX_SPL = 95; 
-    
-    let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
-    
-    // [PENTING] Cegah targetGain menjadi NaN
-    if (isNaN(targetGain)) targetGain = 0.0001;
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
-
-    // Fade-in halus selama 35ms untuk mencegah letupan (pop/krek) di awal
-    currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);  
-    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
-    
-    if (panner) {
-        osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
-    } else {
-        osc.connect(currentGainNode).connect(audioCtx.destination);
-    }
-    osc.start(); 
-
-    isPlaying = true;
-    document.getElementById('signalIndicatorBox')?.classList.add('active');
-
-    // BERITAHU ARDUINO BAHWA STIMULUS MENYALA (S1) TANPA DATA KACAU
-    if (typeof kirimDataAudiometer === 'function') {
-        kirimDataAudiometer("S1\n");
-    }
-}
     
 
 
@@ -5472,70 +5556,7 @@ function startTone() {
 }
 
 
-    // ============================================================
-    // 2. FUNGSI STOP TONE (DIPERBAIKI UNTUK MENCEGAH KREK/MEMORY LEAK)
-    // ============================================================
-    function stopTone() {
-        let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
-        let leftEarPanel = document.querySelector('.ear-panel.left-ear');
-        if (rightEarPanel) rightEarPanel.classList.remove('flash-right');
-        if (leftEarPanel) leftEarPanel.classList.remove('flash-left');
-
-        isStimulusActive = false;
-        let stL = document.getElementById('stimLightLeft'); if(stL) { stL.style.background = '#cbd5e1'; stL.style.boxShadow = 'none'; }
-        let stR = document.getElementById('stimLightRight'); if(stR) { stR.style.background = '#cbd5e1'; stR.style.boxShadow = 'none'; }
-
-        // Tentukan waktu stop presisi (50ms dari sekarang untuk fade-out)
-        let stopTime = audioCtx ? audioCtx.currentTime + 0.05 : 0;
-
-        if (typeof examLfo !== 'undefined' && examLfo) { 
-            try { 
-                examLfo.stop(stopTime); 
-            } catch(e) {} 
-        }
-
-        // Mematikan Audio Web dengan Fade Out Presisi & Disconnect
-        if(currentGainNode && audioCtx) {
-            currentGainNode.gain.cancelScheduledValues(audioCtx.currentTime); 
-            currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, audioCtx.currentTime);
-            currentGainNode.gain.linearRampToValueAtTime(0.0001, stopTime);
-            
-            if (typeof osc !== 'undefined' && osc) {
-                try { 
-                    osc.stop(stopTime + 0.01); // Stop osc sesaat setelah fade-out selesai
-                } catch(e) {} 
-            }
-
-            // Bersihkan node dari Audio Graph agar memori tidak bocor (Memory Leak)
-            // Timeout di sini aman karena suara sudah berhenti secara presisi di atas
-            setTimeout(() => {
-                if (osc) { try { osc.disconnect(); } catch(e){} osc = null; }
-                if (currentGainNode) { try { currentGainNode.disconnect(); } catch(e){} currentGainNode = null; }
-                if (typeof panner !== 'undefined' && panner) { try { panner.disconnect(); } catch(e){} panner = null; }
-                if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.disconnect(); } catch(e){} examLfo = null; }
-            }, 100);
-
-        } else if(osc) { 
-            try{ osc.stop(); osc.disconnect(); } catch(e){} 
-            osc = null; 
-        }
-        
-        if(typeof speechSourceNode !== 'undefined' && speechSourceNode) { 
-            try { speechSourceNode.stop(); speechSourceNode.disconnect(); } catch(e){} 
-            speechSourceNode = null; 
-        }
-        
-        isPlaying = false; 
-        document.getElementById('signalIndicatorBox')?.classList.remove('active');
-
-        // ==========================================
-        // HARDWARE CONTROL: KIRIM PERINTAH STOP KE ANTREAN
-        // ==========================================
-        if (typeof kirimDataAudiometer === 'function') {
-            // Format disesuaikan menjadi 4 bagian agar Arduino tidak bingung
-            kirimDataAudiometer("STOP,0,0,0\n"); 
-        }
-    }
+    
     function closeProfessionalNotification() { let notifModal = document.getElementById('professionalNotificationModal'); if (notifModal) notifModal.style.display = 'none'; }
 
     function renderWordList() { 
