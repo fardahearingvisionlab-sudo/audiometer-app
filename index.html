@@ -3455,11 +3455,21 @@ function setCalibStim(stimType) {
     }
         
    // =================================================================
-    // 2. FUNGSI EXECUTE (Channel Isolator Mutlak Tanpa Panner + Debugging)
+    // 2. FUNGSI EXECUTE (Channel Isolator Mutlak + Auto Resume AudioCtx)
     // =================================================================
     function executeCalibrationAudio() {
-        if (!audioCtx) { audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)(); }
-        if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        // Pastikan AudioContext ada dan langsung di-resume secara paksa
+        if (!window.audioCtx || window.audioCtx.state === 'closed') {
+            window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        audioCtx = window.audioCtx;
+
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().then(() => {
+                console.log("AudioContext berhasil di-resume secara manual.");
+            });
+        }
+
         const now = audioCtx.currentTime;
 
         let stim = calState.stimType || 'tone'; 
@@ -3493,8 +3503,9 @@ function setCalibStim(stimType) {
         let targetGainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.00001), 1.0);
         if (isNaN(targetGainVal)) targetGainVal = 0.00001; 
 
-        // ==== LAPORAN DEBUGGING KALIBRASI (CEK DI F12 CONSOLE) ====
+        // Laporan Debugging
         console.log("=== CALIBRATION AUDIO DEBUG ===", {
+            state: audioCtx.state,
             transducer: transId,
             frequency: freq,
             side: side,
@@ -3503,14 +3514,13 @@ function setCalibStim(stimType) {
             targetOutputSPL: targetOutput,
             calculatedGainVal: targetGainVal
         });
-        // ==========================================================
 
         let currentGain = audioCtx.createGain();
         calibGainNode = currentGain; 
 
-        // FADE IN NATIVE
+        // FADE IN NATIVE (Gunakan setTargetAtTime dengan jeda waktu aman)
         currentGain.gain.setValueAtTime(0.00001, now);
-        currentGain.gain.setTargetAtTime(targetGainVal, now, 0.02);
+        currentGain.gain.setTargetAtTime(targetGainVal, now + 0.01, 0.02);
 
         // --- SISTEM PEMISAH KANAL MUTLAK ---
         let merger = audioCtx.createChannelMerger(2);
@@ -3521,7 +3531,7 @@ function setCalibStim(stimType) {
         calibLeftGain = lGain;
         calibRightGain = rGain;
 
-        // Kunci total kanal yang tidak digunakan ke 0.0 agar tidak ada crosstalk
+        // Kunci kanal
         if (side === 'R') {
             lGain.gain.setValueAtTime(0.0, now);
             rGain.gain.setValueAtTime(1.0, now);
@@ -3574,8 +3584,8 @@ function setCalibStim(stimType) {
         // --- ROUTING GRAFIK AUDIO ---
         currentGain.connect(lGain);
         currentGain.connect(rGain);
-        lGain.connect(merger, 0, 0); // Rute ke Kiri
-        rGain.connect(merger, 0, 1); // Rute ke Kanan
+        lGain.connect(merger, 0, 0); 
+        rGain.connect(merger, 0, 1); 
         merger.connect(audioCtx.destination);
     }
             
