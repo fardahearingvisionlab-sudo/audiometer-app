@@ -7306,13 +7306,13 @@ function restoreCalibrationFromCloud() {
     }
 
     // ============================================================
-    // FITUR KEEP-ALIVE (MENCEGAH USB IDLE / SLEEP)
+    // FITUR KEEP-ALIVE (KOMUNIKASI DUA ARAH MENCEGAH USB SLEEP)
     // ============================================================
     setInterval(() => {
         if (!isDisconnecting && isConnectedArduino && typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("X\n"); 
+            kirimDataAudiometer("Z\n");
         }
-    }, 3000); 
+    }, 15000);
         
 
     </script>
