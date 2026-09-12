@@ -3157,22 +3157,26 @@ function updatePrintChartsData() {
     stopCalibrationSound(); 
     
     if (typeof kirimDataAudiometer === 'function') {
-        // 1. Beritahu Arduino untuk keluar dari Mode Kalibrasi
+        // 1. Beritahu Arduino keluar dari Kalibrasi
         kirimDataAudiometer("K0\n"); 
         
-        // 2. SINKRONISASI ULANG KONDISI NORMAL
-        // Mengambil variabel global pemeriksaan Anda (sesuaikan jika nama variabelnya berbeda)
         let dbNormal = (typeof currentIntensity !== 'undefined') ? currentIntensity : 40;
         let freqNormal = (typeof currentFreq !== 'undefined') ? currentFreq : 1000;
         let earNormal = (typeof activeEarTarget !== 'undefined') ? activeEarTarget : 'R';
         
-        // Kirim paksa nilai normal ini ke Arduino agar menimpa sisa angka kalibrasi
-        kirimDataAudiometer("I" + dbNormal + "\n");
-        kirimDataAudiometer("F" + freqNormal + "\n");
-        kirimDataAudiometer("E" + earNormal + "\n");
-        
-        // Refresh layar LCD Arduino
-        kirimDataAudiometer("X\n"); 
+        // 2. Kirim secara bertahap (berjeda) agar Arduino tidak kaget dan tidak terjadi bising/krek
+        setTimeout(() => {
+            kirimDataAudiometer("I" + dbNormal + "\n");
+        }, 50);
+
+        setTimeout(() => {
+            kirimDataAudiometer("F" + freqNormal + "\n");
+        }, 100);
+
+        setTimeout(() => {
+            kirimDataAudiometer("E" + earNormal + "\n");
+            kirimDataAudiometer("X\n"); // Refresh layar LCD
+        }, 150);
     }
 }
 
