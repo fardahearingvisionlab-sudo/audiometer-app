@@ -5308,7 +5308,6 @@ function startTone() {
     panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     currentGainNode = audioCtx.createGain();
     
-    // 2. KEMBALI MENGGUNAKAN VARIABEL MESIN ASLI ANDA
     let freq = FREQUENCIES[currentFreqIndex]; 
     
     osc.type = 'sine';
@@ -5336,10 +5335,7 @@ function startTone() {
     if (currentMode === 'BC') selectedTransducer = 'BC';
     if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-    // ==============================================================
-    // PERBAIKAN UTAMA: FADE-IN HALUS (MENCEGAH KREK / TRANSIENT CLICK)
-    // ==============================================================
-    let splAt70dB = 70.0; // Fallback aman
+    let splAt70dB = 70.0; 
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
@@ -5355,10 +5351,9 @@ function startTone() {
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-    // Mulai dari titik nyaris bisu, lalu naikkan secara linier mulus selama 35ms (0.035 detik)
+    // Fade-in halus selama 35ms untuk mencegah letupan (pop/krek)
     currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);  
     currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
-    // ==============================================================
     
     if (panner) {
         osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
@@ -5370,16 +5365,9 @@ function startTone() {
     isPlaying = true;
     document.getElementById('signalIndicatorBox')?.classList.add('active');
 
-    // 3. KIRIM DATA KE ARDUINO VIA ANTREAN DENGAN JEDA AMAN
+    // BERITAHU ARDUINO BAHWA STIMULUS MENYALA (S1) TANPA DATA KACAU
     if (typeof kirimDataAudiometer === 'function') {
-        let finalSide = (activeEar === 'left') ? 'L' : 'R';
-        let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-        
-        let command = `${finalMode},${finalSide},${freq},${currentDb}\n`;
-        
-        // Kirim perintah relay sedikit lebih awal agar tuas relay selesai bergerak 
-        // sebelum kurva audio mencapai volume penuh.
-        kirimDataAudiometer(command);
+        kirimDataAudiometer("S1\n");
     }
 }
     
