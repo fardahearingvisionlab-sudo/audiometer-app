@@ -3455,7 +3455,7 @@ function setCalibStim(stimType) {
     }
         
    // =================================================================
-    // 2. FUNGSI EXECUTE (Channel Isolator Mutlak Tanpa Panner)
+    // 2. FUNGSI EXECUTE (Channel Isolator Mutlak Tanpa Panner + Debugging)
     // =================================================================
     function executeCalibrationAudio() {
         if (!audioCtx) { audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)(); }
@@ -3479,7 +3479,7 @@ function setCalibStim(stimType) {
         let standardData = window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[transId] ? window.TRANSDUCER_REGISTRY[transId] : (window.TRANSDUCER_REGISTRY['SAEP1'] || {});
         let targetBaseline = standardData && standardData[freq] !== undefined ? Number(standardData[freq]) : 70.0;
         let key = side + '_' + transId; 
-        let offset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][freq]) ? calibrationData[key][freq] : 0;
+        let offset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][freq]) ? parseFloat(calibrationData[key][freq]) : 0;
         if (isNaN(offset)) offset = 0; 
         
         let targetOutput = targetBaseline + offset; 
@@ -3492,7 +3492,19 @@ function setCalibStim(stimType) {
         const SYSTEM_MAX_SPL = 95; 
         let targetGainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.00001), 1.0);
         if (isNaN(targetGainVal)) targetGainVal = 0.00001; 
-        
+
+        // ==== LAPORAN DEBUGGING KALIBRASI (CEK DI F12 CONSOLE) ====
+        console.log("=== CALIBRATION AUDIO DEBUG ===", {
+            transducer: transId,
+            frequency: freq,
+            side: side,
+            baseline: targetBaseline,
+            offsetVal: offset,
+            targetOutputSPL: targetOutput,
+            calculatedGainVal: targetGainVal
+        });
+        // ==========================================================
+
         let currentGain = audioCtx.createGain();
         calibGainNode = currentGain; 
 
