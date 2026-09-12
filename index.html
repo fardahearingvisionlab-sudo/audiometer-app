@@ -3385,13 +3385,11 @@ function executeCalibrationAudio() {
     let freq = Number(calState.freq) || 1000; 
     let side = calState.ear;
 
-    // Jika stimulus adalah White Noise, alihkan ke fungsinya khusus
+    // Untuk White Noise
     if (stim === 'wn') { 
         playCalibrationWhiteNoise(side); 
-        
         let modeWN = (calState.trans === 'SPKR') ? 'FFT' : calState.trans;
         if (typeof kirimDataAudiometer === 'function') {
-            // 👉 PERBAIKAN FORMAT SERIAL UNTUK WN
             let perintahWN = "C" + modeWN + "\nE" + side + "\nF" + freq + "\nI70\nS1\n";
             kirimDataAudiometer(perintahWN);
         }
@@ -3399,7 +3397,7 @@ function executeCalibrationAudio() {
     }
 
     let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
-    let standardData = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
+    let standardData = window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[transId] ? window.TRANSDUCER_REGISTRY[transId] : (window.TRANSDUCER_REGISTRY['SAEP1'] || {});
 
     let targetBaseline = 70.0;
     if (standardData && standardData[freq] !== undefined) {
@@ -3408,32 +3406,35 @@ function executeCalibrationAudio() {
 
     let key = side + '_' + transId; 
     let offset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][freq]) ? calibrationData[key][freq] : 0;
-    
     let targetOutput = targetBaseline + offset; 
-    
-    // Arduino Anda mengenali mode speaker sebagai "FFT", bukan "SPKR"
+
     let modeArduino = calState.trans;
     if (modeArduino === 'SPKR') {
         modeArduino = 'FFT'; 
     }
     
-    // 👉 PERBAIKAN FORMAT SERIAL UNTUK TONE / NBN
+    // =======================================================
+    // LANGKAH 1: KIRIM PERINTAH RELAY DULUAN
+    // =======================================================
     if (typeof kirimDataAudiometer === 'function') {
         let perintahKalibrasi = "C" + modeArduino + "\nE" + side + "\nF" + freq + "\nI" + Math.round(targetOutput) + "\nS1\n";
         kirimDataAudiometer(perintahKalibrasi);
-    } else {
-        console.warn("Fungsi kirimDataAudiometer tidak ditemukan!");
-    }
-    
+    } 
+
     const SYSTEM_MAX_SPL = 95; 
-    let gainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
+    let targetGainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
     
+    // =======================================================
+    // LANGKAH 2: SETUP AUDIO DALAM KEADAAN BISU (0.0001)
+    // =======================================================
     calibGainNode = audioCtx.createGain(); 
-    calibGainNode.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+    // Jangan langsung diberi targetGainVal, setel ke nilai terkecil (bisu)
+    calibGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
 
     let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     if (panner) panner.pan.value = (side === 'R') ? 1 : -1;
 
+    // Putar sumber suara (dalam keadaan masih bisu)
     if (stim === 'tone') {
         calibOsc = audioCtx.createOscillator(); 
         calibOsc.type = 'sine'; 
@@ -3480,8 +3481,19 @@ function executeCalibrationAudio() {
     } else {
         calibGainNode.connect(audioCtx.destination);
     }
-}
 
+    // =======================================================
+    // LANGKAH 3: NAIKKAN VOLUME (FADE-IN) SETELAH RELAY KLIK
+    // =======================================================
+    // Tunggu 100ms agar logam relay selesai memantul/bouncing
+    setTimeout(() => {
+        if (calibGainNode && audioCtx.state === 'running') {
+            // Naikkan volume secara eksponensial halus selama 50ms untuk cegah suara 'pop'
+            calibGainNode.gain.exponentialRampToValueAtTime(targetGainVal, audioCtx.currentTime + 0.05);
+        }
+    }, 100);
+}
+        
 function playCalibrationWhiteNoise(side) {
     if (!audioCtx) audioCtx = window.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     let bufferSize = audioCtx.sampleRate * 2; 
