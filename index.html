@@ -5299,130 +5299,129 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
 }
 
 // ============================================================
-// 1. FUNGSI START TONE (Dengan Fade-In Mulus & Protokol Serial Arduino yang Benar)
+// 1. FUNGSI START TONE (Bersih, Anti-Krek & Protokol Arduino Benar)
 // ============================================================
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
 
     let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    let rightEarPanel = document.querySelector('.ear-panel.right-ear');
+    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
 
-    // 1. Pastikan AudioContext Aktif
-    if (!window.audioCtx || window.audioCtx.state === 'closed') {
-        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    audioCtx = window.audioCtx;
-
-    const playExecution = () => {
-        if (audioCtx.state !== 'running') return;
-        const now = audioCtx.currentTime;
-
-        // Bersihkan node lama
-        if (typeof osc !== 'undefined' && osc) { try { osc.stop(); osc.disconnect(); } catch(e){} osc = null; }
-        if (typeof currentGainNode !== 'undefined' && currentGainNode) { try { currentGainNode.disconnect(); } catch(e){} currentGainNode = null; }
-        if (typeof panner !== 'undefined' && panner) { try { panner.disconnect(); } catch(e){} panner = null; }
-        if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.stop(); examLfo.disconnect(); } catch(e){} examLfo = null; }
-
-        // Buat Node Baru
-        osc = audioCtx.createOscillator(); 
-        currentGainNode = audioCtx.createGain();
-        panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-        
-        let freq = (typeof FREQUENCIES !== 'undefined' && FREQUENCIES[currentFreqIndex]) ? FREQUENCIES[currentFreqIndex] : 1000; 
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now); 
-        
-        // Atur Panner Kiri/Kanan (-1 untuk Kiri, 1 untuk Kanan, 0 untuk Tengah)
-        if (panner) {
-            let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
-            panner.pan.value = isFreeField ? 0 : (activeEar === 'right' ? 1 : -1);
-        }
-
-        // Tangani stimulus Warble jika aktif
-        if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
-            examLfo = audioCtx.createOscillator();
-            examLfo.frequency.setValueAtTime(5, now);
-            let lfoGain = audioCtx.createGain();
-            lfoGain.gain.setValueAtTime(freq * 0.05, now);
-            
-            examLfo.connect(lfoGain);
-            lfoGain.connect(osc.frequency);
-            examLfo.start(now);
-        }
-        
-        let selectedTransducer = 'DD45';
-        let transSelect = document.getElementById('setAcTransducer');
-        if (transSelect) { selectedTransducer = transSelect.value; }
-        
-        if (currentMode === 'BC') selectedTransducer = 'BC';
-        if (currentMode === 'FFT') selectedTransducer = 'SPKR';
-
-        // Kalkulasi Gain & Kalibrasi SPL
-        let splAt70dB = 70.0; 
-        if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-            splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
-        }
-
-        let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
-        let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
-        let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
-        
-        let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-        const SYSTEM_MAX_SPL = 95; 
-        
-        let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
-        targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
-
-        // TRANSISI HALUS (FADE-IN): Mencegah klik/pop digital saat suara mulai
-        currentGainNode.gain.setValueAtTime(0.0001, now);
-        currentGainNode.gain.linearRampToValueAtTime(targetGain, now + 0.035); 
-        
-        // Rangkai Hubungan Audio
-        if (panner) {
-            osc.connect(currentGainNode);
-            currentGainNode.connect(panner);
-            panner.connect(audioCtx.destination);
-        } else {
-            osc.connect(currentGainNode);
-            currentGainNode.connect(audioCtx.destination);
-        }
-        
-        osc.start(now); 
-
-        isPlaying = true;
-        document.getElementById('signalIndicatorBox')?.classList.add('active');
-
-        // KIRIM STATUS STIMULUS MENYALA (S1) KE ARDUINO TANPA MERUSAK BUFFER SERIAL
-        if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("S1\n");
-        }
-    };
-
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(playExecution);
+    if (activeEar === 'left') {
+        if (leftEarPanel) leftEarPanel.classList.add('flash-left');
     } else {
-        playExecution();
+        if (rightEarPanel) rightEarPanel.classList.add('flash-right');
+    }
+
+    isStimulusActive = true;
+    let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
+    if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
+
+    // 1. BANGKITKAN AUDIO (ANTI-SLEEP)
+    if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume(); 
+    }
+
+    if (osc) { try{osc.stop(); osc.disconnect();}catch(e){} osc = null; }
+    if (currentGainNode) { try{currentGainNode.disconnect();}catch(e){} currentGainNode = null; }
+    
+    osc = audioCtx.createOscillator(); 
+    panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
+    currentGainNode = audioCtx.createGain();
+    
+    let freq = (typeof FREQUENCIES !== 'undefined' && FREQUENCIES[currentFreqIndex]) ? FREQUENCIES[currentFreqIndex] : 1000; 
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime); 
+    
+    if (panner) {
+        let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
+        panner.pan.value = isFreeField ? 0 : (activeEar === 'right' ? 1 : -1);
+    }
+
+    if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
+        examLfo = audioCtx.createOscillator();
+        examLfo.frequency.setValueAtTime(5, audioCtx.currentTime);
+        let lfoGain = audioCtx.createGain();
+        lfoGain.gain.setValueAtTime(freq * 0.05, audioCtx.currentTime);
+        
+        examLfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        examLfo.start();
+    }
+    
+    let selectedTransducer = 'DD45';
+    let transSelect = document.getElementById('setAcTransducer');
+    if (transSelect) { selectedTransducer = transSelect.value; }
+    
+    if (currentMode === 'BC') selectedTransducer = 'BC';
+    if (currentMode === 'FFT') selectedTransducer = 'SPKR';
+
+    // ==============================================================
+    // KALKULASI VOLUME & TRANSISI NATURAL (FADE-IN HALUS)
+    // ==============================================================
+    let splAt70dB = 70.0; 
+    if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
+        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
+    }
+
+    let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
+    
+    let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
+    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
+    
+    let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
+    const SYSTEM_MAX_SPL = 95; 
+    
+    let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
+
+    // Fade-in linier mulus selama 35ms untuk mencegah letupan krek/pop
+    currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
+    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
+    // ==============================================================
+    
+    if (panner) {
+        osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
+    } else {
+        osc.connect(currentGainNode).connect(audioCtx.destination);
+    }
+    osc.start(); 
+
+    isPlaying = true;
+    document.getElementById('signalIndicatorBox')?.classList.add('active');
+
+    // 3. KIRIM STATUS STIMULUS AKTIF (S1) KE ARDUINO VIA ANTREAN
+    if (typeof kirimDataAudiometer === 'function') {
+        kirimDataAudiometer("S1\n");
     }
 }
 
 
 // ============================================================
-// 2. FUNGSI TRIGGER SIGNAL
+// 2. FUNGSI TRIGGER SIGNAL (Pemicu Utama dari Tombol / Spasi)
 // ============================================================
 function triggerSignalPresentation() {
     let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
     let leftEarPanel = document.querySelector('.ear-panel.left-ear');
     let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
-
-    let durationMs = 1000; 
-    let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
+    let freq = FREQUENCIES[currentFreqIndex] || 1000; 
+    let intensity = typeof currentDb !== 'undefined' ? currentDb : 40;
     
-    if (stimLight) { 
-        stimLight.style.background = '#38bdf8'; 
-        stimLight.style.boxShadow = '0 0 10px #0ea5e9'; 
+    let isMasking = document.getElementById('chkMasking') ? document.getElementById('chkMasking').checked : false;
+    let noiseLvl = document.getElementById('maskingDb') ? parseFloat(document.getElementById('maskingDb').value) : 30;
+
+    if (typeof playToneWithMasking === 'function') {
+        playToneWithMasking(freq, intensity, activeEar, isMasking, noiseLvl);
     }
 
+    let durationMs = 1000; 
+    
     if (activeEar === 'left') {
         if (leftEarPanel) { 
             leftEarPanel.classList.add('flash-left'); 
@@ -5435,12 +5434,13 @@ function triggerSignalPresentation() {
         }
     }
 
+    // Jalankan pemutar nada
     startTone();
 }
 
 
 // ============================================================
-// 3. FUNGSI STOP TONE (Dengan Fade-Out Lembut & S0)
+// 3. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware S0)
 // ============================================================
 function stopTone() {
     let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
@@ -5452,28 +5452,25 @@ function stopTone() {
     let stL = document.getElementById('stimLightLeft'); if(stL) { stL.style.background = '#cbd5e1'; stL.style.boxShadow = 'none'; }
     let stR = document.getElementById('stimLightRight'); if(stR) { stR.style.background = '#cbd5e1'; stR.style.boxShadow = 'none'; }
 
-    if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.stop(); examLfo.disconnect(); } catch(e) {} examLfo = null; }
+    if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.stop(); examLfo.disconnect(); } catch(e){} examLfo = null; }
 
-    // Fade out lembut pada gain node sebelum dimatikan total
-    if (currentGainNode && audioCtx) {
+    // Mematikan Audio Web dengan Fade-Out halus
+    if(currentGainNode && audioCtx) {
         try {
             currentGainNode.gain.cancelScheduledValues(audioCtx.currentTime); 
             currentGainNode.gain.setValueAtTime(currentGainNode.gain.value, audioCtx.currentTime);
             currentGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
         } catch(e) {}
-        setTimeout(() => { 
-            if(osc){ try{osc.stop(); osc.disconnect();}catch(e){} osc=null; } 
-        }, 60);
-    } else if(osc) { 
-        try{osc.stop(); osc.disconnect();}catch(e){} osc=null; 
-    }
+        setTimeout(() => { if(osc){ try{osc.stop(); osc.disconnect();}catch(e){} osc=null; } }, 60);
+    } else if(osc) { try{osc.stop(); osc.disconnect();}catch(e){} osc=null; }
     
     if(speechSourceNode){ try{speechSourceNode.stop();}catch(e){} speechSourceNode=null; }
-    
     isPlaying = false; 
     document.getElementById('signalIndicatorBox')?.classList.remove('active');
 
-    // KIRIM STATUS STIMULUS MATI (S0) KE ARDUINO
+    // ==========================================
+    // HARDWARE CONTROL: KIRIM PERINTAH S0 (MATI) KE ARDUINO
+    // ==========================================
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("S0\n"); 
     }
