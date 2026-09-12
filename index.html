@@ -5337,30 +5337,27 @@ function startTone() {
     if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
     // ==============================================================
-    // PERBAIKAN UTAMA: KALKULASI VOLUME & TRANSISI NATURAL
+    // PERBAIKAN UTAMA: FADE-IN HALUS (MENCEGAH KREK / TRANSIENT CLICK)
     // ==============================================================
     let splAt70dB = 70.0; // Fallback aman
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
 
-    // Pastikan nilai selalu dibaca sebagai angka, bukan teks/string
     let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
     
     let calKey = ((activeEar === 'right') ? 'R' : 'L') + '_' + selectedTransducer;
     let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
     
-    // Kalkulasi Target
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     const SYSTEM_MAX_SPL = 95; 
     
-    // Batas aman murni audio digital (Maks 1.0)
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-    // Gunakan setTargetAtTime untuk kurva transisi logaritmik (lebih pas dengan telinga manusia)
-    currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
-    currentGainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.015);
+    // Mulai dari titik nyaris bisu, lalu naikkan secara linier mulus selama 35ms (0.035 detik)
+    currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);  
+    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
     // ==============================================================
     
     if (panner) {
@@ -5373,13 +5370,15 @@ function startTone() {
     isPlaying = true;
     document.getElementById('signalIndicatorBox')?.classList.add('active');
 
-    // 3. KIRIM DATA KE ARDUINO VIA ANTREAN
+    // 3. KIRIM DATA KE ARDUINO VIA ANTREAN DENGAN JEDA AMAN
     if (typeof kirimDataAudiometer === 'function') {
         let finalSide = (activeEar === 'left') ? 'L' : 'R';
         let finalMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
         
-        // Data yang dikirim 100% murni sesuai variabel aplikasi
         let command = `${finalMode},${finalSide},${freq},${currentDb}\n`;
+        
+        // Kirim perintah relay sedikit lebih awal agar tuas relay selesai bergerak 
+        // sebelum kurva audio mencapai volume penuh.
         kirimDataAudiometer(command);
     }
 }
