@@ -3802,17 +3802,35 @@ function generateDetailedCalibrationReport() {
             localStorage.setItem('gsi_calibration_data', JSON.stringify(calibrationData));
         }
 
-        // 5. Perbarui Tanggal Kalibrasi
-        let nowStr = new Date().toLocaleString('id-ID');
-        localStorage.setItem('gsi_last_calibrated_date', nowStr);
-        window.lastCalDate = nowStr; // Sinkronisasi variabel untuk cetak sertifikat
+        // 5. Perbarui Tanggal Kalibrasi & Hitung Jadwal Berikutnya
+        let now = new Date();
+        let nowStr = now.toLocaleString('id-ID'); // Format: DD/MM/YYYY, HH.MM.SS
         
-        // 👉 PERBARUI TAMPILAN BANNER KUNING SECARA LANGSUNG
-        let labelTanggal = document.getElementById('labelTanggalKalibrasi');
+        // Tambah 1 tahun untuk jadwal berikutnya
+        let nextYear = new Date(now);
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        let nextYearStr = nextYear.toLocaleDateString('id-ID'); 
+
+        localStorage.setItem('gsi_last_calibrated_date', nowStr);
+        window.lastCalDate = nowStr; 
+        
+        // 👉 UPDATE TAMPILAN BANNER SESUAI HTML ANDA
+        let labelTanggal = document.getElementById('lastCalibratedLabel');
         if (labelTanggal) {
-            labelTanggal.innerText = nowStr;
-            labelTanggal.style.color = "#16a34a"; // Ubah warnanya jadi hijau
+            labelTanggal.innerText = "Terakhir Dikalibrasi: " + nowStr;
+            labelTanggal.style.color = "#15803d"; // Hijau tua
             labelTanggal.style.fontWeight = "bold";
+        }
+        
+        let labelNext = document.getElementById('nextCalibDueLabel');
+        if (labelNext) {
+            labelNext.innerText = "Jadwal Kalibrasi Berikutnya: " + nextYearStr;
+            labelNext.style.color = "#b45309"; // Oranye tua
+        }
+
+        let statusText = document.getElementById('calibStatusText');
+        if (statusText) {
+            statusText.innerText = "Status Kalibrasi: Terekam Aktif & Diperbarui";
         }
         
         // 6. Refresh UI
