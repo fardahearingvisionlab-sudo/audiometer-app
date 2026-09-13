@@ -2284,7 +2284,35 @@ canvas#rightChart, canvas#leftChart {
     let calibMerger, calibLeftGain, calibRightGain;    
 
     function loadCalibrationFromStorage() { let saved = localStorage.getItem('gsi_audiology_calibration'); if(saved) { try { return JSON.parse(saved); } catch(e) {} } let def = {}; ['R_AC', 'R_BC', 'L_AC', 'L_BC'].forEach(k => { def[k] = {}; FREQUENCIES.forEach(f => def[k][f] = 0); }); return def; }
-    function saveCalibrationToStorage() { localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData)); }
+   
+    // ============================================================
+    // FUNGSI SIMPAN KALIBRASI (Disempurnakan dengan Tanggal & Cloud Backup)
+    // ============================================================
+    function saveCalibrationToStorage() {
+        // 1. Simpan angka kalibrasi dari memori ke LocalStorage
+        if (typeof calibrationData !== 'undefined') {
+            localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData));
+        }
+    
+        // 2. Kunci tanggal kalibrasi hari ini (Sangat penting untuk Sertifikat PDF)
+        let today = new Date();
+        let dateString = today.getFullYear() + "-" +
+                         String(today.getMonth() + 1).padStart(2, '0') + "-" +
+                         String(today.getDate()).padStart(2, '0');
+                         
+        window.lastCalDate = dateString;
+        localStorage.setItem('gsi_cal_date', dateString);
+    
+        // 3. Sinkronisasi (Backup) ke Cloud Master Lisensi
+        if (typeof backupCalibrationToCloud === 'function') {
+            backupCalibrationToCloud();
+        }
+    
+        // 4. Beri notifikasi sukses
+        if (typeof showToast === 'function') {
+            showToast("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
+        }
+    }
 
     // PWA Mode: Ambil data dari Local Storage untuk mode offline, 
     // atau gunakan array kosong jika belum ada data.
@@ -2304,7 +2332,7 @@ canvas#rightChart, canvas#leftChart {
     let winRight = null;
     let customLeftVideoUrl = null;
     let customRightVideoUrl = null;
-    // --- ANIMASI KIRI (TEMA: HEWAN & ALAM) ---
+
 // --- BADGE / EMOJI ANIMASI KIRI (HEWAN & KARAKTER) ---
 let frequencyVideosLeft = {
     'default': '🧸',
@@ -3419,18 +3447,24 @@ function executeCalibrationAudio() {
     let freq = Number(calState.freq) || 1000; 
     let side = calState.ear;
 
-    // Jika stimulus adalah White Noise, alihkan ke fungsi khusus
+    // ============================================================
+    // 1. JIKA WHITE NOISE (Eksekusi Khusus)
+    // ============================================================
     if (stim === 'wn') { 
         playCalibrationWhiteNoise(side); 
         
         let modeWN = (calState.trans === 'SPKR') ? 'FFT' : calState.trans;
         if (typeof kirimDataAudiometer === 'function') {
-            let perintahWN = "C" + modeWN + "\nE" + side + "\nF" + freq + "\nI70\nS1\n";
+            // PERBAIKAN: Tambahkan WWHITE NOISE\n agar layar berubah
+            let perintahWN = "C" + modeWN + "\nE" + side + "\nF" + freq + "\nI70\nWWHITE NOISE\nS1\n";
             kirimDataAudiometer(perintahWN);
         }
         return; 
     }
 
+    // ============================================================
+    // 2. KALKULASI TARGET SPL UNTUK TONE / WARBLE / NBN
+    // ============================================================
     let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
     let standardData = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
 
@@ -3450,16 +3484,26 @@ function executeCalibrationAudio() {
         modeArduino = 'FFT'; 
     }
     
-    // Perbaikan Protokol Serial (Single-letter multi-line yang dipahami parser Arduino)
+    // ============================================================
+    // 3. LOGIKA TEKS LAYAR LCD & PENGIRIMAN SERIAL
+    // ============================================================
+    let teksLayar = "PURE TONE";
+    if (stim === 'nbn') teksLayar = "NARROW BAND";
+    else if (stim === 'warble') teksLayar = "WARBLE TONE";
+
     if (typeof kirimDataAudiometer === 'function') {
         let perintahKalibrasi = "C" + modeArduino + "\n" +
                                 "E" + side + "\n" +
                                 "F" + freq + "\n" +
                                 "I" + Math.round(targetOutput) + "\n" +
+                                "W" + teksLayar + "\n" + // <-- PERINTAH W UNTUK LAYAR
                                 "S1\n";
         kirimDataAudiometer(perintahKalibrasi);
     }
     
+    // ============================================================
+    // 4. PEMBANGKITAN AUDIO WEB (FADE-IN AMAN DARI KREK)
+    // ============================================================
     const SYSTEM_MAX_SPL = 95; 
     let gainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
     
@@ -3522,7 +3566,7 @@ function executeCalibrationAudio() {
         window.calibGainNode.connect(audioCtx.destination);
     }
 }
-
+        
 function playCalibrationWhiteNoise(side) {
     if (!window.audioCtx) {
         window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3574,6 +3618,10 @@ function generateDetailedCalibrationReport() {
     let deviceSN = localStorage.getItem('device_serial_number') || localStorage.getItem('machine_id') || 'Belum Terikat';
     let clinicName = localStorage.getItem('clinic_name') || localStorage.getItem('klinikName') || 'KLINIK AUDIOLOGI SEJAHTERA';
     
+    // --- AMBIL TANGGAL TERBARU DARI STORAGE ---
+    let savedDate = localStorage.getItem('gsi_cal_date');
+    if (savedDate) window.lastCalDate = savedDate;
+    
     // --- GENERATE ID / SERIAL NUMBER UNIK UNTUK SETIAP DOKUMEN KELUAR ---
     let randomCode = Math.floor(1000 + Math.random() * 9000);
     let docSerialNo = `SN-CERT-${new Date().getFullYear()}-${randomCode}`;
@@ -3584,7 +3632,7 @@ function generateDetailedCalibrationReport() {
     let snBC   = document.getElementById('sn_BC')?.value || 'SN-BC-2026';
     let snFFT  = document.getElementById('sn_FFT')?.value || 'SN-FFT-2026';
     
-    // 🌟 Ambil pilihan tipe transduser dari dropdown modal
+    // Ambil pilihan tipe transduser dari dropdown modal
     let transducerR = document.getElementById('select_transducer_R')?.value || 'TDH39';
     let transducerL = document.getElementById('select_transducer_L')?.value || 'TDH39';
     
@@ -3596,8 +3644,10 @@ function generateDetailedCalibrationReport() {
         return;
     }
 
-    // Validasi Kelayakan Objektif (Toleransi ketat ±3 dB)
-    let hasCalibrationData = typeof lastCalDate !== 'undefined' && lastCalDate !== null;
+    // ==========================================================
+    // PERBAIKAN: Validasi Kelayakan Objektif (Membaca Tanggal)
+    // ==========================================================
+    let hasCalibrationData = typeof window.lastCalDate !== 'undefined' && window.lastCalDate !== null;
     let isWithinTolerance = true;
     
     let allKeys = typeof calibrationData !== 'undefined' ? Object.keys(calibrationData) : [];
@@ -4848,9 +4898,19 @@ function loadSessionDataToTable(data) {
     if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, m);
     if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, m);
 
+    // ============================================================
+    // ---> PERBAIKAN: Pengiriman Protokol Serial saat Ganti Mode
+    // ============================================================
     if (typeof kirimDataAudiometer === 'function') {
-        kirimDataAudiometer("C" + m + "\n");
+        // 1. Bersihkan layar teks Arduino (Kembali ke mode normal)
+        kirimDataAudiometer("W\n"); 
+        
+        // 2. Kirim perintah perubahan Mode (C)
+        let arduinoMode = m;
+        if (arduinoMode === 'SPKR') arduinoMode = 'FFT';
+        kirimDataAudiometer("C" + arduinoMode + "\n");
     }    
+    // ============================================================
 
     // --- 6. SUNTIKAN AMAN UNTUK RESIZE GRAFIK SPEECH ---
     if (m === 'Speech') {
@@ -4862,6 +4922,7 @@ function loadSessionDataToTable(data) {
         }, 100); 
     }
 }
+        
 
    function setSide(s) { 
     // Panggil toast di paling atas agar pasti tereksekusi duluan
@@ -5582,70 +5643,89 @@ function triggerSignalPresentation() {
     }
         
     function playNextWord() {
-        let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
-        let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
-        
-        if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
-            isPlaylistRunning = false; 
-            let wordListContainer = document.getElementById('speechWordList'); 
-            if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-            if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
-            return; 
-        }
-
-        let reader = new FileReader();
-        reader.onload = e => {
-            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioCtx.decodeAudioData(e.target.result, buffer => {
-                if(!isPlaylistRunning) return;
-                speechSourceNode = audioCtx.createBufferSource(); 
-                speechSourceNode.buffer = buffer; 
-                
-                let speechPanner = audioCtx.createStereoPanner(); 
-                speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
-                
-                speechGainNode = audioCtx.createGain(); 
-                const SYSTEM_MAX_SPL = 95; 
-                let targetGain = Math.min(Math.max(Math.pow(10, (currentDb - SYSTEM_MAX_SPL) / 20), 0.0001), 15.0);
-                speechGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime); 
-                
-                speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); 
-                speechSourceNode.start(0); 
-                
-                let playingDiv = wordUIs[currentPlaylistIndex]; 
-                if(playingDiv) playingDiv.classList.add('playing');
-                
-                // ==========================================================
-                // 🚀 KUNCI UTAMA: KOTAK BIRU OTOMATIS TERSERET AUDIO
-                // Jika audiolog tertinggal mengeklik, kotak biru akan
-                // otomatis melompat mengejar audio yang sedang berbunyi!
-                // ==========================================================
-                if (currentEvaluationIndex < currentPlaylistIndex) {
-                    currentEvaluationIndex = currentPlaylistIndex;
-                    updateWordListHighlight();
-                }
-                // ==========================================================
-                
-                currentPlaylistIndex++; 
-                wordsPlayedInCurrentBatch++;
-                
-                speechSourceNode.onended = () => { 
-                    if(playingDiv) playingDiv.classList.remove('playing');
-                    if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
-                        let delayMs = customDelaySec * 1000; 
-                        setTimeout(playNextWord, delayMs);
-                    } else {
-                        isPlaylistRunning = false; 
-                        let wordListContainer = document.getElementById('speechWordList'); 
-                        if (wordListContainer) wordListContainer.classList.remove('speech-locked');
-                        showToast(`Deret kata selesai dimainkan.`);
-                    }
-                };
-            });
-        };
-        reader.readAsArrayBuffer(playlistQueue[currentPlaylistIndex]);
+    let batchSize = parseInt(document.getElementById('batchSize').value) || 10; 
+    let customDelaySec = parseFloat(document.getElementById('speechDelay').value) || 2.5;
+    
+    if (!isPlaylistRunning || currentPlaylistIndex >= playlistQueue.length || wordsPlayedInCurrentBatch >= batchSize) { 
+        isPlaylistRunning = false; 
+        let wordListContainer = document.getElementById('speechWordList'); 
+        if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+        if (wordsPlayedInCurrentBatch >= batchSize) { showToast(`Deret kata selesai dimainkan (${wordsPlayedInCurrentBatch} kata).`); } 
+        return; 
     }
 
+    // Ambil file yang sedang akan diputar dari antrean
+    let currentFile = playlistQueue[currentPlaylistIndex];
+
+    let reader = new FileReader();
+    reader.onload = e => {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.decodeAudioData(e.target.result, buffer => {
+            if(!isPlaylistRunning) return;
+            speechSourceNode = audioCtx.createBufferSource(); 
+            speechSourceNode.buffer = buffer; 
+            
+            let speechPanner = audioCtx.createStereoPanner(); 
+            speechPanner.pan.value = currentSide === 'right' ? 1 : -1; 
+            
+            speechGainNode = audioCtx.createGain(); 
+            const SYSTEM_MAX_SPL = 95; 
+            let targetGain = Math.min(Math.max(Math.pow(10, (currentDb - SYSTEM_MAX_SPL) / 20), 0.0001), 15.0);
+            speechGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime); 
+            
+            speechSourceNode.connect(speechGainNode).connect(speechPanner).connect(audioCtx.destination); 
+            speechSourceNode.start(0); 
+            
+            // ==========================================================
+            // --- TAMBAHAN UNTUK ARDUINO (Menampilkan Teks Kata) ---
+            // ==========================================================
+            let namaKata = currentFile.name.replace(/\.[^/.]+$/, ""); // Membuang ekstensi .wav/.mp3
+            if (typeof kirimDataAudiometer === 'function') {
+                kirimDataAudiometer("W" + namaKata + "\n");
+            }
+            // ==========================================================
+            
+            let playingDiv = wordUIs[currentPlaylistIndex]; 
+            if(playingDiv) playingDiv.classList.add('playing');
+            
+            // ==========================================================
+            // 🚀 KUNCI UTAMA: KOTAK BIRU OTOMATIS TERSERET AUDIO
+            // Jika audiolog tertinggal mengeklik, kotak biru akan
+            // otomatis melompat mengejar audio yang sedang berbunyi!
+            // ==========================================================
+            if (currentEvaluationIndex < currentPlaylistIndex) {
+                currentEvaluationIndex = currentPlaylistIndex;
+                updateWordListHighlight();
+            }
+            // ==========================================================
+            
+            currentPlaylistIndex++; 
+            wordsPlayedInCurrentBatch++;
+            
+            speechSourceNode.onended = () => { 
+                if(playingDiv) playingDiv.classList.remove('playing');
+                if(isPlaylistRunning && wordsPlayedInCurrentBatch < batchSize && currentPlaylistIndex < playlistQueue.length) {
+                    let delayMs = customDelaySec * 1000; 
+                    setTimeout(playNextWord, delayMs);
+                } else {
+                    isPlaylistRunning = false; 
+                    let wordListContainer = document.getElementById('speechWordList'); 
+                    if (wordListContainer) wordListContainer.classList.remove('speech-locked');
+                    showToast(`Deret kata selesai dimainkan.`);
+
+                    // ==========================================================
+                    // BERSIIHKAN LAYAR ARDUINO SETELAH DERET SELESAI
+                    // ==========================================================
+                    if (typeof kirimDataAudiometer === 'function') {
+                        kirimDataAudiometer("W\n"); 
+                    }
+                }
+            };
+        });
+    };
+    reader.readAsArrayBuffer(currentFile); // Eksekusi dengan variabel yang sudah kita definisikan
+}
+        
     function markWord(isCorrect) {
         if (currentEvaluationIndex >= playlistQueue.length) return showToast("Semua kata telah dinilai.");
         
