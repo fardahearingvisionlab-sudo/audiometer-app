@@ -2286,59 +2286,102 @@ canvas#rightChart, canvas#leftChart {
     function loadCalibrationFromStorage() { let saved = localStorage.getItem('gsi_audiology_calibration'); if(saved) { try { return JSON.parse(saved); } catch(e) {} } let def = {}; ['R_AC', 'R_BC', 'L_AC', 'L_BC'].forEach(k => { def[k] = {}; FREQUENCIES.forEach(f => def[k][f] = 0); }); return def; }
    
     // ============================================================
-    // 1. INISIALISASI & MEMUAT DATA DARI LOCALSTORAGE (Taruh di bagian atas/inisialisasi skrip)
-    // ============================================================
-    if (typeof window.calibrationData === 'undefined') {
-        window.calibrationData = {};
+// 1. INISIALISASI & MEMUAT DATA DARI LOCALSTORAGE
+// ============================================================
+if (typeof window.calibrationData === 'undefined') {
+    window.calibrationData = {};
+}
+
+let savedCalibration = localStorage.getItem('gsi_audiology_calibration');
+if (savedCalibration) {
+    try {
+        window.calibrationData = JSON.parse(savedCalibration);
+    } catch (e) {
+        console.error("Gagal memparsing data kalibrasi:", e);
     }
-    
-    // Muat data offset kalibrasi yang tersimpan sebelumnya
-    let savedCalibration = localStorage.getItem('gsi_audiology_calibration');
-    if (savedCalibration) {
-        try {
-            window.calibrationData = JSON.parse(savedCalibration);
-        } catch (e) {
-            console.error("Gagal memparsing data kalibrasi:", e);
-        }
-    }
-    
-    // Muat tanggal kalibrasi terakhir yang tersimpan
-    let savedCalDate = localStorage.getItem('gsi_cal_date');
-    if (savedCalDate) {
-        window.lastCalDate = savedCalDate;
-    }
-    
-    // ============================================================
-    // 2. FUNGSI STORE KALIBRASI (DISAMAKAN DENGAN PEMANGGIL DI HTML)
-    // ============================================================
-    function saveCurrentCalibration() {
-        // 1. Simpan angka kalibrasi dari memori ke LocalStorage
-        if (typeof calibrationData !== 'undefined') {
-            localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData));
-        }
-    
-        // 2. Kunci tanggal kalibrasi hari ini (Format standar YYYY-MM-DD)
-        let today = new Date();
-        let dateString = today.getFullYear() + "-" +
-                         String(today.getMonth() + 1).padStart(2, '0') + "-" +
-                         String(today.getDate()).padStart(2, '0');
-                         
-        window.lastCalDate = dateString;
-        localStorage.setItem('gsi_cal_date', dateString);
-    
-        // 3. Sinkronisasi (Backup) ke Cloud Master Lisensi (jika ada)
-        if (typeof backupCalibrationToCloud === 'function') {
-            backupCalibrationToCloud();
-        }
-    
-        // 4. Beri notifikasi sukses ke user
-        if (typeof showToast === 'function') {
-            showToast("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
-        } else {
-            alert("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
-        }
+}
+
+let savedCalDate = localStorage.getItem('gsi_cal_date');
+if (savedCalDate) {
+    window.lastCalDate = savedCalDate;
+}
+
+// ============================================================
+// 2. FUNGSI STORE KALIBRASI & UPDATE UI BANNER
+// ============================================================
+function saveCurrentCalibration() {
+    // 1. Simpan angka kalibrasi dari memori ke LocalStorage
+    if (typeof calibrationData !== 'undefined') {
+        localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData));
     }
 
+    // 2. Kunci tanggal kalibrasi hari ini (Format standar YYYY-MM-DD)
+    let today = new Date();
+    let dateString = today.getFullYear() + "-" +
+                     String(today.getMonth() + 1).padStart(2, '0') + "-" +
+                     String(today.getDate()).padStart(2, '0');
+                     
+    window.lastCalDate = dateString;
+    localStorage.setItem('gsi_cal_date', dateString);
+
+    // 🌟 3. PERBARUI BANNER TANGGAL SECARA INSTAN DI MODAL
+    if (typeof refreshCalibrationDateUI === 'function') {
+        refreshCalibrationDateUI();
+    }
+
+    // 4. Sinkronisasi (Backup) ke Cloud Master Lisensi (jika ada)
+    if (typeof backupCalibrationToCloud === 'function') {
+        backupCalibrationToCloud();
+    }
+
+    // 5. Beri notifikasi sukses ke user
+    if (typeof showToast === 'function') {
+        showToast("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
+    } else {
+        alert("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
+    }
+}
+
+        
+    // ============================================================
+// 1. FUNGSI UPDATE BANNER TANGGAL DI MODAL KALIBRASI
+// ============================================================
+function refreshCalibrationDateUI() {
+    let savedDate = localStorage.getItem('gsi_cal_date');
+    let statusTextEl = document.getElementById('calibStatusText');
+    let lastCalLabelEl = document.getElementById('lastCalibratedLabel');
+    let nextCalDueEl = document.getElementById('nextCalibDueLabel');
+    let statusBox = document.getElementById('calibrationStatusBox');
+
+    if (savedDate) {
+        let d = new Date(savedDate);
+        let nextYearDate = new Date(d.setFullYear(d.getFullYear() + 1)).toLocaleDateString('id-ID', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit' 
+        });
+
+        if (statusTextEl) statusTextEl.innerText = "Status Kalibrasi: Aktif & Tersimpan Sesuai Standar Klinis.";
+        if (lastCalLabelEl) lastCalLabelEl.innerText = "Terakhir Dikalibrasi: " + savedDate;
+        if (nextCalDueEl) nextCalDueEl.innerText = "Jadwal Kalibrasi Berikutnya: " + nextYearDate;
+        
+        if (statusBox) {
+            statusBox.style.background = "#f0fdf4";
+            statusBox.style.borderColor = "#16a34a";
+            statusBox.style.color = "#166534";
+        }
+    } else {
+        if (statusTextEl) statusTextEl.innerText = "Status Kalibrasi: Belum pernah dikalibrasi pada sesi ini.";
+        if (lastCalLabelEl) lastCalLabelEl.innerText = "Terakhir Dikalibrasi: Belum ada data";
+        if (nextCalDueEl) nextCalDueEl.innerText = "Jadwal Kalibrasi Berikutnya: -";
+        
+        if (statusBox) {
+            statusBox.style.background = "#fef3c7";
+            statusBox.style.borderColor = "#f59e0b";
+            statusBox.style.color = "#92400e";
+        }
+    }
+}    
         
     // PWA Mode: Ambil data dari Local Storage untuk mode offline, 
     // atau gunakan array kosong jika belum ada data.
@@ -3183,29 +3226,43 @@ function updatePrintChartsData() {
     function closeCustomPinModal() { let pinModal = document.getElementById('customPinModal'); if (pinModal) { pinModal.style.display = 'none'; } }
 
     function submitCustomPin() {
-        let pinInput = document.getElementById('customPinInput'); let enteredPin = pinInput ? pinInput.value : "";
-        let savedPin = localStorage.getItem('gsi_calibration_pin') || '1234';
-        if (enteredPin === savedPin) {
-            closeCustomPinModal(); showToast("✔ PIN benar. Membuka Menu Kalibrasi...");
-            let calModal = document.getElementById('calibrationModal');
-            if (calModal) {
-                calModal.style.display = 'flex';
-                // 👉 SUNTIKAN: Beritahu LCD Arduino masuk mode Kalibrasi
-                if (typeof kirimDataAudiometer === 'function') kirimDataAudiometer("K1\n");
-                
-                if (typeof buildCalibrationTable === 'function') buildCalibrationTable();
-                if (typeof renderCalibrationUI === 'function') renderCalibrationUI();
-                let wnBtn = document.getElementById('btn_stim_wn');
-                if (wnBtn && wnBtn.classList.contains('active') && typeof playCalibrationWhiteNoise === 'function') { playCalibrationWhiteNoise(); } 
-                else if (typeof startCalibrationSound === 'function') { startCalibrationSound(); }
-                if (typeof calibClockInterval !== 'undefined') {
-                    if (calibClockInterval) clearInterval(calibClockInterval);
-                    calibClockInterval = setInterval(() => { let clockEl = document.getElementById('calibClock'); if (clockEl) clockEl.innerText = new Date().toLocaleTimeString(); }, 1000);
-                }
+    let pinInput = document.getElementById('customPinInput'); let enteredPin = pinInput ? pinInput.value : "";
+    let savedPin = localStorage.getItem('gsi_calibration_pin') || '1234';
+    if (enteredPin === savedPin) {
+        closeCustomPinModal(); showToast("✔ PIN benar. Membuka Menu Kalibrasi...");
+        let calModal = document.getElementById('calibrationModal');
+        if (calModal) {
+            calModal.style.display = 'flex';
+            
+            // 👉 SUNTIKAN: Perbarui tampilan banner tanggal & status saat modal dibuka
+            if (typeof refreshCalibrationDateUI === 'function') {
+                refreshCalibrationDateUI();
             }
-        } else { showToast("❌ PIN Salah! Akses ditolak."); if (pinInput) { pinInput.value = ""; pinInput.focus(); } }
-    }
 
+            // 👉 SUNTIKAN: Beritahu LCD Arduino masuk mode Kalibrasi
+            if (typeof kirimDataAudiometer === 'function') kirimDataAudiometer("K1\n");
+            
+            if (typeof buildCalibrationTable === 'function') buildCalibrationTable();
+            if (typeof renderCalibrationUI === 'function') renderCalibrationUI();
+            let wnBtn = document.getElementById('btn_stim_wn');
+            if (wnBtn && wnBtn.classList.contains('active') && typeof playCalibrationWhiteNoise === 'function') { playCalibrationWhiteNoise(); } 
+            else if (typeof startCalibrationSound === 'function') { startCalibrationSound(); }
+            if (typeof calibClockInterval !== 'undefined') {
+                if (calibClockInterval) clearInterval(calibClockInterval);
+                calibClockInterval = setInterval(() => { let clockEl = document.getElementById('calibClock'); if (clockEl) clockEl.innerText = new Date().toLocaleTimeString(); }, 1000);
+            }
+        }
+    } else { showToast("❌ PIN Salah! Akses ditolak."); if (pinInput) { pinInput.value = ""; pinInput.focus(); } }
+}
+
+
+    function getCalibrationKey() {
+    let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
+    let stimType = calState.stimType || 'tone';
+    // Hasil format kunci: R_TDH39_tone, R_TDH39_warble, R_TDH39_nbn, dll.
+    return calState.ear + '_' + transId + '_' + stimType; 
+}
+        
     function closeCalibrationModal() { 
     document.getElementById('calibrationModal').style.display = 'none'; 
     if (calibClockInterval) clearInterval(calibClockInterval); 
@@ -3325,7 +3382,7 @@ function setCalibStim(stimType) {
 }
 
 // =================================================================
-// FUNGSI UI KALIBRASI
+// FUNGSI UI KALIBRASI (DISEMPURNAKAN AGAR STIMULUS TIDAK TERTIMPA)
 // =================================================================
 function renderCalibrationUI() {
     if (!window.currentAcModel) window.currentAcModel = 'SAEP1';
@@ -3364,7 +3421,10 @@ function renderCalibrationUI() {
         targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:10px; font-weight:normal; color:#64748b;">(70 HL)</span>`;
     }
 
-    let key = calState.ear + '_' + transId;
+    // 🌟 PERUBAHAN UTAMA: Sertakan stimType pada key agar nilai tidak saling menimpa
+    let stimType = calState.stimType || 'tone';
+    let key = calState.ear + '_' + transId + '_' + stimType;
+    
     let currentOffset = (calibrationData[key] && calibrationData[key][calState.freq]) ? calibrationData[key][calState.freq] : 0;
     
     // Hitung nilai aktual SLM berdasarkan offset tersimpan
@@ -3374,7 +3434,6 @@ function renderCalibrationUI() {
     
     let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
     if (lcdTitleBox) {
-        // === PERUBAHAN TEKS ADA DI SINI ===
         lcdTitleBox.innerText = "ATUR OUTPUT TONE (dB SPL)";
         lcdTitleBox.style.color = "#0284c7"; 
     }
@@ -3408,6 +3467,7 @@ function renderCalibrationUI() {
     }
 }
 
+        
 // ============================================================
 // FUNGSI KONTROL KALIBRASI (Sinkron & Bebas Bentrok)
 // ============================================================
@@ -3489,7 +3549,8 @@ function executeCalibrationAudio() {
         targetBaseline = Number(standardData[freq]);
     }
 
-    let key = side + '_' + transId; 
+    // 🌟 PERBAIKAN UTAMA: Menyertakan jenis stimulus (stim) pada key penyimpanan
+    let key = side + '_' + transId + '_' + stim; 
     let offset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][freq]) ? Number(calibrationData[key][freq]) : 0;
     if (isNaN(offset)) offset = 0;
     
@@ -3588,6 +3649,13 @@ function playCalibrationWhiteNoise(side) {
     let audioCtx = window.audioCtx;
     const now = audioCtx.currentTime;
     
+    // 🌟 Ambil Transduser dan Offset khusus White Noise
+    let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
+    let key = side + '_' + transId + '_wn';
+    
+    let wnOffset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key]['overall']) ? Number(calibrationData[key]['overall']) : 0;
+    let targetSplWn = 70.0 + wnOffset;
+
     let bufferSize = audioCtx.sampleRate * 2; 
     let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
     let output = noiseBuffer.getChannelData(0);
@@ -3602,9 +3670,12 @@ function playCalibrationWhiteNoise(side) {
         panner.pan.setValueAtTime((side === 'R') ? 1 : -1, now);
     }
     
+    const SYSTEM_MAX_SPL = 95;
+    let gainVal = Math.min(Math.max(Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
+
     window.calibGainNode = audioCtx.createGain(); 
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
-    window.calibGainNode.gain.linearRampToValueAtTime(0.1, now + 0.035); 
+    window.calibGainNode.gain.linearRampToValueAtTime(gainVal, now + 0.035); 
     
     if (panner) {
         window.calibrationNoiseNode.connect(window.calibGainNode).connect(panner).connect(audioCtx.destination); 
