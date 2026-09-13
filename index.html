@@ -3298,10 +3298,10 @@ function setCalibStim(stimType) {
     if (typeof startCalibrationSound === 'function') startCalibrationSound();
 }
 
-    // =================================================================
-    // 3. FUNGSI UI & GENERATOR SUARA YANG BARU (PRESISI & SINKRON)
-    // =================================================================
-    function renderCalibrationUI() {
+// =================================================================
+// FUNGSI UI KALIBRASI
+// =================================================================
+function renderCalibrationUI() {
     if (!window.currentAcModel) window.currentAcModel = 'SAEP1';
     let fHTML = "";
     FREQUENCIES.forEach(f => { 
@@ -3348,7 +3348,8 @@ function setCalibStim(stimType) {
     
     let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
     if (lcdTitleBox) {
-        lcdTitleBox.innerText = "HASIL PEMBACAAN SLM (dB SPL)";
+        // === PERUBAHAN TEKS ADA DI SINI ===
+        lcdTitleBox.innerText = "ATUR OUTPUT TONE (dB SPL)";
         lcdTitleBox.style.color = "#0284c7"; 
     }
 
@@ -3365,11 +3366,11 @@ function setCalibStim(stimType) {
             if(!calibrationData[key]) calibrationData[key] = {}; 
             let slmVal = parseFloat(this.value) || targetSpl;
             
-            // Otomatis hitung offset (Target ISO dikurangi angka yang diketik teknisi dari SLM)
+            // Otomatis hitung offset
             let calculatedOffset = targetSpl - slmVal;
             calibrationData[key][calState.freq] = parseFloat(calculatedOffset.toFixed(2)); 
             
-            // === PERBAIKAN: Volume disesuaikan mulus secara Real-Time (Tanpa ngelag/putus) ===
+            // Volume disesuaikan mulus secara Real-Time (Tanpa ngelag/putus)
             if (typeof calibGainNode !== 'undefined' && calibGainNode && audioCtx) {
                 let newTarget = targetSpl + calculatedOffset;
                 let newGain = Math.min(Math.max(Math.pow(10, (newTarget - 95) / 20), 0.0001), 1.0);
