@@ -2286,7 +2286,30 @@ canvas#rightChart, canvas#leftChart {
     function loadCalibrationFromStorage() { let saved = localStorage.getItem('gsi_audiology_calibration'); if(saved) { try { return JSON.parse(saved); } catch(e) {} } let def = {}; ['R_AC', 'R_BC', 'L_AC', 'L_BC'].forEach(k => { def[k] = {}; FREQUENCIES.forEach(f => def[k][f] = 0); }); return def; }
    
     // ============================================================
-    // FUNGSI STORE KALIBRASI (DISAMAKAN DENGAN PEMANGGIL DI HTML)
+    // 1. INISIALISASI & MEMUAT DATA DARI LOCALSTORAGE (Taruh di bagian atas/inisialisasi skrip)
+    // ============================================================
+    if (typeof window.calibrationData === 'undefined') {
+        window.calibrationData = {};
+    }
+    
+    // Muat data offset kalibrasi yang tersimpan sebelumnya
+    let savedCalibration = localStorage.getItem('gsi_audiology_calibration');
+    if (savedCalibration) {
+        try {
+            window.calibrationData = JSON.parse(savedCalibration);
+        } catch (e) {
+            console.error("Gagal memparsing data kalibrasi:", e);
+        }
+    }
+    
+    // Muat tanggal kalibrasi terakhir yang tersimpan
+    let savedCalDate = localStorage.getItem('gsi_cal_date');
+    if (savedCalDate) {
+        window.lastCalDate = savedCalDate;
+    }
+    
+    // ============================================================
+    // 2. FUNGSI STORE KALIBRASI (DISAMAKAN DENGAN PEMANGGIL DI HTML)
     // ============================================================
     function saveCurrentCalibration() {
         // 1. Simpan angka kalibrasi dari memori ke LocalStorage
@@ -2294,7 +2317,7 @@ canvas#rightChart, canvas#leftChart {
             localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData));
         }
     
-        // 2. Kunci tanggal kalibrasi hari ini (Penting untuk status PASSED di Sertifikat)
+        // 2. Kunci tanggal kalibrasi hari ini (Format standar YYYY-MM-DD)
         let today = new Date();
         let dateString = today.getFullYear() + "-" +
                          String(today.getMonth() + 1).padStart(2, '0') + "-" +
@@ -2303,14 +2326,16 @@ canvas#rightChart, canvas#leftChart {
         window.lastCalDate = dateString;
         localStorage.setItem('gsi_cal_date', dateString);
     
-        // 3. Sinkronisasi (Backup) ke Cloud Master Lisensi
+        // 3. Sinkronisasi (Backup) ke Cloud Master Lisensi (jika ada)
         if (typeof backupCalibrationToCloud === 'function') {
             backupCalibrationToCloud();
         }
     
-        // 4. Beri notifikasi sukses
+        // 4. Beri notifikasi sukses ke user
         if (typeof showToast === 'function') {
             showToast("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
+        } else {
+            alert("✅ Seluruh Data & Tanggal Kalibrasi Berhasil Disimpan Permanen!");
         }
     }
 
@@ -3602,25 +3627,26 @@ function generateDetailedCalibrationReport() {
     let modal = document.getElementById('calibrationSnModal');
     if (modal) modal.style.display = 'none';
 
-    // Sinkronisasi data dari memori
     let deviceSN = localStorage.getItem('device_serial_number') || localStorage.getItem('machine_id') || 'Belum Terikat';
     let clinicName = localStorage.getItem('clinic_name') || localStorage.getItem('klinikName') || 'KLINIK AUDIOLOGI SEJAHTERA';
     
     // --- AMBIL TANGGAL TERBARU DARI STORAGE ---
     let savedDate = localStorage.getItem('gsi_cal_date');
-    if (savedDate) window.lastCalDate = savedDate;
+    if (savedDate) {
+        window.lastCalDate = savedDate;
+    } else {
+        // Fallback jika belum tersimpan
+        window.lastCalDate = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
     
-    // --- GENERATE ID / SERIAL NUMBER UNIK UNTUK SETIAP DOKUMEN KELUAR ---
     let randomCode = Math.floor(1000 + Math.random() * 9000);
     let docSerialNo = `SN-CERT-${new Date().getFullYear()}-${randomCode}`;
 
-    // Ambil nilai Serial Number dari input modal
     let snAC_R = document.getElementById('sn_R_AC')?.value || 'SN-AC-R-2026';
     let snAC_L = document.getElementById('sn_L_AC')?.value || 'SN-AC-L-2026';
     let snBC   = document.getElementById('sn_BC')?.value || 'SN-BC-2026';
     let snFFT  = document.getElementById('sn_FFT')?.value || 'SN-FFT-2026';
     
-    // Ambil pilihan tipe transduser dari dropdown modal
     let transducerR = document.getElementById('select_transducer_R')?.value || 'TDH39';
     let transducerL = document.getElementById('select_transducer_L')?.value || 'TDH39';
     
@@ -3632,9 +3658,6 @@ function generateDetailedCalibrationReport() {
         return;
     }
 
-    // ==========================================================
-    // PERBAIKAN: Validasi Kelayakan Objektif (Membaca Tanggal)
-    // ==========================================================
     let hasCalibrationData = typeof window.lastCalDate !== 'undefined' && window.lastCalDate !== null;
     let isWithinTolerance = true;
     
@@ -3697,7 +3720,7 @@ function generateDetailedCalibrationReport() {
             <div>
                 <b>No. Sertifikat / Dokumen:</b> <span style="color:#0284c7; font-weight:bold;">${docSerialNo}</span><br>
                 <b>Serial Number Alat (Machine ID):</b> <span style="color:#0f172a; font-weight:bold; background:#e2e8f0; padding:1px 4px; border-radius:3px;">${deviceSN}</span><br>
-                <b>Tanggal Kalibrasi:</b> ${typeof lastCalDate !== 'undefined' && lastCalDate ? lastCalDate : 'Belum Dikalibrasi'}<br>
+                <b>Tanggal Kalibrasi:</b> ${window.lastCalDate}<br>
                 <b>Standar Acuan:</b> ISO 389 / ANSI S3.6
             </div>
             <div>
@@ -3708,19 +3731,31 @@ function generateDetailedCalibrationReport() {
         </div>
     `;
 
-    // 🌟 Memasukkan variabel dropdown (transducerR dan transducerL) ke dalam daftar modalitas
+    // Pemetaan key ke calibrationData sesuai dengan saat input diset (Ear + ModelTransduser)
     let masterModalities = [
-        { id: 'R_AC', name: 'Right Headset - Air Conduction (AC)', sn: snAC_R, type: transducerR, regKey: 'SAEP1' },
-        { id: 'L_AC', name: 'Left Headset - Air Conduction (AC)', sn: snAC_L, type: transducerL, regKey: 'SAEP1' },
-        { id: 'R_BC', name: 'Right Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC' },
-        { id: 'L_BC', name: 'Left Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC' },
-        { id: 'SPKR', name: 'Free Field Test (FFT / Speaker)', sn: snFFT, type: 'Sound Field Speaker', regKey: 'SPKR' },
-        { id: 'NBN',  name: 'Narrow Band Noise (Masking NBN)', sn: 'Internal Generator', type: 'Electronic Noise Generator', regKey: 'SAEP1' },
-        { id: 'WN',   name: 'White Noise (Masking WN)', sn: 'Internal Generator', type: 'Broadband Noise Generator', regKey: 'SPKR' }
+        { id: 'R_AC', name: 'Right Headset - Air Conduction (AC)', sn: snAC_R, type: transducerR, regKey: 'SAEP1', storeKey: 'R_' + transducerR },
+        { id: 'L_AC', name: 'Left Headset - Air Conduction (AC)', sn: snAC_L, type: transducerL, regKey: 'SAEP1', storeKey: 'L_' + transducerL },
+        { id: 'R_BC', name: 'Right Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'R_BC' },
+        { id: 'L_BC', name: 'Left Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'L_BC' },
+        { id: 'SPKR', name: 'Free Field Test (FFT / Speaker)', sn: snFFT, type: 'Sound Field Speaker', regKey: 'SPKR', storeKey: 'R_SPKR' },
+        { id: 'NBN',  name: 'Narrow Band Noise (Masking NBN)', sn: 'Internal Generator', type: 'Electronic Noise Generator', regKey: 'SAEP1', storeKey: 'R_' + transducerR },
+        { id: 'WN',   name: 'White Noise (Masking WN)', sn: 'Internal Generator', type: 'Broadband Noise Generator', regKey: 'SPKR', storeKey: 'R_SPKR' }
     ];
 
     masterModalities.forEach(mod => {
-        let offsets = (typeof calibrationData !== 'undefined' && calibrationData[mod.id]) ? calibrationData[mod.id] : {};
+        // Ambil data offset berdasarkan key penyimpanan yang benar
+        let offsets = {};
+        if (typeof calibrationData !== 'undefined') {
+            if (calibrationData[mod.storeKey]) {
+                offsets = calibrationData[mod.storeKey];
+            } else if (calibrationData[mod.id]) {
+                offsets = calibrationData[mod.id];
+            } else {
+                // Cari key fleksibel jika tersimpan dengan format lain
+                let foundKey = Object.keys(calibrationData).find(k => k.includes(mod.regKey) || k.includes(mod.id));
+                if (foundKey) offsets = calibrationData[foundKey];
+            }
+        }
         
         htmlContent += `
             <div class="section-title">
@@ -3734,7 +3769,6 @@ function generateDetailedCalibrationReport() {
             <table>
         `;
 
-        // Logika khusus White Noise (Broadband)
         if (mod.id === 'WN') {
             let wnOffsetKeys = Object.keys(offsets);
             let wnVal = wnOffsetKeys.length > 0 ? offsets[wnOffsetKeys[0]] : 0;
@@ -3763,12 +3797,10 @@ function generateDetailedCalibrationReport() {
                     </tr>
                 </tbody>
             `;
-        } 
-        // Logika tabel standar untuk AC, BC, FFT, dan NBN
-        else {
+        } else {
             let standardTable = (typeof window.TRANSDUCER_REGISTRY !== 'undefined' && window.TRANSDUCER_REGISTRY[mod.regKey]) 
-                                ? window.TRANSDUCER_REGISTRY[mod.regKey] 
-                                : (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY['SAEP1'] ? window.TRANSDUCER_REGISTRY['SAEP1'] : {});
+                                    ? window.TRANSDUCER_REGISTRY[mod.regKey] 
+                                    : (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY['SAEP1'] ? window.TRANSDUCER_REGISTRY['SAEP1'] : {});
             
             let freqs = Object.keys(standardTable).sort((a,b) => Number(a)-Number(b));
 
