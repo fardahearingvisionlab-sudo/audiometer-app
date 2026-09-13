@@ -2286,15 +2286,15 @@ canvas#rightChart, canvas#leftChart {
     function loadCalibrationFromStorage() { let saved = localStorage.getItem('gsi_audiology_calibration'); if(saved) { try { return JSON.parse(saved); } catch(e) {} } let def = {}; ['R_AC', 'R_BC', 'L_AC', 'L_BC'].forEach(k => { def[k] = {}; FREQUENCIES.forEach(f => def[k][f] = 0); }); return def; }
    
     // ============================================================
-    // FUNGSI SIMPAN KALIBRASI (Disempurnakan dengan Tanggal & Cloud Backup)
+    // FUNGSI STORE KALIBRASI (DISAMAKAN DENGAN PEMANGGIL DI HTML)
     // ============================================================
-    function saveCalibrationToStorage() {
+    function saveCurrentCalibration() {
         // 1. Simpan angka kalibrasi dari memori ke LocalStorage
         if (typeof calibrationData !== 'undefined') {
             localStorage.setItem('gsi_audiology_calibration', JSON.stringify(calibrationData));
         }
     
-        // 2. Kunci tanggal kalibrasi hari ini (Sangat penting untuk Sertifikat PDF)
+        // 2. Kunci tanggal kalibrasi hari ini (Penting untuk status PASSED di Sertifikat)
         let today = new Date();
         let dateString = today.getFullYear() + "-" +
                          String(today.getMonth() + 1).padStart(2, '0') + "-" +
@@ -2314,6 +2314,7 @@ canvas#rightChart, canvas#leftChart {
         }
     }
 
+        
     // PWA Mode: Ambil data dari Local Storage untuk mode offline, 
     // atau gunakan array kosong jika belum ada data.
     let patients = [];
@@ -3383,26 +3384,18 @@ function renderCalibrationUI() {
 }
 
 // ============================================================
-// FUNGSI KONTROL KALIBRASI (Stabil, Sinkron, & Bebas Senyap)
+// FUNGSI KONTROL KALIBRASI (Sinkron & Bebas Bentrok)
 // ============================================================
 
 function stopCalibrationSound() {
-    // Fade out gain secara halus sebelum dimatikan total untuk cegah letupan
-    if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode && window.audioCtx) {
-        try {
-            window.calibGainNode.gain.cancelScheduledValues(window.audioCtx.currentTime);
-            window.calibGainNode.gain.setValueAtTime(window.calibGainNode.gain.value, window.audioCtx.currentTime);
-            window.calibGainNode.gain.linearRampToValueAtTime(0.0001, window.audioCtx.currentTime + 0.05);
-        } catch(e) {}
-    }
-
-    setTimeout(() => {
-        if (typeof window.calibOsc !== 'undefined' && window.calibOsc) { try { window.calibOsc.stop(); window.calibOsc.disconnect(); } catch(e){} window.calibOsc = null; }
-        if (typeof window.calibLfo !== 'undefined' && window.calibLfo) { try { window.calibLfo.stop(); window.calibLfo.disconnect(); } catch(e){} window.calibLfo = null; }
-        if (typeof window.calibNoiseSource !== 'undefined' && window.calibNoiseSource) { try { window.calibNoiseSource.stop(); window.calibNoiseSource.disconnect(); } catch(e){} window.calibNoiseSource = null; }
-        if (typeof window.calibrationNoiseNode !== 'undefined' && window.calibrationNoiseNode) { try { window.calibrationNoiseNode.stop(); window.calibrationNoiseNode.disconnect(); } catch(e){} window.calibrationNoiseNode = null; }
-        if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode) { try { window.calibGainNode.disconnect(); } catch(e){} window.calibGainNode = null; }
-    }, 60);
+    // Bersihkan node audio secara langsung dan instan tanpa jeda timeout
+    try {
+        if (window.calibOsc) { window.calibOsc.stop(); window.calibOsc.disconnect(); window.calibOsc = null; }
+        if (window.calibLfo) { window.calibLfo.stop(); window.calibLfo.disconnect(); window.calibLfo = null; }
+        if (window.calibNoiseSource) { window.calibNoiseSource.stop(); window.calibNoiseSource.disconnect(); window.calibNoiseSource = null; }
+        if (window.calibrationNoiseNode) { window.calibrationNoiseNode.stop(); window.calibrationNoiseNode.disconnect(); window.calibrationNoiseNode = null; }
+        if (window.calibGainNode) { window.calibGainNode.disconnect(); window.calibGainNode = null; }
+    } catch(e) {}
     
     // Kirim status stimulus mati (S0) ke Arduino
     if (typeof kirimDataAudiometer === 'function') {
