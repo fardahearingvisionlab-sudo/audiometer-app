@@ -5453,9 +5453,6 @@ function updateVisualBatasMaksimal(chartInstance, mode) {
     chartInstance.update();
 }
 
-// ============================================================
-// 1. FUNGSI START TONE (Anti-Krek & Protokol Arduino Huruf Tunggal)
-// ============================================================
 function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
@@ -5474,7 +5471,6 @@ function startTone() {
     let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
     if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
 
-    // 1. BANGKITKAN AUDIO (ANTI-SLEEP)
     if (!audioCtx || audioCtx.state === 'closed') {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -5517,9 +5513,6 @@ function startTone() {
     if (currentMode === 'BC') selectedTransducer = 'BC';
     if (currentMode === 'FFT') selectedTransducer = 'SPKR';
 
-    // ==============================================================
-    // KALKULASI VOLUME & FADE-IN HALUS (CEGAH KREK/POP)
-    // ==============================================================
     let splAt70dB = 70.0; 
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
@@ -5527,7 +5520,9 @@ function startTone() {
 
     let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
     
-    let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer;
+    let stimType = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus : 'tone';
+    let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer + '_' + stimType;
+    
     let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
     
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
@@ -5536,10 +5531,8 @@ function startTone() {
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-    // Fade-in linier mulus selama 35ms untuk meredam letupan awal
     currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
     currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
-    // ==============================================================
     
     if (panner) {
         osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
@@ -5551,13 +5544,11 @@ function startTone() {
     isPlaying = true;
     document.getElementById('signalIndicatorBox')?.classList.add('active');
 
-    // 3. KIRIM PERINTAH KE ARDUINO MENGGUNAKAN FORMAT HURUF TUNGGAL
     if (typeof kirimDataAudiometer === 'function') {
         let finalSide = (activeEar === 'left') ? 'L' : 'R';
         let arduinoMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
         if (arduinoMode === 'SPKR') arduinoMode = 'FFT';
         
-        // Kirim berurutan agar Arduino tahu mode, telinga, frekuensi, db, dan status nyala (S1)
         let command = "C" + arduinoMode + "\n" +
                       "E" + finalSide + "\n" +
                       "F" + freq + "\n" +
@@ -5566,7 +5557,6 @@ function startTone() {
         kirimDataAudiometer(command);
     }
 }
-
 
 // ============================================================
 // 2. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware S0)
