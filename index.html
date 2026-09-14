@@ -5248,6 +5248,16 @@ function initGsiCharts() {
         updateWhoClassification('R', parseFloat(rPta)); 
         updateWhoClassification('L', parseFloat(lPta));
     }
+
+    // 🌟 TAMBAHAN: Pastikan garis batas maksimal ikut digambar ulang setiap grafik di-update
+    let modeAktif = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+    if (typeof rightChartInstance !== 'undefined' && rightChartInstance && typeof updateVisualBatasMaksimal === 'function') {
+        updateVisualBatasMaksimal(rightChartInstance, modeAktif);
+    }
+    if (typeof leftChartInstance !== 'undefined' && leftChartInstance && typeof updateVisualBatasMaksimal === 'function') {
+        updateVisualBatasMaksimal(leftChartInstance, modeAktif);
+    }
+}
     
     function updateWhoClassification(side, pta) {
         let badge = document.getElementById(side.toLowerCase() + 'ClassificationBadge');
