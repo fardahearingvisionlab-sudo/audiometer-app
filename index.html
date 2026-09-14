@@ -2465,104 +2465,111 @@ let frequencyVideosRight = {
 
 
     function removeLastMark(side) {
-    // Pastikan variabel frekuensi dan mode tersedia di aplikasi Anda
     if (typeof FREQUENCIES === 'undefined' || typeof currentFreqIndex === 'undefined') return;
 
-    // Ambil frekuensi yang sedang aktif di panel kontrol saat ini
     let freq = FREQUENCIES[currentFreqIndex];
-
-    // 🌟 PERBAIKAN 1: Deteksi mode pintar (Mendukung AC, BC, dan FFT/VRA)
     let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
     if (targetType !== 'AC' && targetType !== 'BC' && targetType !== 'FFT') {
-        targetType = 'AC'; // Default keamanan
+        targetType = 'AC'; 
     }
     
-    // Rangkai ID input tabel (Contoh hasil: R_AC_1000, L_BC_4000, atau R_FFT_500)
     let inputId = `${side}_${targetType}_${freq}`;
     let inputElement = document.getElementById(inputId);
 
-    // Cek apakah elemen inputnya ada dan sudah ada isinya (titik sudah tersimpan)
     if (inputElement && inputElement.value !== "") {
-        inputElement.value = ""; // Kosongkan nilainya
+        inputElement.value = ""; 
         
-        // 🌟 PERBAIKAN 2: Panggil render ulang tabel DAN grafik agar sinkron
         if (typeof syncTable === 'function') syncTable(); 
-        if (typeof updateGsiCharts === 'function') updateGsiCharts(); // Memaksa grafik menghapus titik
+        if (typeof updateGsiCharts === 'function') updateGsiCharts(); 
         
         let earName = side === 'R' ? 'Kanan' : 'Kiri';
-        showToast(`🗑️ Titik ${targetType} pada ${freq} Hz (${earName}) dihapus.`);
+        showToast("Titik " + targetType + " pada " + freq + " Hz (" + earName + ") dihapus.");
     } else {
-        showToast(`⚠️ Tidak ada titik ${targetType} di ${freq} Hz untuk dihapus.`);
+        showToast("Tidak ada titik " + targetType + " di " + freq + " Hz untuk dihapus.");
     }
-}    
+}
 
-    function syncPatientToGoogleSheets(p) { fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'patient', id: p.id || '', namaLengkap: p.namaLengkap || '', gender: p.gender || '', dob: p.dob || '', city: p.city || '', address: p.address || '', province: p.province || '', country: p.country || 'Indonesia', job: p.job || '', phone: p.phone || '', phoneAlt: p.phoneAlt || '', email: p.email || '', nik: p.nik || '', notes: p.notes || '' }) }).then(() => {}).catch(err => console.error(err)); }
+function syncPatientToGoogleSheets(p) { 
+    fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            type: 'patient', 
+            id: p.id || '', 
+            namaLengkap: p.namaLengkap || '', 
+            gender: p.gender || '', 
+            dob: p.dob || '', 
+            city: p.city || '', 
+            address: p.address || '', 
+            province: p.province || '', 
+            country: p.country || 'Indonesia', 
+            job: p.job || '', 
+            phone: p.phone || '', 
+            phoneAlt: p.phoneAlt || '', 
+            email: p.email || '', 
+            nik: p.nik || '', 
+            notes: p.notes || '' 
+        }) 
+    })
+    .then(() => {})
+    .catch(err => console.error(err)); 
+}
 
-    function syncSessionToGoogleSheets(pId, s) { 
-        fetch(SCRIPT_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ 
-                type: 'session', 
-                sessionId: `SESI-${pId}-${Date.now()}`, 
-                patientId: pId, 
-                createdOn: s.date || new Date().toISOString().split('T')[0], 
-                description: "Pemeriksaan Audiometri", 
-                testType: "AC, BC, Tympanometry, OAE, ABR", 
-                device: "Clinical Suite", 
-                status: "Completed", 
-                audioJson: JSON.stringify(s.data || {}) 
-            }) 
-        })
-        .then(() => {
-            console.log("Data sesi berhasil dikirim ke Google Sheets");
-        })
-        .catch(err => console.error("Gagal sinkronisasi sesi:", err)); 
-    }
+function syncSessionToGoogleSheets(pId, s) { 
+    fetch(SCRIPT_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+            type: 'session', 
+            sessionId: "SESI-" + pId + "-" + Date.now(), 
+            patientId: pId, 
+            createdOn: s.date || new Date().toISOString().split('T')[0], 
+            description: "Pemeriksaan Audiometri", 
+            testType: "AC, BC, Tympanometry, OAE, ABR", 
+            device: "Clinical Suite", 
+            status: "Completed", 
+            audioJson: JSON.stringify(s.data || {}) 
+        }) 
+    })
+    .then(() => {
+        console.log("Data sesi berhasil dikirim ke Google Sheets");
+    })
+    .catch(err => console.error("Gagal sinkronisasi sesi:", err)); 
+}
 
-    // --- FUNGSI TAMBAHAN (BUG FIX): MENYIMPAN SELURUH PEMERIKSAAN ---
-    function saveCurrentExamination() {
+function saveCurrentExamination() {
     if (!patients || patients.length === 0 || activePatientIndex < 0) {
         showToast("⚠️ Tidak ada pasien yang sedang aktif.");
         return;
     }
     
-    // 1. Fungsi asli Anda: Menarik input form ke dalam variabel lokal (p.sessions[activeSessionIndex])
     syncTable();
     
     let p = patients[activePatientIndex];
     
     if (p && p.sessions && p.sessions[activeSessionIndex]) {
-        
-        // --- MULAI KODE TAMBAHAN UNTUK HISTORY ---
-        // 2. Ambil data yang baru saja diekstrak oleh syncTable()
         let currentData = p.sessions[activeSessionIndex].data;
         
-        // 3. Buat duplikat data tersebut sebagai SESI BARU agar tidak menimpa sesi lama
         let timestampNow = new Date().toISOString();
         let newSession = {
             sessionId: 'SESI-' + p.id + '-' + Date.now(),
             date: timestampNow.split('T')[0],
             timestamp: timestampNow,
-            description: "Pemeriksaan Audiometri", // Sesuaikan jika ada deskripsi khusus
+            description: "Pemeriksaan Audiometri",
             data: currentData
         };
         
-        // 4. Masukkan (Push) ke riwayat sesi pasien
         p.sessions.push(newSession);
-        
-        // 5. Pindahkan indeks aktif ke sesi yang baru saja dibuat
         activeSessionIndex = p.sessions.length - 1;
         
-        // 6. WAJIB: Simpan ke LocalStorage agar riwayat tidak hilang saat aplikasi dimuat ulang
         localStorage.setItem('gsi_audiology_patients', JSON.stringify(patients));
         
-        // 7. Perbarui tampilan Dropdown History di panel kiri agar sesi baru langsung muncul
-        updateDropdownHistoryUi();
-        // --- AKHIR KODE TAMBAHAN ---
+        if (typeof updateDropdownHistoryUi === 'function') {
+            updateDropdownHistoryUi();
+        }
         
-        // 8. Fungsi asli Anda: Kirim ke Google Sheets
         syncSessionToGoogleSheets(p.id, p.sessions[activeSessionIndex]);
         
         showToast("💾 Sesi Pemeriksaan Berhasil Disimpan & Riwayat Diperbarui!");
@@ -6518,13 +6525,11 @@ function recordResponse(isNR = false) {
     let sideKey = (currentSide === 'right') ? 'R' : 'L';
     let targetInputId = `${sideKey}_${targetType}_${closestFreq}`;
     
-    // 🌟 1. Cek Apakah Masking Sedang Aktif
     let chkMask = document.getElementById('chkMasking');
     let isMasked = chkMask ? chkMask.checked : false;
 
     let el = document.getElementById(targetInputId);
     if(el) { 
-        // 🌟 2. Format simpan teks (contoh: "40", "40M", "120NR", atau "120NRM")
         let valStr = currentDb.toString();
         if (isNR) valStr += "NR";
         if (isMasked) valStr += "M";
@@ -6532,11 +6537,22 @@ function recordResponse(isNR = false) {
         el.value = valStr; 
         
         if (typeof syncTable === 'function') syncTable(); 
-        if (typeof updateGsiCharts === 'function') updateGsiCharts(); // Pastikan grafik langsung update
+        if (typeof updateGsiCharts === 'function') updateGsiCharts(); 
     }
     
-    showToast(`✔ Stored: ${closestFreq}Hz @ ${currentDb}dB ${isNR ? '(NR)' : ''} ${isMasked ? '(Masked)' : ''}`); 
+    // Menggunakan string biasa agar aman dari error encoding karakter Unicode
+    showToast("Stored: " + closestFreq + "Hz @ " + currentDb + "dB " + (isNR ? "(NR)" : "") + (isMasked ? "(Masked)" : "")); 
     stopTone();
+
+    if (currentFreqIndex < FREQUENCIES.length - 1) {
+        currentFreqIndex++; 
+        if (typeof updateDisplayStatus === 'function') updateDisplayStatus(); 
+        
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+        }
+    }
+}
 
     // 🌟 3. AUTO-ADVANCE: Otomatis pindah ke frekuensi selanjutnya setelah menyimpan
     if (currentFreqIndex < FREQUENCIES.length - 1) {
