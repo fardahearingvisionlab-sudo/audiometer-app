@@ -6576,7 +6576,6 @@ function recordResponse(isNR = false) {
         if (typeof updateGsiCharts === 'function') updateGsiCharts(); 
     }
     
-    // Menggunakan string biasa agar aman dari error encoding karakter Unicode
     showToast("Stored: " + closestFreq + "Hz @ " + currentDb + "dB " + (isNR ? "(NR)" : "") + (isMasked ? "(Masked)" : "")); 
     stopTone();
 
@@ -6590,18 +6589,6 @@ function recordResponse(isNR = false) {
     }
 }
 
-    // 🌟 3. AUTO-ADVANCE: Otomatis pindah ke frekuensi selanjutnya setelah menyimpan
-    if (currentFreqIndex < FREQUENCIES.length - 1) {
-        currentFreqIndex++; // Naikkan index frekuensi
-        if (typeof updateDisplayStatus === 'function') updateDisplayStatus(); // Update layar
-        
-        // Kirim perintah frekuensi baru ke Arduino jika ada
-        if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
-        }
-    }
-}
-        
 function updateGhostCursor() {
     if (typeof rightChartInstance === 'undefined' || typeof leftChartInstance === 'undefined') return;
 
@@ -6622,7 +6609,7 @@ function updateGhostCursor() {
 
     rightChartInstance.update('none'); 
     leftChartInstance.update('none');
-}        
+}
 
         
 // ============================================================
