@@ -2436,24 +2436,66 @@ let frequencyVideosRight = {
     function savePatientsToStorage() { /* Sinkronisasi otomatis aktif langsung ke Google Sheets */ }
 
     function clearEarCurve(side) {
-    let earName = side === 'R' ? 'Right Ear' : 'Left Ear';
+    let earName = side === 'R' ? 'Telinga Kanan' : 'Telinga Kiri';
     
-    // Memanggil custom modal buatan kita
-    showCustomConfirm(`Apakah Anda yakin ingin menghapus seluruh kurva pemeriksaan pada ${earName}?`, function() {
+    // 1. Deteksi pintar mode apa yang sedang aktif saat ini
+    let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+    if (targetType !== 'AC' && targetType !== 'BC' && targetType !== 'FFT') {
+        targetType = 'AC'; // Default keamanan ke AC
+    }
+    
+    // 2. Munculkan peringatan yang secara spesifik menyebutkan mode yang akan dihapus
+    showCustomConfirm(`Apakah Anda yakin ingin menghapus HANYA kurva ${targetType} pada ${earName}? \n(Kurva lain tidak akan terhapus)`, function() {
         
-        // --- Semua kode di bawah ini dieksekusi HANYA jika tombol 'Ya, Hapus' ditekan ---
+        // --- 3. Eksekusi hapus HANYA pada baris input mode yang sesuai ---
         FREQUENCIES.forEach(f => {
-            let acInput = document.getElementById(`${side}_AC_${f}`);
-            let bcInput = document.getElementById(`${side}_BC_${f}`);
-            if (acInput) acInput.value = "";
-            if (bcInput) bcInput.value = "";
+            let el = document.getElementById(`${side}_${targetType}_${f}`);
+            if (el) {
+                el.value = ""; // Kosongkan sel
+            }
         });
         
-        syncTable(); 
-        showToast(`🗑️ Kurva ${earName} berhasil dikosongkan.`);
+        // 4. Perbarui visual (Tabel dan Grafik)
+        if (typeof syncTable === 'function') syncTable(); 
+        if (typeof updateGsiCharts === 'function') updateGsiCharts();
         
+        // 5. Munculkan notifikasi sukses
+        showToast(`🗑️ Kurva ${targetType} ${earName} berhasil dikosongkan.`);
     });
 }
+
+
+    function removeLastMark(side) {
+    // Pastikan variabel frekuensi dan mode tersedia di aplikasi Anda
+    if (typeof FREQUENCIES === 'undefined' || typeof currentFreqIndex === 'undefined') return;
+
+    // Ambil frekuensi yang sedang aktif di panel kontrol saat ini
+    let freq = FREQUENCIES[currentFreqIndex];
+
+    // 🌟 PERBAIKAN 1: Deteksi mode pintar (Mendukung AC, BC, dan FFT/VRA)
+    let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+    if (targetType !== 'AC' && targetType !== 'BC' && targetType !== 'FFT') {
+        targetType = 'AC'; // Default keamanan
+    }
+    
+    // Rangkai ID input tabel (Contoh hasil: R_AC_1000, L_BC_4000, atau R_FFT_500)
+    let inputId = `${side}_${targetType}_${freq}`;
+    let inputElement = document.getElementById(inputId);
+
+    // Cek apakah elemen inputnya ada dan sudah ada isinya (titik sudah tersimpan)
+    if (inputElement && inputElement.value !== "") {
+        inputElement.value = ""; // Kosongkan nilainya
+        
+        // 🌟 PERBAIKAN 2: Panggil render ulang tabel DAN grafik agar sinkron
+        if (typeof syncTable === 'function') syncTable(); 
+        if (typeof updateGsiCharts === 'function') updateGsiCharts(); // Memaksa grafik menghapus titik
+        
+        let earName = side === 'R' ? 'Kanan' : 'Kiri';
+        showToast(`🗑️ Titik ${targetType} pada ${freq} Hz (${earName}) dihapus.`);
+    } else {
+        showToast(`⚠️ Tidak ada titik ${targetType} di ${freq} Hz untuk dihapus.`);
+    }
+}    
 
     function syncPatientToGoogleSheets(p) { fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'patient', id: p.id || '', namaLengkap: p.namaLengkap || '', gender: p.gender || '', dob: p.dob || '', city: p.city || '', address: p.address || '', province: p.province || '', country: p.country || 'Indonesia', job: p.job || '', phone: p.phone || '', phoneAlt: p.phoneAlt || '', email: p.email || '', nik: p.nik || '', notes: p.notes || '' }) }).then(() => {}).catch(err => console.error(err)); }
 
@@ -7231,39 +7273,6 @@ document.getElementById('btnCustomConfirmOk').addEventListener('click', function
     }
     closeCustomConfirm(); // Tutup modal setelah selesai
 });
-
-function removeLastMark(side) {
-    // Pastikan variabel frekuensi dan mode tersedia di aplikasi Anda
-    if (typeof FREQUENCIES === 'undefined' || typeof currentFreqIndex === 'undefined') return;
-
-    // Ambil frekuensi yang sedang aktif di panel kontrol saat ini
-    let freq = FREQUENCIES[currentFreqIndex];
-
-    // Tentukan mode yang sedang aktif (misalnya AC atau BC)
-    let mode = (typeof currentMode !== 'undefined' && currentMode === 'BC') ? 'BC' : 'AC'; 
-    
-    // Rangkai ID input tabel (Contoh hasil: R_AC_1000 atau L_BC_4000)
-    let inputId = `${side}_${mode}_${freq}`;
-    let inputElement = document.getElementById(inputId);
-
-    // Cek apakah elemen inputnya ada dan sudah ada isinya (titik sudah tersimpan)
-    if (inputElement && inputElement.value !== "") {
-        inputElement.value = ""; // Kosongkan nilainya
-        
-        // Panggil fungsi render ulang grafik dan tabel Anda
-        if (typeof syncTable === 'function') {
-            syncTable(); 
-        }
-        
-        let earName = side === 'R' ? 'Kanan' : 'Kiri';
-        showToast(`🗑️ Titik ${mode} pada ${freq} Hz (${earName}) dihapus.`);
-    } else {
-        showToast(`⚠️ Tidak ada titik ${mode} di ${freq} Hz untuk dihapus.`);
-    }
-}
-
-
-
 
 
 
