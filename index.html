@@ -3216,11 +3216,26 @@ function updatePrintChartsData() {
 }
 
     function setExamStimulus(type) {
-        currentStimulus = type;
-        document.getElementById('btnStimPure').classList.remove('active-mode'); document.getElementById('btnStimWarble').classList.remove('active-mode');
-        if(type === 'pure') { document.getElementById('btnStimPure').classList.add('active-mode'); } else { document.getElementById('btnStimWarble').classList.add('active-mode'); }
-        showToast(`Stimulus: ${type === 'warble' ? 'Warble Tone' : 'Pure Tone'}`);
+    currentStimulus = type;
+    
+    // Reset kedua tombol
+    document.getElementById('btnStimPure').classList.remove('active-mode'); 
+    document.getElementById('btnStimWarble').classList.remove('active-mode');
+    
+    // Aktifkan tombol yang dipilih
+    if(type === 'pure') { 
+        document.getElementById('btnStimPure').classList.add('active-mode'); 
+    } else { 
+        document.getElementById('btnStimWarble').classList.add('active-mode'); 
     }
+    
+    // 🌟 SUNTIKAN: Beritahu UI untuk memperbarui teks [ PURE / WARBLE ]
+    if (typeof updateDisplayStatus === 'function') {
+        updateDisplayStatus();
+    }
+    
+    showToast(`Stimulus: ${type === 'warble' ? 'Warble Tone' : 'Pure Tone'}`);
+}
 
     function submitChangePassword() {
         let oldPin = document.getElementById('oldPinInput').value; let newPin = document.getElementById('newPinInput').value; let confirmPin = document.getElementById('confirmPinInput').value;
@@ -5268,7 +5283,7 @@ function setSide(s) {
 function updateDisplayStatus() { 
     let f = FREQUENCIES[currentFreqIndex]; 
     
-    // Update Frequency & Intensity display
+    // 1. Update Teks Frekuensi & Intensitas
     let lblFreq = document.getElementById('lblFreqSide');
     if (lblFreq) {
         lblFreq.innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
@@ -5279,51 +5294,41 @@ function updateDisplayStatus() {
         lblIntensity.innerText = currentDb + ' dB HL'; 
     }
 
-    // Update teks status secara real-time
-    let transSelect = document.getElementById('setAcTransducer');
-    let trans = transSelect ? transSelect.value : 'SAEP1';
-    let stim = (typeof currentStimulus !== 'undefined') ? currentStimulus.toUpperCase() : 'PURE';
-    let modeLabel = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+    // 2. DETEKSI MODE AKTIF
+    let modeLabel = (typeof currentMode !== 'undefined' && currentMode) ? currentMode : 'AC';
+
+    // 3. DETEKSI TRANSDUCER SECARA DINAMIS BERDASARKAN MODE
+    let trans = 'SAEP1';
+    if (modeLabel === 'AC') {
+        let acEl = document.getElementById('setAcTransducer');
+        if (acEl) trans = acEl.value;
+    } else if (modeLabel === 'BC') {
+        let bcEl = document.getElementById('setBcTransducer');
+        trans = bcEl ? bcEl.value : 'B71'; // Fallback ke B71 jika tidak ada dropdown BC
+    } else if (modeLabel === 'FFT' || modeLabel === 'VRA') {
+        trans = 'SPEAKER'; // Transducer otomatis Speaker untuk Free Field / VRA
+    } else if (modeLabel === 'Speech') {
+        let spEl = document.getElementById('setAcTransducer');
+        trans = spEl ? spEl.value : 'TDH39';
+    }
+
+    // 4. DETEKSI STIMULUS / NADA AKTIF
+    let stim = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus.toUpperCase() : 'PURE';
     
+    // 5. CETAK KE LABEL STATUS DETIL POJOK KANAN ATAS
     let lblDetail = document.getElementById('lblDetailStatus');
     if (lblDetail) {
         lblDetail.innerText = `[ ${modeLabel} - ${trans} - ${stim} ]`;
     }
 
-    // 🌟 SUNTIKAN: Sinkronkan highlight kuning pada tabel bawah
+    // 6. SINKRONISASI HIGHLIGHT TABEL & GHOST CURSOR
     if (typeof highlightActiveTableColumn === 'function') {
         highlightActiveTableColumn(f);
     }
-
-    // 🌟 SUNTIKAN: Update posisi Titik Bayangan (Ghost Cursor)
     if (typeof updateGhostCursor === 'function') {
         updateGhostCursor();
     }
 }
-    // PERBAIKAN: Fungsi adjustDb sekarang pintar dan tahu batas maksimal!
-    function adjustDb(val) {
-        let freqAktif = FREQUENCIES[currentFreqIndex];
-        let batasMaksimal = getMaximumLimit(currentMode, freqAktif);
-        
-        let nv = currentDb + val;
-        
-        if (nv > batasMaksimal) {
-            currentDb = batasMaksimal; // Kunci di batas mentok
-            if (typeof showToast === 'function') {
-                showToast(`⚠️ Batas maksimal ${currentMode} untuk ${freqAktif} Hz adalah ${batasMaksimal} dB HL`);
-            }
-        } else if (nv < -10) {
-            currentDb = -10; // Kunci batas bawah minimum
-        } else {
-            currentDb = nv;
-        }
-        updateDisplayStatus();
-
-        // ---> SUNTIKAN: Kirim perubahan DB ke Arduino <---
-        if (typeof kirimDataAudiometer === 'function') {
-            kirimDataAudiometer("I" + currentDb + "\n");
-        }
-    }
     
     function updateMaskingDisplayUI() {
     let chkMasking = document.getElementById('chkMasking');
