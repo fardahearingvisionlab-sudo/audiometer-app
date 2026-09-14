@@ -5518,14 +5518,19 @@ function startTone() {
     let isLeftEar = (rawEar === 'left' || rawEar === 'l');
     let activeEar = isLeftEar ? 'left' : 'right';
 
-    // 🌟 PERBAIKAN: Gunakan ID elemen sesuai dengan HTML Anda
-    let rightEarPanel = document.getElementById('wsEarRight');
-    let leftEarPanel = document.getElementById('wsEarLeft');
+    // Elemen Tombol dan Grafik Audiogram
+    let rightBtn = document.getElementById('wsEarRight');
+    let leftBtn = document.getElementById('wsEarLeft');
+    let rightChartPanel = document.querySelector('.ear-panel.right-ear') || document.getElementById('rightChart').parentElement;
+    let leftChartPanel = document.querySelector('.ear-panel.left-ear') || document.getElementById('leftChart').parentElement;
 
+    // Nyalakan kedip
     if (isLeftEar) {
-        if (leftEarPanel) leftEarPanel.classList.add('flash-left');
+        if (leftBtn) leftBtn.classList.add('flash-left');
+        if (leftChartPanel) leftChartPanel.classList.add('flash-left');
     } else {
-        if (rightEarPanel) rightEarPanel.classList.add('flash-right');
+        if (rightBtn) rightBtn.classList.add('flash-right');
+        if (rightChartPanel) rightChartPanel.classList.add('flash-right');
     }
 
     isStimulusActive = true;
@@ -5623,12 +5628,16 @@ function startTone() {
 // 2. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware S0)
 // ============================================================
 function stopTone() {
-    // 🌟 PERBAIKAN: Gunakan ID elemen sesuai HTML Anda
-    let rightEarPanel = document.getElementById('wsEarRight'); 
-    let leftEarPanel = document.getElementById('wsEarLeft');
+    // Matikan kedip di semua elemen
+    let rightBtn = document.getElementById('wsEarRight');
+    let leftBtn = document.getElementById('wsEarLeft');
+    let rightChartPanel = document.querySelector('.ear-panel.right-ear') || document.getElementById('rightChart').parentElement;
+    let leftChartPanel = document.querySelector('.ear-panel.left-ear') || document.getElementById('leftChart').parentElement;
     
-    if (rightEarPanel) rightEarPanel.classList.remove('flash-right');
-    if (leftEarPanel) leftEarPanel.classList.remove('flash-left');
+    if (rightBtn) rightBtn.classList.remove('flash-right');
+    if (leftBtn) leftBtn.classList.remove('flash-left');
+    if (rightChartPanel) rightChartPanel.classList.remove('flash-right');
+    if (leftChartPanel) leftChartPanel.classList.remove('flash-left');
 
     isStimulusActive = false;
     let stL = document.getElementById('stimLightLeft'); if(stL) { stL.style.background = '#cbd5e1'; stL.style.boxShadow = 'none'; }
@@ -5659,15 +5668,16 @@ function stopTone() {
 // FUNGSI TRIGGER SIGNAL (Pemutar Nada Otomatis / Berdurasi)
 // ============================================================
 function triggerSignalPresentation() {
-    // 🌟 PERBAIKAN: Gunakan ID elemen yang benar sesuai HTML Anda
-    let rightEarPanel = document.getElementById('wsEarRight'); 
-    let leftEarPanel = document.getElementById('wsEarLeft');
+    // 1. Ambil elemen tombol indikator kecil
+    let rightBtn = document.getElementById('wsEarRight'); 
+    let leftBtn = document.getElementById('wsEarLeft');
     
-    // 🌟 PERBAIKAN: Deteksi telinga agar aman untuk format 'L', 'R', 'left', atau 'right'
+    // 2. Ambil elemen background grafik audiogram (kembali pakai class orisinal Anda)
+    let rightChartPanel = document.querySelector('.ear-panel.right-ear') || document.getElementById('rightChart').parentElement;
+    let leftChartPanel = document.querySelector('.ear-panel.left-ear') || document.getElementById('leftChart').parentElement;
+    
     let rawEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
     let isLeftEar = (rawEar === 'left' || rawEar === 'l');
-    
-    // Normalisasi variabel untuk dilempar ke pemutar suara
     let activeEar = isLeftEar ? 'left' : 'right';
     
     let freq = FREQUENCIES[currentFreqIndex] || 1000; 
@@ -5676,24 +5686,29 @@ function triggerSignalPresentation() {
     let isMasking = document.getElementById('chkMasking') ? document.getElementById('chkMasking').checked : false;
     let noiseLvl = document.getElementById('maskingDb') ? parseFloat(document.getElementById('maskingDb').value) : 30;
 
-    // Memanggil pemutar nada berdurasi tetap yang sudah menggunakan protokol huruf tunggal
     if (typeof playToneWithMasking === 'function') {
         playToneWithMasking(freq, intensity, activeEar, isMasking, noiseLvl);
     }
 
     let durationMs = 1000; 
     
-    // 🌟 PERBAIKAN: Eksekusi animasi kedip
+    // 🌟 Eksekusi animasi kedip ke KEDUA elemen (Tombol & Grafik)
     if (isLeftEar) {
-        if (leftEarPanel) { 
-            leftEarPanel.classList.add('flash-left'); 
-            setTimeout(() => { leftEarPanel.classList.remove('flash-left'); }, durationMs); 
-        }
+        if (leftBtn) leftBtn.classList.add('flash-left');
+        if (leftChartPanel) leftChartPanel.classList.add('flash-left');
+        
+        setTimeout(() => { 
+            if (leftBtn) leftBtn.classList.remove('flash-left'); 
+            if (leftChartPanel) leftChartPanel.classList.remove('flash-left'); 
+        }, durationMs); 
     } else {
-        if (rightEarPanel) { 
-            rightEarPanel.classList.add('flash-right'); 
-            setTimeout(() => { rightEarPanel.classList.remove('flash-right'); }, durationMs); 
-        }
+        if (rightBtn) rightBtn.classList.add('flash-right');
+        if (rightChartPanel) rightChartPanel.classList.add('flash-right');
+        
+        setTimeout(() => { 
+            if (rightBtn) rightBtn.classList.remove('flash-right'); 
+            if (rightChartPanel) rightChartPanel.classList.remove('flash-right'); 
+        }, durationMs); 
     }
 }
 
