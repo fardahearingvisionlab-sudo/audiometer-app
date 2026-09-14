@@ -5514,18 +5514,22 @@ function startTone() {
     if (typeof currentMode !== 'undefined' && (currentMode === 'ABR' || currentMode === 'OAE' || currentMode === 'Tymp')) { return; }
     if (currentMode === 'Speech' || isPlaying) return;
 
-    let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
-    let rightEarPanel = document.querySelector('.ear-panel.right-ear');
-    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
+    let rawEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    let isLeftEar = (rawEar === 'left' || rawEar === 'l');
+    let activeEar = isLeftEar ? 'left' : 'right';
 
-    if (activeEar === 'left') {
+    // 🌟 PERBAIKAN: Gunakan ID elemen sesuai dengan HTML Anda
+    let rightEarPanel = document.getElementById('wsEarRight');
+    let leftEarPanel = document.getElementById('wsEarLeft');
+
+    if (isLeftEar) {
         if (leftEarPanel) leftEarPanel.classList.add('flash-left');
     } else {
         if (rightEarPanel) rightEarPanel.classList.add('flash-right');
     }
 
     isStimulusActive = true;
-    let stimLight = activeEar === 'left' ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
+    let stimLight = isLeftEar ? document.getElementById('stimLightLeft') : document.getElementById('stimLightRight');
     if (stimLight) { stimLight.style.background = '#38bdf8'; stimLight.style.boxShadow = '0 0 10px #0ea5e9'; }
 
     if (!audioCtx || audioCtx.state === 'closed') {
@@ -5549,7 +5553,7 @@ function startTone() {
     
     if (panner) {
         let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
-        panner.pan.value = isFreeField ? 0 : (activeEar === 'right' ? 1 : -1);
+        panner.pan.value = isFreeField ? 0 : (isLeftEar ? -1 : 1);
     }
 
     if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
@@ -5602,7 +5606,7 @@ function startTone() {
     document.getElementById('signalIndicatorBox')?.classList.add('active');
 
     if (typeof kirimDataAudiometer === 'function') {
-        let finalSide = (activeEar === 'left') ? 'L' : 'R';
+        let finalSide = isLeftEar ? 'L' : 'R';
         let arduinoMode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
         if (arduinoMode === 'SPKR') arduinoMode = 'FFT';
         
@@ -5619,8 +5623,10 @@ function startTone() {
 // 2. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware S0)
 // ============================================================
 function stopTone() {
-    let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
-    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
+    // 🌟 PERBAIKAN: Gunakan ID elemen sesuai HTML Anda
+    let rightEarPanel = document.getElementById('wsEarRight'); 
+    let leftEarPanel = document.getElementById('wsEarLeft');
+    
     if (rightEarPanel) rightEarPanel.classList.remove('flash-right');
     if (leftEarPanel) leftEarPanel.classList.remove('flash-left');
 
@@ -5630,7 +5636,6 @@ function stopTone() {
 
     if (typeof examLfo !== 'undefined' && examLfo) { try { examLfo.stop(); examLfo.disconnect(); } catch(e){} examLfo = null; }
 
-    // Mematikan Audio Web dengan Fade-Out halus
     if(currentGainNode && audioCtx) {
         try {
             currentGainNode.gain.cancelScheduledValues(audioCtx.currentTime); 
@@ -5644,9 +5649,6 @@ function stopTone() {
     isPlaying = false; 
     document.getElementById('signalIndicatorBox')?.classList.remove('active');
 
-    // ==========================================
-    // HARDWARE CONTROL: KIRIM PERINTAH S0 (MATI) KE ARDUINO
-    // ==========================================
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("S0\n"); 
     }
@@ -5657,9 +5659,17 @@ function stopTone() {
 // FUNGSI TRIGGER SIGNAL (Pemutar Nada Otomatis / Berdurasi)
 // ============================================================
 function triggerSignalPresentation() {
-    let rightEarPanel = document.querySelector('.ear-panel.right-ear'); 
-    let leftEarPanel = document.querySelector('.ear-panel.left-ear');
-    let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    // 🌟 PERBAIKAN: Gunakan ID elemen yang benar sesuai HTML Anda
+    let rightEarPanel = document.getElementById('wsEarRight'); 
+    let leftEarPanel = document.getElementById('wsEarLeft');
+    
+    // 🌟 PERBAIKAN: Deteksi telinga agar aman untuk format 'L', 'R', 'left', atau 'right'
+    let rawEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    let isLeftEar = (rawEar === 'left' || rawEar === 'l');
+    
+    // Normalisasi variabel untuk dilempar ke pemutar suara
+    let activeEar = isLeftEar ? 'left' : 'right';
+    
     let freq = FREQUENCIES[currentFreqIndex] || 1000; 
     let intensity = typeof currentDb !== 'undefined' ? currentDb : 40;
     
@@ -5673,7 +5683,8 @@ function triggerSignalPresentation() {
 
     let durationMs = 1000; 
     
-    if (activeEar === 'left') {
+    // 🌟 PERBAIKAN: Eksekusi animasi kedip
+    if (isLeftEar) {
         if (leftEarPanel) { 
             leftEarPanel.classList.add('flash-left'); 
             setTimeout(() => { leftEarPanel.classList.remove('flash-left'); }, durationMs); 
