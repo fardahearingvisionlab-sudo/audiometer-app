@@ -6502,14 +6502,43 @@ window.addEventListener('keyup', e => {
 
 function adjustDb(delta) {
     let newVal = currentDb + delta;
-    if (newVal >= -10 && newVal <= 120) {
+    
+    // Tentukan batas maksimal berdasarkan mode dan frekuensi aktif saat ini
+    let maxLimit = 120; // Default batas tertinggi
+    if (typeof FREQUENCIES !== 'undefined' && typeof currentFreqIndex !== 'undefined') {
+        let f = FREQUENCIES[currentFreqIndex];
+        let type = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+        
+        if (type === 'BC') {
+            if (f <= 250) maxLimit = 45;
+            else if (f === 500) maxLimit = 65;
+            else if (f >= 750 && f <= 4000) maxLimit = 80;
+            else maxLimit = 50; 
+        } else if (type === 'AC') {
+            if (f === 125) maxLimit = 90;
+            else if (f === 250) maxLimit = 105;
+            else maxLimit = 120; 
+        } else if (type === 'FFT') {
+            maxLimit = 90; 
+        }
+    }
+
+    // Batasi nilai agar tidak kurang dari -10 dan tidak melebihi maxLimit frekuensi tersebut
+    if (newVal >= -10 && newVal <= maxLimit) {
         currentDb = newVal;
         updateDisplayStatus();
+        if (typeof updateGhostCursor === 'function') {
+            updateGhostCursor(); // Perbarui posisi kursor secara instan
+        }
         if (isStimulusActive) {
             startTone(); // Perbarui suara jika sedang menyala
         }
+    } else if (newVal > maxLimit) {
+        if (typeof showToast === 'function') {
+            showToast(`⚠️ Batas maksimal intensitas untuk frekuensi ini adalah ${maxLimit} dB`);
+        }
     }
-}        
+}
         
 
 function highlightActiveTableColumn(activeFreq) {
