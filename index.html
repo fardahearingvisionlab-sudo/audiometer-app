@@ -4780,10 +4780,67 @@ function loadSessionDataToTable(data) {
     }
 
     function syncTable() {
-        let data = {}; ['R', 'L'].forEach(side => { ['AC', 'BC'].forEach(type => { FREQUENCIES.forEach(f => { let v = document.getElementById(`${side}_${type}_${f}`).value; if(v !== "") data[`${side}_${type}_${f}`] = v; }); }); });
-        patients[activePatientIndex].sessions[activeSessionIndex].data = data; localStorage.setItem('gsi_audiology_patients', JSON.stringify(patients)); 
-        updateGsiCharts(); updatePrintChartsData();
+    let data = {}; 
+    
+    // Looping untuk Telinga Kanan (R) dan Kiri (L)
+    ['R', 'L'].forEach(side => { 
+        // 🌟 PERBAIKAN: Tambahkan 'FFT' agar tersimpan
+        ['AC', 'BC', 'FFT'].forEach(type => { 
+            FREQUENCIES.forEach(f => { 
+                let inputEl = document.getElementById(`${side}_${type}_${f}`);
+                
+                if (inputEl) {
+                    let v = inputEl.value; 
+                    
+                    if (v !== "") { 
+                        let valNum = parseFloat(v);
+                        
+                        // =======================================================
+                        // LOGIKA PEMBATASAN MAKSIMAL (CLAMPING)
+                        // =======================================================
+                        let maxLimit = 120; // Batas mentok paling tinggi
+                        
+                        if (type === 'BC') {
+                            if (f <= 250) maxLimit = 45;
+                            else if (f === 500) maxLimit = 65;
+                            else if (f >= 750 && f <= 4000) maxLimit = 80;
+                            else maxLimit = 50; 
+                        } else if (type === 'AC') {
+                            if (f === 125) maxLimit = 90;
+                            else if (f === 250) maxLimit = 105;
+                            else maxLimit = 120; // Sisa frekuensi AC batasnya 120dB
+                        } else if (type === 'FFT') {
+                            maxLimit = 90; // Batas aman standar untuk Speaker
+                        }
+
+                        // Jika input melebihi batas, paksa turunkan ke maxLimit
+                        if (valNum > maxLimit) {
+                            valNum = maxLimit; 
+                            inputEl.value = maxLimit; // Ubah teks di tabel secara instan
+                            
+                            if (typeof showToast === 'function') {
+                                showToast(`⚠️ Batas maksimal ${type} pada ${f}Hz adalah ${maxLimit}dB`);
+                            }
+                        }
+                        // =======================================================
+
+                        data[`${side}_${type}_${f}`] = valNum; 
+                    }
+                }
+            }); 
+        }); 
+    });
+    
+    // Simpan ke memori lokal
+    patients[activePatientIndex].sessions[activeSessionIndex].data = data; 
+    localStorage.setItem('gsi_audiology_patients', JSON.stringify(patients)); 
+    
+    // Perbarui grafik secara instan
+    updateGsiCharts(); 
+    if (typeof updatePrintChartsData === 'function') {
+        updatePrintChartsData();
     }
+}
 
     function initGsiCharts() {
         // Generator Ikon kustom "S" untuk Chart.js
