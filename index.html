@@ -5245,7 +5245,7 @@ function loadSessionDataToTable(data) {
     document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
     document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; 
 
-    // 🌟 SUNTIKAN: Update teks status secara real-time
+    // Update teks status secara real-time
     let transSelect = document.getElementById('setAcTransducer');
     let trans = transSelect ? transSelect.value : 'SAEP1';
     let stim = (typeof currentStimulus !== 'undefined') ? currentStimulus.toUpperCase() : 'PURE';
@@ -5254,6 +5254,11 @@ function loadSessionDataToTable(data) {
     let lblDetail = document.getElementById('lblDetailStatus');
     if (lblDetail) {
         lblDetail.innerText = `[ ${modeLabel} - ${trans} - ${stim} ]`;
+    }
+
+    // 🌟 SUNTIKAN: Sinkronkan highlight kuning pada tabel bawah
+    if (typeof highlightActiveTableColumn === 'function') {
+        highlightActiveTableColumn(f);
     }
 
     if (typeof updateGhostCursor === 'function') {
@@ -6319,6 +6324,24 @@ window.addEventListener('keyup', e => {
         stopTone(); 
     } 
 });
+
+
+// Fungsi untuk memberi highlight kuning pada kolom frekuensi yang aktif di tabel
+function highlightActiveTableColumn(activeFreq) {
+    // 1. Reset/bersihkan semua background kuning dari semua sel input di tabel
+    FREQUENCIES.forEach(f => {
+        let cells = document.querySelectorAll(`[id$="_${f}"]`);
+        cells.forEach(cell => {
+            cell.style.backgroundColor = ""; // Kembalikan ke normal
+        });
+    });
+
+    // 2. Beri warna kuning terang (#fef08a) hanya pada kolom frekuensi yang sedang aktif
+    let activeCells = document.querySelectorAll(`[id$="_${activeFreq}"]`);
+    activeCells.forEach(cell => {
+        cell.style.backgroundColor = "#fef08a"; // Warna kuning penanda aktif
+    });
+}        
 
         
 function recordResponse(isNR = false) {
