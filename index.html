@@ -5069,29 +5069,45 @@ function loadSessionDataToTable(data) {
 }
         
     function updateGsiCharts() {
-        const getRow = (p, t) => FREQUENCIES.map(f => { let v = document.getElementById(`${p}_${t}_${f}`)?.value; return v !== "" ? parseInt(v) : null; });
-        
-        rightChartInstance.data.datasets[0].data = getRow('R', 'AC'); 
-        rightChartInstance.data.datasets[1].data = getRow('R', 'BC'); 
-        rightChartInstance.data.datasets[2].data = getRow('R', 'FFT'); // Membaca baris FFT
-        rightChartInstance.update();
-        
-        leftChartInstance.data.datasets[0].data = getRow('L', 'AC'); 
-        leftChartInstance.data.datasets[1].data = getRow('L', 'BC'); 
-        leftChartInstance.data.datasets[2].data = getRow('L', 'FFT'); // Membaca baris FFT
-        leftChartInstance.update();
-        
-        let calcPta = (p, t) => { let a = parseFloat(document.getElementById(`${p}_${t}_500`)?.value), b = parseFloat(document.getElementById(`${p}_${t}_1000`)?.value), c = parseFloat(document.getElementById(`${p}_${t}_2000`)?.value); return (!isNaN(a)&&!isNaN(b)&&!isNaN(c)) ? ((a+b+c)/3).toFixed(1) : '-'; };
-        let rPta = calcPta('R', 'AC'), lPta = calcPta('L', 'AC');
-        
-        document.getElementById('rAcPta').innerText = rPta; 
-        document.getElementById('rBcPta').innerText = calcPta('R', 'BC');
-        document.getElementById('lAcPta').innerText = lPta; 
-        document.getElementById('lBcPta').innerText = calcPta('L', 'BC');
-        
-        updateWhoClassification('R', rPta); 
-        updateWhoClassification('L', lPta);
-    }
+    // Fungsi pembantu untuk mengambil data angka murni untuk Chart.js
+    const getRow = (p, t) => FREQUENCIES.map(f => { 
+        let el = document.getElementById(`${p}_${t}_${f}`);
+        if (!el || el.value === "") return null;
+        let cleanVal = String(el.value).replace(/[^0-9.-]/g, ''); // Ambil angkanya saja untuk titik grafik
+        return cleanVal !== "" ? parseFloat(cleanVal) : null; 
+    });
+    
+    rightChartInstance.data.datasets[0].data = getRow('R', 'AC'); 
+    rightChartInstance.data.datasets[1].data = getRow('R', 'BC'); 
+    rightChartInstance.data.datasets[2].data = getRow('R', 'FFT'); 
+    rightChartInstance.update();
+    
+    leftChartInstance.data.datasets[0].data = getRow('L', 'AC'); 
+    leftChartInstance.data.datasets[1].data = getRow('L', 'BC'); 
+    leftChartInstance.data.datasets[2].data = getRow('L', 'FFT'); 
+    leftChartInstance.update();
+    
+    // Perhitungan PTA yang aman dari teks "NR"
+    let calcPta = (p, t) => { 
+        let getCleanVal = (freqVal) => {
+            let el = document.getElementById(`${p}_${t}_${freqVal}`);
+            if(!el || el.value === "") return NaN;
+            return parseFloat(String(el.value).replace(/[^0-9.-]/g, ''));
+        };
+        let a = getCleanVal(500), b = getCleanVal(1000), c = getCleanVal(2000); 
+        return (!isNaN(a)&&!isNaN(b)&&!isNaN(c)) ? ((a+b+c)/3).toFixed(1) : '-'; 
+    };
+    
+    let rPta = calcPta('R', 'AC'), lPta = calcPta('L', 'AC');
+    
+    document.getElementById('rAcPta').innerText = rPta; 
+    document.getElementById('rBcPta').innerText = calcPta('R', 'BC');
+    document.getElementById('lAcPta').innerText = lPta; 
+    document.getElementById('lBcPta').innerText = calcPta('L', 'BC');
+    
+    updateWhoClassification('R', rPta); 
+    updateWhoClassification('L', lPta);
+}
     
     function updateWhoClassification(side, pta) {
         let badge = document.getElementById(side.toLowerCase() + 'ClassificationBadge');
@@ -5222,7 +5238,17 @@ function loadSessionDataToTable(data) {
     document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
     document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; 
 
-    // 🌟 Sediakan agar Ghost Cursor ikut bergerak otomatis
+    // 🌟 SUNTIKAN: Update teks status secara real-time
+    let transSelect = document.getElementById('setAcTransducer');
+    let trans = transSelect ? transSelect.value : 'SAEP1';
+    let stim = (typeof currentStimulus !== 'undefined') ? currentStimulus.toUpperCase() : 'PURE';
+    let modeLabel = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+    
+    let lblDetail = document.getElementById('lblDetailStatus');
+    if (lblDetail) {
+        lblDetail.innerText = `[ ${modeLabel} - ${trans} - ${stim} ]`;
+    }
+
     if (typeof updateGhostCursor === 'function') {
         updateGhostCursor();
     }
