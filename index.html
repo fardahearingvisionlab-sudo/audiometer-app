@@ -5188,10 +5188,13 @@ function initGsiCharts() {
     // ==============================================================
     setTimeout(() => {
         let modeAwal = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-        if (typeof rightChartInstance !== 'undefined') updateVisualBatasMaksimal(rightChartInstance, modeAwal);
-        if (typeof leftChartInstance !== 'undefined') updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+        if (typeof rightChartInstance !== 'undefined') {
+            updateVisualBatasMaksimal(rightChartInstance, modeAwal);
+        }
+        if (typeof leftChartInstance !== 'undefined') {
+            updateVisualBatasMaksimal(leftChartInstance, modeAwal);
+        }
     }, 300);
-}
         
     function updateGsiCharts() {
     // Fungsi pembantu untuk mengambil data angka murni untuk Chart.js
