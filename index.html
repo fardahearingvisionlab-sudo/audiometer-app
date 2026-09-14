@@ -2724,6 +2724,9 @@ function populatePrintHeader() {
 function initPrintCharts() {
     const highDPR = window.devicePixelRatio || 1;
 
+    // Daftar frekuensi klinis standar lengkap yang sejajar
+    const clinicalLabels = ['125', '250', '500', '750', '1k', '1.5k', '2k', '3k', '4k', '6k', '8k', '10k', '12.5k'];
+
     const setCanvasBox = (canvasId, height = 220) => {
         const canvas = document.getElementById(canvasId);
         if (canvas) {
@@ -2733,11 +2736,14 @@ function initPrintCharts() {
         return null;
     };
 
-    // A. Audiometri & Speech
+    // A. Audiometri Kanan (Print)
     const pRightCanvas = setCanvasBox('prevRightChart', 220);
     if (pRightCanvas) printRightChartInstance = new Chart(pRightCanvas.getContext('2d'), { 
         type: 'line', 
-        data: { datasets: [] }, 
+        data: { 
+            labels: clinicalLabels, // 🌟 Menetapkan label frekuensi lengkap
+            datasets: [] 
+        }, 
         options: { 
             responsive: true, 
             maintainAspectRatio: false, 
@@ -2745,12 +2751,22 @@ function initPrintCharts() {
             devicePixelRatio: highDPR, 
             plugins: { legend: { display: false } }, 
             scales: { 
-                x: { type: 'category' }, 
+                x: { 
+                    type: 'category',
+                    grid: { color: '#e2e8f0' },
+                    ticks: {
+                        font: { size: 9, weight: 'bold' },
+                        color: '#1e293b',
+                        maxRotation: 0,    // 🌟 KUNCI: Memastikan teks berdiri tegak sejajar horizontal
+                        minRotation: 0,
+                        autoSkip: false    // 🌟 Memastikan seluruh frekuensi penting wajib tampil tanpa disembunyikan
+                    }
+                }, 
                 y: { 
                     min: -10, 
                     max: 120, 
                     reverse: true,
-                    // PERBAIKAN: Memaksa garis sumbu Y tampil per 10dB
+                    grid: { color: '#e2e8f0' },
                     ticks: {
                         stepSize: 10,
                         autoSkip: false 
@@ -2760,10 +2776,14 @@ function initPrintCharts() {
         } 
     });
 
+    // B. Audiometri Kiri (Print)
     const pLeftCanvas = setCanvasBox('prevLeftChart', 220); 
     if (pLeftCanvas) printLeftChartInstance = new Chart(pLeftCanvas.getContext('2d'), { 
         type: 'line', 
-        data: { datasets: [] }, 
+        data: { 
+            labels: clinicalLabels, // 🌟 Menetapkan label frekuensi lengkap
+            datasets: [] 
+        }, 
         options: { 
             responsive: true, 
             maintainAspectRatio: false, 
@@ -2771,12 +2791,22 @@ function initPrintCharts() {
             devicePixelRatio: highDPR, 
             plugins: { legend: { display: false } }, 
             scales: { 
-                x: { type: 'category' }, 
+                x: { 
+                    type: 'category',
+                    grid: { color: '#e2e8f0' },
+                    ticks: {
+                        font: { size: 9, weight: 'bold' },
+                        color: '#1e293b',
+                        maxRotation: 0,    // 🌟 KUNCI: Memastikan teks berdiri tegak sejajar horizontal
+                        minRotation: 0,
+                        autoSkip: false    // 🌟 Memastikan seluruh frekuensi penting wajib tampil tanpa disembunyikan
+                    }
+                }, 
                 y: { 
                     min: -10, 
                     max: 120, 
                     reverse: true,
-                    // PERBAIKAN: Memaksa garis sumbu Y tampil per 10dB
+                    grid: { color: '#e2e8f0' },
                     ticks: {
                         stepSize: 10,
                         autoSkip: false
@@ -2785,7 +2815,7 @@ function initPrintCharts() {
             } 
         } 
     });
-
+}
     const pSpeechCanvas = setCanvasBox('prevSpeechChart', 220);
     if (pSpeechCanvas) printSpeechChartInstance = new Chart(pSpeechCanvas.getContext('2d'), { 
         type: 'line', 
