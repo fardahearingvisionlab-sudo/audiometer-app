@@ -1179,6 +1179,30 @@ canvas#rightChart, canvas#leftChart {
             </tr>
         </table>
 
+        <!-- Tabel Masking -->
+        <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">EFFECTIVE MASKING LEVELS (dB HL)</div>
+        <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 9px; margin-bottom: 8px;">
+            <tr style="background-color: #f3f4f6;">
+                <th>Ear / Test</th><th>250</th><th>500</th><th>1k</th><th>2k</th><th>4k</th><th>8k</th>
+            </tr>
+            <tr>
+                <td style="color: #dc2626;"><b>RIGHT AC</b></td>
+                <td><span id="prev_mask_r_ac_250">-</span></td><td><span id="prev_mask_r_ac_500">-</span></td><td><span id="prev_mask_r_ac_1k">-</span></td><td><span id="prev_mask_r_ac_2k">-</span></td><td><span id="prev_mask_r_ac_4k">-</span></td><td><span id="prev_mask_r_ac_8k">-</span></td>
+            </tr>
+            <tr>
+                <td style="color: #dc2626;"><b>RIGHT BC</b></td>
+                <td><span id="prev_mask_r_bc_250">-</span></td><td><span id="prev_mask_r_bc_500">-</span></td><td><span id="prev_mask_r_bc_1k">-</span></td><td><span id="prev_mask_r_bc_2k">-</span></td><td><span id="prev_mask_r_bc_4k">-</span></td><td><span id="prev_mask_r_bc_8k">-</span></td>
+            </tr>
+            <tr>
+                <td style="color: #0284c7;"><b>LEFT AC</b></td>
+                <td><span id="prev_mask_l_ac_250">-</span></td><td><span id="prev_mask_l_ac_500">-</span></td><td><span id="prev_mask_l_ac_1k">-</span></td><td><span id="prev_mask_l_ac_2k">-</span></td><td><span id="prev_mask_l_ac_4k">-</span></td><td><span id="prev_mask_l_ac_8k">-</span></td>
+            </tr>
+            <tr>
+                <td style="color: #0284c7;"><b>LEFT BC</b></td>
+                <td><span id="prev_mask_l_bc_250">-</span></td><td><span id="prev_mask_l_bc_500">-</span></td><td><span id="prev_mask_l_bc_1k">-</span></td><td><span id="prev_mask_l_bc_2k">-</span></td><td><span id="prev_mask_l_bc_4k">-</span></td><td><span id="prev_mask_l_bc_8k">-</span></td>
+            </tr>
+        </table>
+
         <!-- Tabel Speech -->
         <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">SPEECH SUMMARY</div>
         <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 9px; margin-bottom: 6px;">
@@ -4926,16 +4950,19 @@ function loadSessionDataToTable(data) {
     
     // Looping untuk Telinga Kanan (R) dan Kiri (L)
     ['R', 'L'].forEach(side => { 
-        // 🌟 PERBAIKAN: Tambahkan 'FFT' agar tersimpan
         ['AC', 'BC', 'FFT'].forEach(type => { 
             FREQUENCIES.forEach(f => { 
                 let inputEl = document.getElementById(`${side}_${type}_${f}`);
                 
                 if (inputEl) {
-                    let v = inputEl.value; 
+                    let v = inputEl.value.trim(); 
                     
                     if (v !== "") { 
+                        // Ambil hanya angka untuk keperluan pengecekan batas (Clamping)
                         let valNum = parseFloat(v);
+                        
+                        // Ekstrak suffix huruf (contoh: "M", "NR", atau "NRM")
+                        let suffix = v.replace(/[0-9.]/g, ''); 
                         
                         // =======================================================
                         // LOGIKA PEMBATASAN MAKSIMAL (CLAMPING)
@@ -4950,15 +4977,15 @@ function loadSessionDataToTable(data) {
                         } else if (type === 'AC') {
                             if (f === 125) maxLimit = 90;
                             else if (f === 250) maxLimit = 105;
-                            else maxLimit = 120; // Sisa frekuensi AC batasnya 120dB
+                            else maxLimit = 120; 
                         } else if (type === 'FFT') {
-                            maxLimit = 90; // Batas aman standar untuk Speaker
+                            maxLimit = 90; 
                         }
 
-                        // Jika input melebihi batas, paksa turunkan ke maxLimit
+                        // Jika angka melebihi batas, turunkan ke maxLimit tapi pertahankan suffix-nya
                         if (valNum > maxLimit) {
                             valNum = maxLimit; 
-                            inputEl.value = maxLimit; // Ubah teks di tabel secara instan
+                            inputEl.value = maxLimit + suffix; // Kembalikan angka max + huruf aslinya (misal: "120M")
                             
                             if (typeof showToast === 'function') {
                                 showToast(`⚠️ Batas maksimal ${type} pada ${f}Hz adalah ${maxLimit}dB`);
@@ -4966,7 +4993,8 @@ function loadSessionDataToTable(data) {
                         }
                         // =======================================================
 
-                        data[`${side}_${type}_${f}`] = valNum; 
+                        // Simpan nilai utuh (beserta huruf M/NR) ke dalam objek data session
+                        data[`${side}_${type}_${f}`] = inputEl.value; 
                     }
                 }
             }); 
@@ -4984,7 +5012,9 @@ function loadSessionDataToTable(data) {
     }
 }
 
-        let cachedNRIcons = {};
+
+
+let cachedNRIcons = {};
 
 function initGsiCharts() {
     const createIconPoint = (text, color) => {
