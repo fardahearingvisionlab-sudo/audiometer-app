@@ -6503,31 +6503,36 @@ window.addEventListener('keyup', e => {
 function adjustDb(delta) {
     let newVal = currentDb + delta;
     
-    // Ambil frekuensi dan mode aktif saat ini
+    // Tentukan mode dan frekuensi aktif saat ini
     let f = (typeof FREQUENCIES !== 'undefined' && typeof currentFreqIndex !== 'undefined') ? FREQUENCIES[currentFreqIndex] : 1000;
     let mode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
-    if (mode === 'VRA' || mode === 'FFT') mode = 'FFT'; // Sesuaikan jika mode FFT/VRA menggunakan aturan AC
+    if (mode === 'VRA' || mode === 'FFT') mode = 'FFT';
 
-    // Panggil langsung fungsi getMaximumLimit yang sudah ada di file Anda
-    let maxLimit = 120; // Default fallback
+    // Ambil batas maksimal klinis dari fungsi bawaan Anda
+    let maxLimit = 120;
     if (typeof getMaximumLimit === 'function') {
         maxLimit = getMaximumLimit(mode, f);
     }
 
-    // Terapkan pembatasan ketat sesuai batas maksimal klinis
-    if (newVal >= -10 && newVal <= maxLimit) {
-        currentDb = newVal;
-        updateDisplayStatus();
-        if (typeof updateGhostCursor === 'function') {
-            updateGhostCursor();
-        }
-        if (isStimulusActive) {
-            startTone(); 
-        }
-    } else if (newVal > maxLimit) {
-        if (typeof showToast === 'function') {
-            showToast(`⚠️ Batas maksimal intensitas pada ${f}Hz adalah ${maxLimit} dB`);
-        }
+    // Jika melebihi batas maksimal, langsung paksa kembalikan/kunci persis di maxLimit
+    if (newVal > maxLimit) {
+        newVal = maxLimit;
+    }
+    
+    // Batasi juga batas bawah minimal (-10 dB)
+    if (newVal < -10) {
+        newVal = -10;
+    }
+
+    // Terapkan nilai yang sudah dikunci
+    currentDb = newVal;
+    updateDisplayStatus();
+    
+    if (typeof updateGhostCursor === 'function') {
+        updateGhostCursor();
+    }
+    if (isStimulusActive) {
+        startTone(); 
     }
 }
         
