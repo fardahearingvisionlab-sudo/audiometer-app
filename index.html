@@ -6345,21 +6345,29 @@ window.addEventListener('keyup', e => {
 });
 
 
-// Fungsi untuk memberi highlight kuning pada kolom frekuensi yang aktif di tabel
 function highlightActiveTableColumn(activeFreq) {
-    // 1. Reset semua background kuning pada sel input
-    FREQUENCIES.forEach(freq => {
-        let cells = document.querySelectorAll(`input[id$="_${freq}"]`);
-        cells.forEach(cell => {
-            cell.style.backgroundColor = ""; 
-        });
+    // 1. Bersihkan seluruh highlight kuning & border dari semua input matriks
+    document.querySelectorAll('.matrix-input').forEach(cell => {
+        cell.style.backgroundColor = "";
+        cell.style.border = "1px solid #cbd5e1";
     });
 
-    // 2. Beri warna kuning terang (#fef08a) pada kolom frekuensi aktif
-    let activeCells = document.querySelectorAll(`input[id$="_${activeFreq}"]`);
-    activeCells.forEach(cell => {
-        cell.style.backgroundColor = "#fef08a"; 
-    });
+    // 2. Tentukan baris aktif berdasarkan mode saat ini (AC, BC, atau FFT)
+    let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+    if (targetType !== 'AC' && targetType !== 'BC' && targetType !== 'FFT') {
+        targetType = 'AC'; // Default fallback ke AC jika mode lain
+    }
+
+    // 3. Deteksi telinga aktif (Right/Left)
+    let rawEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    let sideKey = (rawEar === 'left' || rawEar === 'l') ? 'L' : 'R';
+
+    // 4. Beri highlight HANYA pada satu sel yang sedang diuji (Telinga + Mode + Frekuensi aktif)
+    let activeCell = document.getElementById(`${sideKey}_${targetType}_${activeFreq}`);
+    if (activeCell) {
+        activeCell.style.backgroundColor = "#fef08a"; // Kuning terang penanda fokus
+        activeCell.style.border = "2px solid #ca8a04"; // Border kuning tua
+    }
 }
 
         
