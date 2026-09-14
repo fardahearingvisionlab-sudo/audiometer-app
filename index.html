@@ -6273,6 +6273,11 @@ function triggerSignalPresentation() {
             currentFreqIndex++; 
             updateDisplayStatus(); 
             
+            // 🌟 SUNTIKAN: Nyalakan highlight kolom tabel baru
+            if (typeof highlightActiveTableColumn === 'function') {
+                highlightActiveTableColumn(FREQUENCIES[currentFreqIndex]);
+            }
+            
             // SUNTIKAN KE ARDUINO
             if (typeof kirimDataAudiometer === 'function') {
                 kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
@@ -6288,14 +6293,19 @@ function triggerSignalPresentation() {
             currentFreqIndex--; 
             updateDisplayStatus(); 
             
+            // 🌟 SUNTIKAN: Nyalakan highlight kolom tabel baru
+            if (typeof highlightActiveTableColumn === 'function') {
+                highlightActiveTableColumn(FREQUENCIES[currentFreqIndex]);
+            }
+            
             // SUNTIKAN KE ARDUINO
             if (typeof kirimDataAudiometer === 'function') {
                 kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
             }
         } 
     }
-});
-
+});      
+        
 window.addEventListener('keyup', e => { 
     if (e.code === 'Space') { 
         e.preventDefault(); 
