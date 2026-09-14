@@ -5089,19 +5089,23 @@ function initGsiCharts() {
     const getRow = (p, t) => FREQUENCIES.map(f => { 
         let el = document.getElementById(`${p}_${t}_${f}`);
         if (!el || el.value === "") return null;
-        let cleanVal = String(el.value).replace(/[^0-9.-]/g, ''); // Ambil angkanya saja untuk titik grafik
+        let cleanVal = String(el.value).replace(/[^0-9.-]/g, ''); // Ambil angkanya saja untuk titik grafik (misal: 120 dari "120NR")
         return cleanVal !== "" ? parseFloat(cleanVal) : null; 
     });
     
-    rightChartInstance.data.datasets[0].data = getRow('R', 'AC'); 
-    rightChartInstance.data.datasets[1].data = getRow('R', 'BC'); 
-    rightChartInstance.data.datasets[2].data = getRow('R', 'FFT'); 
-    rightChartInstance.update();
+    if (typeof rightChartInstance !== 'undefined' && rightChartInstance) {
+        rightChartInstance.data.datasets[0].data = getRow('R', 'AC'); 
+        rightChartInstance.data.datasets[1].data = getRow('R', 'BC'); 
+        rightChartInstance.data.datasets[2].data = getRow('R', 'FFT'); 
+        rightChartInstance.update();
+    }
     
-    leftChartInstance.data.datasets[0].data = getRow('L', 'AC'); 
-    leftChartInstance.data.datasets[1].data = getRow('L', 'BC'); 
-    leftChartInstance.data.datasets[2].data = getRow('L', 'FFT'); 
-    leftChartInstance.update();
+    if (typeof leftChartInstance !== 'undefined' && leftChartInstance) {
+        leftChartInstance.data.datasets[0].data = getRow('L', 'AC'); 
+        leftChartInstance.data.datasets[1].data = getRow('L', 'BC'); 
+        leftChartInstance.data.datasets[2].data = getRow('L', 'FFT'); 
+        leftChartInstance.update();
+    }
     
     // Perhitungan PTA yang aman dari teks "NR"
     let calcPta = (p, t) => { 
@@ -5116,13 +5120,15 @@ function initGsiCharts() {
     
     let rPta = calcPta('R', 'AC'), lPta = calcPta('L', 'AC');
     
-    document.getElementById('rAcPta').innerText = rPta; 
-    document.getElementById('rBcPta').innerText = calcPta('R', 'BC');
-    document.getElementById('lAcPta').innerText = lPta; 
-    document.getElementById('lBcPta').innerText = calcPta('L', 'BC');
+    if(document.getElementById('rAcPta')) document.getElementById('rAcPta').innerText = rPta; 
+    if(document.getElementById('rBcPta')) document.getElementById('rBcPta').innerText = calcPta('R', 'BC');
+    if(document.getElementById('lAcPta')) document.getElementById('lAcPta').innerText = lPta; 
+    if(document.getElementById('lBcPta')) document.getElementById('lBcPta').innerText = calcPta('L', 'BC');
     
-    updateWhoClassification('R', rPta); 
-    updateWhoClassification('L', lPta);
+    if (typeof updateWhoClassification === 'function') {
+        updateWhoClassification('R', rPta); 
+        updateWhoClassification('L', lPta);
+    }
 }
     
     function updateWhoClassification(side, pta) {
@@ -5137,6 +5143,7 @@ function initGsiCharts() {
         badge.innerText = `WHO Classification: ${text}`; badge.style.background = bg; badge.style.color = color; badge.style.borderColor = border;
     }
 
+        
     function setMode(m) {
     currentMode = m;
     
@@ -6337,20 +6344,20 @@ window.addEventListener('keyup', e => {
 
 // Fungsi untuk memberi highlight kuning pada kolom frekuensi yang aktif di tabel
 function highlightActiveTableColumn(activeFreq) {
-    // 1. Reset/bersihkan semua background kuning dari semua sel input di tabel
-    FREQUENCIES.forEach(f => {
-        let cells = document.querySelectorAll(`[id$="_${f}"]`);
+    // 1. Reset semua background kuning pada sel input
+    FREQUENCIES.forEach(freq => {
+        let cells = document.querySelectorAll(`input[id$="_${freq}"]`);
         cells.forEach(cell => {
-            cell.style.backgroundColor = ""; // Kembalikan ke normal
+            cell.style.backgroundColor = ""; 
         });
     });
 
-    // 2. Beri warna kuning terang (#fef08a) hanya pada kolom frekuensi yang sedang aktif
-    let activeCells = document.querySelectorAll(`[id$="_${activeFreq}"]`);
+    // 2. Beri warna kuning terang (#fef08a) pada kolom frekuensi aktif
+    let activeCells = document.querySelectorAll(`input[id$="_${activeFreq}"]`);
     activeCells.forEach(cell => {
-        cell.style.backgroundColor = "#fef08a"; // Warna kuning penanda aktif
+        cell.style.backgroundColor = "#fef08a"; 
     });
-}        
+}
 
         
 function recordResponse(isNR = false) {
@@ -7790,7 +7797,16 @@ function restoreCalibrationFromCloud() {
             kirimDataAudiometer("Z\n");
         }
     }, 15000);
-        
+
+
+    // 🌟 Otomatis update grafik dan tabel setiap kali ada input/perubahan nilai
+    document.addEventListener('input', function(e) {
+        if (e.target.tagName === 'INPUT' && (e.target.id.includes('_AC_') || e.target.id.includes('_BC_') || e.target.id.includes('_FFT_'))) {
+            if (typeof updateGsiCharts === 'function') {
+                updateGsiCharts();
+            }
+        }
+    });    
 
     </script>
 </body>
