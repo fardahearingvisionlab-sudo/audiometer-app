@@ -467,7 +467,11 @@ canvas#rightChart, canvas#leftChart {
         <div style="flex-shrink: 0; border-top: 1px solid var(--win-border); padding-top: 4px; background: #f8fafc; display: flex; flex-direction: column;">
             
             <!-- KOTAK CURRENT STATUS LENGKAP -->
-            <div class="box-title" style="margin-top: 4px; background: #e0f2fe; color: #0369a1; border-color: #0284c7;">Current Status</div>
+            <div class="box-title" style="margin-top: 4px; background: #e0f2fe; color: #0369a1; border-color: #0284c7; display: flex; justify-content: space-between; align-items: center;">
+                <span>Current Status</span>
+                <span id="lblDetailStatus" style="font-size: 9px; font-weight: normal; color: #0284c7; background: #bae6fd; padding: 2px 6px; border-radius: 4px;">[ AC - SAEP1 - PURE ]</span>
+            </div>
+            
             <div class="status-display-box" style="background: white; padding: 4px;">
                 <div class="status-metric">
                     <span>Frequency:</span>
@@ -4900,33 +4904,101 @@ function loadSessionDataToTable(data) {
     }
 }
 
-    function initGsiCharts() {
-        // Generator Ikon kustom "S" untuk Chart.js
+        function initGsiCharts() {
         const createIconPoint = (text, color) => {
             let canvas = document.createElement('canvas');
             canvas.width = 18; canvas.height = 18;
             let ctx = canvas.getContext('2d');
-            ctx.fillStyle = color;
-            ctx.font = "bold 15px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            ctx.fillStyle = color; ctx.font = "bold 15px Arial";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(text, 9, 10);
-            let img = new Image();
-            img.src = canvas.toDataURL();
-            return img;
+            let img = new Image(); img.src = canvas.toDataURL(); return img;
         };
-
+    
+        // 🌟 GENERATOR IKON NO RESPONSE (ARAH PANAH BAWAH SUDUT)
+        const createNRIcon = (type, color, isRight) => {
+            let canvas = document.createElement('canvas');
+            canvas.width = 24; canvas.height = 24;
+            let ctx = canvas.getContext('2d');
+            ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+            
+            ctx.beginPath();
+            if (type === 'AC') {
+                if (isRight) { ctx.arc(12, 10, 5, 0, 2*Math.PI); }
+                else { ctx.moveTo(7,5); ctx.lineTo(17,15); ctx.moveTo(17,5); ctx.lineTo(7,15); }
+            } else if (type === 'BC') {
+                if (isRight) { ctx.moveTo(15,4); ctx.lineTo(7,10); ctx.lineTo(15,16); }
+                else { ctx.moveTo(9,4); ctx.lineTo(17,10); ctx.lineTo(9,16); }
+            }
+            ctx.stroke();
+            
+            // Gambar Panahnya
+            ctx.beginPath();
+            if (isRight) {
+                ctx.moveTo(8, 15); ctx.lineTo(2, 21); ctx.moveTo(2, 21); ctx.lineTo(8, 21); ctx.moveTo(2, 21); ctx.lineTo(2, 15);
+            } else {
+                ctx.moveTo(16, 15); ctx.lineTo(22, 21); ctx.moveTo(22, 21); ctx.lineTo(16, 21); ctx.moveTo(22, 21); ctx.lineTo(22, 15);
+            }
+            ctx.stroke();
+            
+            let img = new Image(); img.src = canvas.toDataURL(); return img;
+        };
+    
         const imgSFRight = createIconPoint('S', '#dc2626');
         const imgSFLeft = createIconPoint('S', '#0284c7');
-
+        
+        const imgNR_R_AC = createNRIcon('AC', '#dc2626', true);
+        const imgNR_L_AC = createNRIcon('AC', '#0284c7', false);
+        const imgNR_R_BC = createNRIcon('BC', '#dc2626', true);
+        const imgNR_L_BC = createNRIcon('BC', '#0284c7', false);
+    
         const createChart = (id, color, isRight) => new Chart(document.getElementById(id).getContext('2d'), {
             type: 'line', 
             data: { 
                 labels: FREQUENCIES.map(f => f>=1000?(f%1000===0?(f/1000)+'k':(f/1000).toFixed(1)+'k'):f), 
                 datasets: [
-                    { label: 'AC', data: Array(12).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, pointStyle: isRight?'circle':'crossRot', pointRadius: 6, borderWidth: 2.5, fill: false, spanGaps: true }, 
-                    { label: 'BC', data: Array(12).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], pointStyle:'triangle', pointRadius:6, borderWidth:2.5, fill:false, spanGaps:true },
-                    { label: 'FFT', data: Array(12).fill(null), borderColor: color, backgroundColor: color, borderDash:[3,3], pointStyle: isRight ? imgSFRight : imgSFLeft, pointRadius: 7, borderWidth: 2, fill: false, spanGaps: true }
+                    { 
+                        label: 'AC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, borderWidth: 2.5, fill: false, spanGaps: true,
+                        // 🌟 LOGIKA PENDETEKSI NO RESPONSE
+                        pointStyle: (ctx) => {
+                            let f = FREQUENCIES[ctx.dataIndex];
+                            let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
+                            if (el && String(el.value).includes('NR')) return isRight ? imgNR_R_AC : imgNR_L_AC;
+                            return isRight ? 'circle' : 'crossRot';
+                        },
+                        pointRadius: (ctx) => {
+                            let f = FREQUENCIES[ctx.dataIndex];
+                            let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
+                            return (el && String(el.value).includes('NR')) ? 10 : 6;
+                        }
+                    }, 
+                    { 
+                        label: 'BC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], borderWidth:2.5, fill:false, spanGaps:true,
+                        pointStyle: (ctx) => {
+                            let f = FREQUENCIES[ctx.dataIndex];
+                            let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
+                            if (el && String(el.value).includes('NR')) return isRight ? imgNR_R_BC : imgNR_L_BC;
+                            return isRight ? (ctx.raw ? 'triangle' : 'triangle') : 'triangle'; // Default BC
+                        },
+                        pointRadius: (ctx) => {
+                            let f = FREQUENCIES[ctx.dataIndex];
+                            let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
+                            return (el && String(el.value).includes('NR')) ? 10 : 6;
+                        }
+                    },
+                    { label: 'FFT', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[3,3], pointStyle: isRight ? imgSFRight : imgSFLeft, pointRadius: 7, borderWidth: 2, fill: false, spanGaps: true },
+                    // 🌟 DATASET KE-4: GHOST CURSOR
+                    {
+                        label: 'GhostCursor',
+                        data: Array(FREQUENCIES.length).fill(null),
+                        borderColor: 'rgba(100, 116, 139, 0.4)', // Abu-abu transparan
+                        backgroundColor: 'rgba(100, 116, 139, 0.4)',
+                        pointStyle: 'cross',
+                        pointRadius: 12,
+                        borderWidth: 2,
+                        showLine: false,
+                        animation: false
+                    }
                 ] 
             },
             options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.4, plugins: { legend: { display: false } }, scales: { y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, x: { grid: { color: '#e2e8f0' } } } }
@@ -5149,6 +5221,11 @@ function loadSessionDataToTable(data) {
     let f = FREQUENCIES[currentFreqIndex]; 
     document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
     document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; 
+
+    // 🌟 Sediakan agar Ghost Cursor ikut bergerak otomatis
+    if (typeof updateGhostCursor === 'function') {
+        updateGhostCursor();
+    }
 }
 
     // PERBAIKAN: Fungsi adjustDb sekarang pintar dan tahu batas maksimal!
@@ -6120,6 +6197,7 @@ function triggerSignalPresentation() {
     else if (key === 't') { e.preventDefault(); setMode('Tymp'); }
     else if (key === 'o') { e.preventDefault(); setMode('OAE'); }
     else if (key === 'k') { e.preventDefault(); setMode('ABR'); }
+    else if (key === 'n') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(true); } // 🌟 Sini  
     
     // --- TAMBAHAN UNTUK FFT DAN VRA ---
     else if (key === 'f') { e.preventDefault(); setMode('FFT'); }
@@ -6199,44 +6277,66 @@ window.addEventListener('keyup', e => {
     } 
 });
 
-    function recordResponse() {
-        if(currentMode === 'Speech') { 
-            recordSpeechPoint(); 
-            return; 
-        }
-        if(currentMode !== 'AC' && currentMode !== 'BC' && currentMode !== 'VRA' && currentMode !== 'FFT') return;
         
-        let freqText = document.getElementById('lblFreqSide') ? document.getElementById('lblFreqSide').innerText.toLowerCase() : "1000";
-        let rawNum = parseFloat(freqText.replace(/[^0-9.]/g, '')) || 1000;
-        let targetFreq = rawNum;
-        if (freqText.includes('k') && rawNum < 1000) targetFreq = rawNum * 1000;
+function recordResponse(isNR = false) {
+    if(currentMode === 'Speech') { 
+        recordSpeechPoint(); 
+        return; 
+    }
+    if(currentMode !== 'AC' && currentMode !== 'BC' && currentMode !== 'VRA' && currentMode !== 'FFT') return;
+    
+    let freqText = document.getElementById('lblFreqSide') ? document.getElementById('lblFreqSide').innerText.toLowerCase() : "1000";
+    let rawNum = parseFloat(freqText.replace(/[^0-9.]/g, '')) || 1000;
+    let targetFreq = rawNum;
+    if (freqText.includes('k') && rawNum < 1000) targetFreq = rawNum * 1000;
+    
+    let closestFreq = FREQUENCIES[0];
+    let minDiff = Math.abs(FREQUENCIES[0] - targetFreq);
+    for (let i = 1; i < FREQUENCIES.length; i++) {
+        let diff = Math.abs(FREQUENCIES[i] - targetFreq);
+        if (diff < minDiff) { minDiff = diff; closestFreq = FREQUENCIES[i]; }
+    }
+    
+    let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+    let sideKey = (currentSide === 'right') ? 'R' : 'L';
+    let targetInputId = `${sideKey}_${targetType}_${closestFreq}`;
+    
+    let el = document.getElementById(targetInputId);
+    if(el) { 
+        // Menyimpan nilai dB ditambah teks "NR" jika ditekan via shortcut N
+        el.value = currentDb + (isNR ? "NR" : ""); 
+        syncTable(); 
+    }
+    
+    showToast(`✔ Stored: ${closestFreq}Hz @ ${currentDb}dB ${isNR ? '(No Response)' : ''}`); 
+    stopTone();
+}
+
         
-        let closestFreq = FREQUENCIES[0];
-        let minDiff = Math.abs(FREQUENCIES[0] - targetFreq);
-        for (let i = 1; i < FREQUENCIES.length; i++) {
-            let diff = Math.abs(FREQUENCIES[i] - targetFreq);
-            if (diff < minDiff) { minDiff = diff; closestFreq = FREQUENCIES[i]; }
-        }
-        
-        // PENGARAHAN TARGET: Jika mode VRA atau FFT, simpan ke baris "FFT"
-        let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
-        
-        let sideKey = (currentSide === 'right') ? 'R' : 'L';
-        let targetInputId = `${sideKey}_${targetType}_${closestFreq}`;
-        
-        let el = document.getElementById(targetInputId);
-        if(el) { 
-            el.value = currentDb; 
-            syncTable(); // Menyimpan secara lokal di browser/tabel
-        }
-        
-        // [DIHAPUS] syncSessionToGoogleSheets sudah dibuang dari sini agar tidak menumpuk di sheet.
-        
-        showToast(`✔ Stored Locally: ${closestFreq}Hz @ ${currentDb}dB (${currentMode})`); 
-        stopTone();
+function updateGhostCursor() {
+    if (typeof rightChartInstance === 'undefined' || typeof leftChartInstance === 'undefined') return;
+
+    let activeEar = (typeof currentSide !== 'undefined' && currentSide) ? currentSide.toLowerCase() : 'right';
+    let db = typeof currentDb !== 'undefined' ? currentDb : 0;
+    
+    let rightGhost = Array(FREQUENCIES.length).fill(null);
+    let leftGhost = Array(FREQUENCIES.length).fill(null);
+
+    if (activeEar === 'left' || activeEar === 'l') {
+        leftGhost[currentFreqIndex] = db;
+    } else {
+        rightGhost[currentFreqIndex] = db;
     }
 
-    // ============================================================
+    if (rightChartInstance.data.datasets[3]) rightChartInstance.data.datasets[3].data = rightGhost;
+    if (leftChartInstance.data.datasets[3]) leftChartInstance.data.datasets[3].data = leftGhost;
+
+    rightChartInstance.update('none'); 
+    leftChartInstance.update('none');
+}        
+
+        
+// ============================================================
 // FUNGSI PLAY TONE WITH MASKING (Dengan Penanganan Masking ON/OFF)
 // ============================================================
 function playToneWithMasking(frequency, intensitydB, activeEar, isMaskingEnabled, noiseLeveldB) {
