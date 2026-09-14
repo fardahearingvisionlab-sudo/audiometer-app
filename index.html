@@ -4823,23 +4823,26 @@ function loadSessionDataToTable(data) {
             FREQUENCIES.forEach(f => h += `<th>${f>=1000?(f%1000===0?(f/1000)+'k':(f/1000).toFixed(1)+'k'):f}</th>`); 
             h += `</tr></thead><tbody>`;
             
+            // 🌟 Ubah type="number" menjadi type="text" untuk AC
             h += `<tr><td style="font-weight:bold; background:#f8fafc;">AC</td>`; 
-            FREQUENCIES.forEach(f => h += `<td><input type="number" class="matrix-input" id="${side}_AC_${f}" oninput="syncTable()"></td>`); 
+            FREQUENCIES.forEach(f => h += `<td><input type="text" class="matrix-input" id="${side}_AC_${f}" oninput="syncTable()"></td>`); 
             h += `</tr>`;
             
+            // 🌟 Ubah type="number" menjadi type="text" untuk BC
             h += `<tr><td style="font-weight:bold; background:#f8fafc;">BC</td>`; 
-            FREQUENCIES.forEach(f => h += `<td><input type="number" class="matrix-input" id="${side}_BC_${f}" oninput="syncTable()"></td>`); 
+            FREQUENCIES.forEach(f => h += `<td><input type="text" class="matrix-input" id="${side}_BC_${f}" oninput="syncTable()"></td>`); 
             h += `</tr>`;
 
-            // TAMBAHAN: Baris khusus FFT / VRA dengan warna yang sedikit berbeda
+            // 🌟 Ubah type="number" menjadi type="text" untuk FFT
             h += `<tr><td style="font-weight:bold; background:#fffbeb; color:#d97706;">FFT</td>`; 
-            FREQUENCIES.forEach(f => h += `<td><input type="number" class="matrix-input" id="${side}_FFT_${f}" oninput="syncTable()" style="color:#d97706; background:#fffbeb;"></td>`); 
+            FREQUENCIES.forEach(f => h += `<td><input type="text" class="matrix-input" id="${side}_FFT_${f}" oninput="syncTable()" style="color:#d97706; background:#fffbeb;"></td>`); 
             h += `</tr></tbody>`; 
             return h;
         };
         document.getElementById('matrixRightTable').innerHTML = makeTable('R');
         document.getElementById('matrixLeftTable').innerHTML = makeTable('L');
     }
+        
 
     function syncTable() {
     let data = {}; 
