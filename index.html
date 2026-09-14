@@ -5393,6 +5393,20 @@ function setSide(s) {
 function updateDisplayStatus() { 
     let f = FREQUENCIES[currentFreqIndex]; 
     
+    // ==============================================================
+    // 🌟 KUNCI OTOMATIS: CEK & PANGKAS INTENSITAS JIKA MELEBIHI BATAS FREKUENSI BARU
+    // ==============================================================
+    let modeLabel = (typeof currentMode !== 'undefined' && currentMode) ? currentMode : 'AC';
+    let checkMode = (modeLabel === 'VRA' || modeLabel === 'FFT') ? 'FFT' : modeLabel;
+    
+    if (typeof getMaximumLimit === 'function') {
+        let maxLimit = getMaximumLimit(checkMode, f);
+        if (currentDb > maxLimit) {
+            currentDb = maxLimit; // Paksa turunkan pas di batas maksimal frekuensi ini
+        }
+    }
+    // ==============================================================
+
     // 1. Update Teks Frekuensi & Intensitas
     let lblFreq = document.getElementById('lblFreqSide');
     if (lblFreq) {
@@ -5404,19 +5418,16 @@ function updateDisplayStatus() {
         lblIntensity.innerText = currentDb + ' dB HL'; 
     }
 
-    // 2. DETEKSI MODE AKTIF
-    let modeLabel = (typeof currentMode !== 'undefined' && currentMode) ? currentMode : 'AC';
-
-    // 3. DETEKSI TRANSDUCER SECARA DINAMIS BERDASARKAN MODE
+    // 2. DETEKSI TRANSDUCER SECARA DINAMIS BERDASARKAN MODE
     let trans = 'SAEP1';
     if (modeLabel === 'AC') {
         let acEl = document.getElementById('setAcTransducer');
         if (acEl) trans = acEl.value;
     } else if (modeLabel === 'BC') {
         let bcEl = document.getElementById('setBcTransducer');
-        trans = bcEl ? bcEl.value : 'B71'; // Fallback ke B71 jika tidak ada dropdown BC
+        trans = bcEl ? bcEl.value : 'B71'; 
     } else if (modeLabel === 'FFT' || modeLabel === 'VRA') {
-        trans = 'SPEAKER'; // Transducer otomatis Speaker untuk Free Field / VRA
+        trans = 'SPEAKER'; 
     } else if (modeLabel === 'Speech') {
         let spEl = document.getElementById('setAcTransducer');
         trans = spEl ? spEl.value : 'TDH39';
@@ -6503,28 +6514,19 @@ window.addEventListener('keyup', e => {
 function adjustDb(delta) {
     let newVal = currentDb + delta;
     
-    // Tentukan mode dan frekuensi aktif saat ini
     let f = (typeof FREQUENCIES !== 'undefined' && typeof currentFreqIndex !== 'undefined') ? FREQUENCIES[currentFreqIndex] : 1000;
     let mode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
     if (mode === 'VRA' || mode === 'FFT') mode = 'FFT';
 
-    // Ambil batas maksimal klinis dari fungsi bawaan Anda
     let maxLimit = 120;
     if (typeof getMaximumLimit === 'function') {
         maxLimit = getMaximumLimit(mode, f);
     }
 
-    // Jika melebihi batas maksimal, langsung paksa kembalikan/kunci persis di maxLimit
-    if (newVal > maxLimit) {
-        newVal = maxLimit;
-    }
-    
-    // Batasi juga batas bawah minimal (-10 dB)
-    if (newVal < -10) {
-        newVal = -10;
-    }
+    // Jika melebihi batas maksimal, langsung kunci/pangkas pas di maxLimit
+    if (newVal > maxLimit) newVal = maxLimit;
+    if (newVal < -10) newVal = -10;
 
-    // Terapkan nilai yang sudah dikunci
     currentDb = newVal;
     updateDisplayStatus();
     
