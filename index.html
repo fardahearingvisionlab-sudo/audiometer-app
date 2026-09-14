@@ -1097,7 +1097,7 @@ canvas#rightChart, canvas#leftChart {
             </span>
         </div>
 
-        <!-- Tabel Data Pure Tone & PTA (Ditambah Baris Khusus AC & BC) -->
+        <!-- Tabel Data Pure Tone, PTA & FFT -->
         <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">PURE TONE DATA</div>
         <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 9px; margin-bottom: 8px;">
             <tr style="background-color: #f3f4f6;">
@@ -1110,9 +1110,9 @@ canvas#rightChart, canvas#leftChart {
                 <th style="border: 1px solid #000; padding: 4px;">8k</th>
                 <th style="border: 1px solid #000; padding: 4px;">PTA</th>
             </tr>
-            <!-- RIGHT (Merah) -->
+            <!-- ================= RIGHT (Merah) ================= -->
             <tr>
-                <td rowspan="2" style="color: #dc2626; font-weight: bold; border: 1px solid #000; padding: 3px; vertical-align: middle;">RIGHT</td>
+                <td rowspan="3" style="color: #dc2626; font-weight: bold; border: 1px solid #000; padding: 3px; vertical-align: middle;">RIGHT</td>
                 <td style="color: #dc2626; font-weight: bold; border: 1px solid #000; padding: 3px;">AC</td>
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_ac_250">-</span></td>
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_ac_500">-</span></td>
@@ -1132,9 +1132,21 @@ canvas#rightChart, canvas#leftChart {
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_bc_8k">-</span></td>
                 <td style="border: 1px solid #000; padding: 3px; font-weight: bold;"><span id="pta_r_bc">-</span></td>
             </tr>
-            <!-- LEFT (Biru) -->
+            <!-- 🌟 TAMBAHAN BARIS FFT KANAN -->
             <tr>
-                <td rowspan="2" style="color: #0284c7; font-weight: bold; border: 1px solid #000; padding: 3px; vertical-align: middle;">LEFT</td>
+                <td style="color: #d97706; font-weight: bold; border: 1px solid #000; padding: 3px;">FFT</td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_250">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_500">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_1k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_2k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_4k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_r_fft_8k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px; font-weight: bold;">-</td> <!-- PTA FFT biasanya dikosongkan -->
+            </tr>
+
+            <!-- ================= LEFT (Biru) ================= -->
+            <tr>
+                <td rowspan="3" style="color: #0284c7; font-weight: bold; border: 1px solid #000; padding: 3px; vertical-align: middle;">LEFT</td>
                 <td style="color: #0284c7; font-weight: bold; border: 1px solid #000; padding: 3px;">AC</td>
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_ac_250">-</span></td>
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_ac_500">-</span></td>
@@ -1154,29 +1166,16 @@ canvas#rightChart, canvas#leftChart {
                 <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_bc_8k">-</span></td>
                 <td style="border: 1px solid #000; padding: 3px; font-weight: bold;"><span id="pta_l_bc">-</span></td>
             </tr>
-        </table>
-
-        <!-- Tabel Masking -->
-        <div style="font-weight: bold; font-size: 10px; margin-bottom: 2px;">EFFECTIVE MASKING LEVELS (dB HL)</div>
-        <table class="print-table" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 9px; margin-bottom: 8px;">
-            <tr style="background-color: #f3f4f6;">
-                <th>Ear / Test</th><th>250</th><th>500</th><th>1k</th><th>2k</th><th>4k</th><th>8k</th>
-            </tr>
+            <!-- 🌟 TAMBAHAN BARIS FFT KIRI -->
             <tr>
-                <td style="color: #dc2626;"><b>RIGHT AC</b></td>
-                <td><span id="prev_mask_r_ac_250">-</span></td><td><span id="prev_mask_r_ac_500">-</span></td><td><span id="prev_mask_r_ac_1k">-</span></td><td><span id="prev_mask_r_ac_2k">-</span></td><td><span id="prev_mask_r_ac_4k">-</span></td><td><span id="prev_mask_r_ac_8k">-</span></td>
-            </tr>
-            <tr>
-                <td style="color: #dc2626;"><b>RIGHT BC</b></td>
-                <td><span id="prev_mask_r_bc_250">-</span></td><td><span id="prev_mask_r_bc_500">-</span></td><td><span id="prev_mask_r_bc_1k">-</span></td><td><span id="prev_mask_r_bc_2k">-</span></td><td><span id="prev_mask_r_bc_4k">-</span></td><td><span id="prev_mask_r_bc_8k">-</span></td>
-            </tr>
-            <tr>
-                <td style="color: #0284c7;"><b>LEFT AC</b></td>
-                <td><span id="prev_mask_l_ac_250">-</span></td><td><span id="prev_mask_l_ac_500">-</span></td><td><span id="prev_mask_l_ac_1k">-</span></td><td><span id="prev_mask_l_ac_2k">-</span></td><td><span id="prev_mask_l_ac_4k">-</span></td><td><span id="prev_mask_l_ac_8k">-</span></td>
-            </tr>
-            <tr>
-                <td style="color: #0284c7;"><b>LEFT BC</b></td>
-                <td><span id="prev_mask_l_bc_250">-</span></td><td><span id="prev_mask_l_bc_500">-</span></td><td><span id="prev_mask_l_bc_1k">-</span></td><td><span id="prev_mask_l_bc_2k">-</span></td><td><span id="prev_mask_l_bc_4k">-</span></td><td><span id="prev_mask_l_bc_8k">-</span></td>
+                <td style="color: #d97706; font-weight: bold; border: 1px solid #000; padding: 3px;">FFT</td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_250">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_500">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_1k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_2k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_4k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px;"><span id="prev_l_fft_8k">-</span></td>
+                <td style="border: 1px solid #000; padding: 3px; font-weight: bold;">-</td> <!-- PTA FFT biasanya dikosongkan -->
             </tr>
         </table>
 
@@ -3032,17 +3031,29 @@ function syncPrintTableData() {
             if (!rowLabelCell) continue;
             let rowLabel = rowLabelCell.innerText.trim().toUpperCase();
             
-            if (rowLabel.includes('AC') || rowLabel.includes('BC')) {
-                let type = rowLabel.includes('AC') ? 'ac' : 'bc';
+            // 🌟 PEMBARUAN: Tangkap AC, BC, DAN FFT
+            if (rowLabel.includes('AC') || rowLabel.includes('BC') || rowLabel.includes('FFT')) {
+                
+                let type = 'ac';
+                if (rowLabel.includes('BC')) type = 'bc';
+                else if (rowLabel.includes('FFT')) type = 'fft'; // Tangkap tipe FFT
+
                 keys.forEach(k => {
                     let colIdx = colMap[k];
+                    
+                    // Format ID target, contoh: prev_r_fft_1k
                     let destId = `prev_${earPrefix}_${type}_${k}`;
                     let destEl = document.getElementById(destId);
+                    
                     if (destEl && colIdx !== undefined) {
                         let cell = table.rows[i].cells[colIdx];
                         let inputEl = cell ? cell.querySelector('input') : null;
+                        
+                        // 🌟 PEMBARUAN: Ambil nilai value murni (termasuk huruf seperti "120NR" atau "40M")
                         let val = inputEl ? inputEl.value : (cell ? cell.innerText.trim() : '');
-                        destEl.innerText = (val !== '' ? val : '-');
+                        
+                        // Jika nilainya bukan "-", masukkan apa adanya
+                        destEl.innerText = (val !== '' && val !== '-') ? val : '-';
                     }
                 });
             }
@@ -5167,15 +5178,27 @@ function initGsiCharts() {
         leftChartInstance.update();
     }
     
-    // Perhitungan PTA yang aman dari teks "NR"
+    // Perhitungan PTA yang aman dari teks "NR" dan "M" (Masking)
     let calcPta = (p, t) => { 
+        let hasNR = false; // 🌟 Variabel untuk mendeteksi adanya No Response
+
         let getCleanVal = (freqVal) => {
             let el = document.getElementById(`${p}_${t}_${freqVal}`);
             if(!el || el.value === "") return NaN;
-            return parseFloat(String(el.value).replace(/[^0-9.-]/g, ''));
+            
+            let valStr = String(el.value).toUpperCase();
+            if (valStr.includes('NR')) hasNR = true; // 🌟 Tandai jika mendeteksi teks NR
+            
+            return parseFloat(valStr.replace(/[^0-9.-]/g, ''));
         };
+        
         let a = getCleanVal(500), b = getCleanVal(1000), c = getCleanVal(2000); 
-        return (!isNaN(a)&&!isNaN(b)&&!isNaN(c)) ? ((a+b+c)/3).toFixed(1) : '-'; 
+        
+        if (!isNaN(a) && !isNaN(b) && !isNaN(c)) {
+            let avg = ((a + b + c) / 3).toFixed(1);
+            return avg + (hasNR ? '*' : ''); // 🌟 Tambahkan bintang jika ada NR
+        }
+        return '-'; 
     };
     
     let rPta = calcPta('R', 'AC'), lPta = calcPta('L', 'AC');
@@ -5185,11 +5208,11 @@ function initGsiCharts() {
     if(document.getElementById('lAcPta')) document.getElementById('lAcPta').innerText = lPta; 
     if(document.getElementById('lBcPta')) document.getElementById('lBcPta').innerText = calcPta('L', 'BC');
     
+    // 🌟 Menggunakan parseFloat agar tanda bintang (*) diabaikan saat menghitung derajat keparahan WHO
     if (typeof updateWhoClassification === 'function') {
-        updateWhoClassification('R', rPta); 
-        updateWhoClassification('L', lPta);
+        updateWhoClassification('R', parseFloat(rPta)); 
+        updateWhoClassification('L', parseFloat(lPta));
     }
-}
     
     function updateWhoClassification(side, pta) {
         let badge = document.getElementById(side.toLowerCase() + 'ClassificationBadge');
@@ -6300,27 +6323,27 @@ function triggerSignalPresentation() {
         }
     }
 
-    window.addEventListener('keydown', e => {
-    // Abaikan jika sedang mengetik form/input
-    if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    window.addEventListener('keydown', e => { 
+    // Abaikan jika sedang mengetik form/input (kecuali kita memblokir Delete/Backspace di dalam input khusus)
+    if(document.querySelector('.modal[style*="display: flex"]') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; 
     
-    let key = e.key.toLowerCase();
+    let key = e.key.toLowerCase(); 
     
-    if (e.code === 'Space') { e.preventDefault(); if(currentMode !== 'Speech') startTone(); }
-    else if (e.code === 'Enter') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(); }
-    else if (key === 'r') { e.preventDefault(); setSide('right'); }
-    else if (key === 'l') { e.preventDefault(); setSide('left'); }
-    else if (key === 'a') { e.preventDefault(); setMode('AC'); }
-    else if (key === 'b') { e.preventDefault(); setMode('BC'); }
-    else if (key === 's') { e.preventDefault(); setMode('Speech'); }
-    else if (key === 't') { e.preventDefault(); setMode('Tymp'); }
-    else if (key === 'o') { e.preventDefault(); setMode('OAE'); }
-    else if (key === 'k') { e.preventDefault(); setMode('ABR'); }
-    else if (key === 'n') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(true); } // 🌟 Sini  
+    if (e.code === 'Space') { e.preventDefault(); if(currentMode !== 'Speech') startTone(); } 
+    else if (e.code === 'Enter') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(); } 
+    else if (key === 'r') { e.preventDefault(); setSide('right'); } 
+    else if (key === 'l') { e.preventDefault(); setSide('left'); } 
+    else if (key === 'a') { e.preventDefault(); setMode('AC'); } 
+    else if (key === 'b') { e.preventDefault(); setMode('BC'); } 
+    else if (key === 's') { e.preventDefault(); setMode('Speech'); } 
+    else if (key === 't') { e.preventDefault(); setMode('Tymp'); } 
+    else if (key === 'o') { e.preventDefault(); setMode('OAE'); } 
+    else if (key === 'k') { e.preventDefault(); setMode('ABR'); } 
+    else if (key === 'n') { e.preventDefault(); if(currentMode !== 'Speech') recordResponse(true); } 
     
     // --- TAMBAHAN UNTUK FFT DAN VRA ---
-    else if (key === 'f') { e.preventDefault(); setMode('FFT'); }
-    else if (key === 'v') { e.preventDefault(); setMode('VRA'); }
+    else if (key === 'f') { e.preventDefault(); setMode('FFT'); } 
+    else if (key === 'v') { e.preventDefault(); setMode('VRA'); } 
     
     // --- TOGGLE MASKING (ON/OFF) ---
     else if (key === 'm') { 
@@ -6330,11 +6353,11 @@ function triggerSignalPresentation() {
             c.checked = !c.checked; 
             toggleMasking(); 
         } 
-    }
+    } 
     
     // --- SHORTCUT INTENSITAS MASKING (Opsi 1: Tombol Kurung Siku [ dan ]) ---
-    else if (key === ']') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(5); }
-    else if (key === '[') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(-5); }
+    else if (key === ']') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(5); } 
+    else if (key === '[') { e.preventDefault(); document.activeElement.blur(); changeMaskingDb(-5); } 
     
     // --- SHORTCUT INTENSITAS UTAMA & MASKING (Opsi 2: Panah Atas/Bawah) ---
     else if (e.code === 'ArrowUp') { 
@@ -6346,7 +6369,7 @@ function triggerSignalPresentation() {
         } else { 
             adjustDb(5);        // Jika tidak, naikkan db Utama
         } 
-    }
+    } 
     else if (e.code === 'ArrowDown') { 
         e.preventDefault(); 
         document.activeElement.blur(); // Hapus fokus dari tombol Web agar tidak dobel
@@ -6356,7 +6379,7 @@ function triggerSignalPresentation() {
         } else { 
             adjustDb(-5);        // Jika tidak, turunkan db Utama
         } 
-    }
+    } 
     
     // --- PANAH KANAN: NAIK FREKUENSI ---
     else if (e.code === 'ArrowRight') { 
@@ -6366,7 +6389,7 @@ function triggerSignalPresentation() {
             currentFreqIndex++; 
             updateDisplayStatus(); 
             
-            // 🌟 SUNTIKAN: Nyalakan highlight kolom tabel baru
+            // Nyalakan highlight kolom tabel baru
             if (typeof highlightActiveTableColumn === 'function') {
                 highlightActiveTableColumn(FREQUENCIES[currentFreqIndex]);
             }
@@ -6376,7 +6399,7 @@ function triggerSignalPresentation() {
                 kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
             }
         } 
-    }
+    } 
     
     // --- PANAH KIRI: TURUN FREKUENSI ---
     else if (e.code === 'ArrowLeft') { 
@@ -6386,7 +6409,7 @@ function triggerSignalPresentation() {
             currentFreqIndex--; 
             updateDisplayStatus(); 
             
-            // 🌟 SUNTIKAN: Nyalakan highlight kolom tabel baru
+            // Nyalakan highlight kolom tabel baru
             if (typeof highlightActiveTableColumn === 'function') {
                 highlightActiveTableColumn(FREQUENCIES[currentFreqIndex]);
             }
@@ -6397,6 +6420,32 @@ function triggerSignalPresentation() {
             }
         } 
     }
+
+    // 🌟 SUNTIKAN BARU: Hapus titik di frekuensi yang sedang aktif dengan tombol Delete/Backspace
+    else if (e.code === 'Delete' || e.code === 'Backspace') {
+        e.preventDefault();
+        document.activeElement.blur();
+        
+        if (currentMode !== 'Speech') {
+            let targetType = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
+            if (targetType !== 'AC' && targetType !== 'BC' && targetType !== 'FFT') targetType = 'AC';
+            
+            let sideKey = (currentSide === 'right') ? 'R' : 'L';
+            let activeFreq = FREQUENCIES[currentFreqIndex];
+            
+            let activeInputId = `${sideKey}_${targetType}_${activeFreq}`;
+            let activeEl = document.getElementById(activeInputId);
+            
+            if (activeEl && activeEl.value !== "") {
+                activeEl.value = ""; // Kosongkan nilainya
+                
+                if (typeof syncTable === 'function') syncTable();
+                if (typeof updateGsiCharts === 'function') updateGsiCharts(); // Render ulang grafik
+                
+                showToast(`🗑️ Titik ${targetType} pada ${activeFreq}Hz dihapus.`);
+            }
+        }
+    }
 });      
         
 window.addEventListener('keyup', e => { 
@@ -6405,7 +6454,7 @@ window.addEventListener('keyup', e => {
         stopTone(); 
     } 
 });
-
+        
 
 function highlightActiveTableColumn(activeFreq) {
     // 1. Bersihkan seluruh highlight kuning & border dari semua input matriks
@@ -6456,17 +6505,37 @@ function recordResponse(isNR = false) {
     let sideKey = (currentSide === 'right') ? 'R' : 'L';
     let targetInputId = `${sideKey}_${targetType}_${closestFreq}`;
     
+    // 🌟 1. Cek Apakah Masking Sedang Aktif
+    let chkMask = document.getElementById('chkMasking');
+    let isMasked = chkMask ? chkMask.checked : false;
+
     let el = document.getElementById(targetInputId);
     if(el) { 
-        // Menyimpan nilai dB ditambah teks "NR" jika ditekan via shortcut N
-        el.value = currentDb + (isNR ? "NR" : ""); 
-        syncTable(); 
+        // 🌟 2. Format simpan teks (contoh: "40", "40M", "120NR", atau "120NRM")
+        let valStr = currentDb.toString();
+        if (isNR) valStr += "NR";
+        if (isMasked) valStr += "M";
+        
+        el.value = valStr; 
+        
+        if (typeof syncTable === 'function') syncTable(); 
+        if (typeof updateGsiCharts === 'function') updateGsiCharts(); // Pastikan grafik langsung update
     }
     
-    showToast(`✔ Stored: ${closestFreq}Hz @ ${currentDb}dB ${isNR ? '(No Response)' : ''}`); 
+    showToast(`✔ Stored: ${closestFreq}Hz @ ${currentDb}dB ${isNR ? '(NR)' : ''} ${isMasked ? '(Masked)' : ''}`); 
     stopTone();
-}
 
+    // 🌟 3. AUTO-ADVANCE: Otomatis pindah ke frekuensi selanjutnya setelah menyimpan
+    if (currentFreqIndex < FREQUENCIES.length - 1) {
+        currentFreqIndex++; // Naikkan index frekuensi
+        if (typeof updateDisplayStatus === 'function') updateDisplayStatus(); // Update layar
+        
+        // Kirim perintah frekuensi baru ke Arduino jika ada
+        if (typeof kirimDataAudiometer === 'function') {
+            kirimDataAudiometer("F" + FREQUENCIES[currentFreqIndex] + "\n");
+        }
+    }
+}
         
 function updateGhostCursor() {
     if (typeof rightChartInstance === 'undefined' || typeof leftChartInstance === 'undefined') return;
