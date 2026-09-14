@@ -5078,12 +5078,18 @@ function initGsiCharts() {
             datasets: [
                 { 
                     label: 'AC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, borderWidth: 2.5, fill: false, spanGaps: true,
-                    // 🌟 PENDETEKSI NO RESPONSE YANG AMAN DENGAN CACHE IMAGE
+                    // 🌟 PENDETEKSI NO RESPONSE & MASKING PADA AC
                     pointStyle: (ctx) => {
                         let f = FREQUENCIES[ctx.dataIndex];
                         let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
-                        if (el && String(el.value).toUpperCase().includes('NR')) {
+                        if (!el || !el.value) return isRight ? 'circle' : 'crossRot';
+                        
+                        let valStr = String(el.value).toUpperCase();
+                        if (valStr.includes('NR')) {
                             return isRight ? imgNR_R_AC : imgNR_L_AC;
+                        }
+                        if (valStr.includes('M')) {
+                            return isRight ? 'triangle' : 'rect'; // Segitiga untuk Kanan (Masked), Kotak untuk Kiri (Masked)
                         }
                         return isRight ? 'circle' : 'crossRot';
                     },
@@ -5095,11 +5101,18 @@ function initGsiCharts() {
                 }, 
                 { 
                     label: 'BC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], borderWidth:2.5, fill:false, spanGaps:true,
+                    // 🌟 PENDETEKSI MASKING PADA BC
                     pointStyle: (ctx) => {
                         let f = FREQUENCIES[ctx.dataIndex];
                         let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
-                        if (el && String(el.value).toUpperCase().includes('NR')) {
+                        if (!el || !el.value) return 'triangle';
+                        
+                        let valStr = String(el.value).toUpperCase();
+                        if (valStr.includes('NR')) {
                             return isRight ? imgNR_R_BC : imgNR_L_BC;
+                        }
+                        if (valStr.includes('M')) {
+                            return isRight ? 'rectRot' : 'rectRot'; // Atau simbol bracket/bentuk lain sesuai kebutuhan BC Masked
                         }
                         return 'triangle';
                     },
