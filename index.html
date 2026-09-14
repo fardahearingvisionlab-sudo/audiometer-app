@@ -5232,19 +5232,21 @@ function initGsiCharts() {
     }    
     // ============================================================
 
+    // 🌟 SUNTIKAN BARU: Panggil pembaruan layar agar teks status dan tabel menyesuaikan mode
+    updateDisplayStatus();
+
     // --- 6. SUNTIKAN AMAN UNTUK RESIZE GRAFIK SPEECH ---
     if (m === 'Speech') {
         setTimeout(() => {
-            // Pastikan variabel speechChartInstance ada sebelum di-resize
             if (typeof speechChartInstance !== 'undefined' && speechChartInstance !== null) {
                 speechChartInstance.resize();
             }
         }, 100); 
     }
 }
-        
 
-   function setSide(s) { 
+
+function setSide(s) { 
     // Panggil toast di paling atas agar pasti tereksekusi duluan
     showToast(`Active Ear: ${s.toUpperCase()}`); 
 
@@ -5257,12 +5259,25 @@ function initGsiCharts() {
     if (typeof kirimDataAudiometer === 'function') {
         kirimDataAudiometer("E" + (s === 'right' ? "R" : "L") + "\n");
     }
+    
+    // 🌟 SUNTIKAN BARU: Perbarui tampilan UI saat pindah telinga
+    updateDisplayStatus();
 }
 
-    function updateDisplayStatus() { 
+
+function updateDisplayStatus() { 
     let f = FREQUENCIES[currentFreqIndex]; 
-    document.getElementById('lblFreqSide').innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
-    document.getElementById('lblIntensitySide').innerText = currentDb + ' dB HL'; 
+    
+    // Update Frequency & Intensity display
+    let lblFreq = document.getElementById('lblFreqSide');
+    if (lblFreq) {
+        lblFreq.innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
+    }
+    
+    let lblIntensity = document.getElementById('lblIntensitySide');
+    if (lblIntensity) {
+        lblIntensity.innerText = currentDb + ' dB HL'; 
+    }
 
     // Update teks status secara real-time
     let transSelect = document.getElementById('setAcTransducer');
@@ -5280,11 +5295,11 @@ function initGsiCharts() {
         highlightActiveTableColumn(f);
     }
 
+    // 🌟 SUNTIKAN: Update posisi Titik Bayangan (Ghost Cursor)
     if (typeof updateGhostCursor === 'function') {
         updateGhostCursor();
     }
 }
-
     // PERBAIKAN: Fungsi adjustDb sekarang pintar dan tahu batas maksimal!
     function adjustDb(val) {
         let freqAktif = FREQUENCIES[currentFreqIndex];
