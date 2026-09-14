@@ -4904,115 +4904,124 @@ function loadSessionDataToTable(data) {
     }
 }
 
-        function initGsiCharts() {
-            const createIconPoint = (text, color) => {
-                let canvas = document.createElement('canvas');
-                canvas.width = 18; canvas.height = 18;
-                let ctx = canvas.getContext('2d');
-                ctx.fillStyle = color; ctx.font = "bold 15px Arial";
-                ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                ctx.fillText(text, 9, 10);
-                let img = new Image(); img.src = canvas.toDataURL(); return img;
-            };
+        let cachedNRIcons = {};
+
+function initGsiCharts() {
+    const createIconPoint = (text, color) => {
+        let canvas = document.createElement('canvas');
+        canvas.width = 18; canvas.height = 18;
+        let ctx = canvas.getContext('2d');
+        ctx.fillStyle = color; ctx.font = "bold 15px Arial";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(text, 9, 10);
+        let img = new Image(); img.src = canvas.toDataURL(); return img;
+    };
+
+    // 🌟 GENERATOR DENGAN SISTEM CACHE (AGAR GAMBAR LANGSUNG SIAP RENDER)
+    const getOrCreateModelNRIcon = (type, color, isRight) => {
+        let key = `${type}_${color}_${isRight}`;
+        if (cachedNRIcons[key]) return cachedNRIcons[key]; // Ambil dari cache jika sudah ada
+
+        let canvas = document.createElement('canvas');
+        canvas.width = 32; canvas.height = 32;
+        let ctx = canvas.getContext('2d');
+        ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
         
-            // 🌟 GENERATOR IKON NO RESPONSE (DIPERBESAR & DISEMPURNAKAN)
-            const createNRIcon = (type, color, isRight) => {
-                let canvas = document.createElement('canvas');
-                canvas.width = 32; canvas.height = 32;
-                let ctx = canvas.getContext('2d');
-                ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-                ctx.lineJoin = 'round';
-                
-                ctx.beginPath();
-                if (type === 'AC') {
-                    if (isRight) { ctx.arc(16, 12, 6, 0, 2*Math.PI); }
-                    else { ctx.moveTo(10,6); ctx.lineTo(22,18); ctx.moveTo(22,6); ctx.lineTo(10,18); }
-                } else if (type === 'BC') {
-                    if (isRight) { ctx.moveTo(20,6); ctx.lineTo(10,12); ctx.lineTo(20,18); }
-                    else { ctx.moveTo(12,6); ctx.lineTo(22,12); ctx.lineTo(12,18); }
-                }
-                ctx.stroke();
-                
-                // Gambar Tanda Panah No Response ke Bawah Samping
-                ctx.beginPath();
-                if (isRight) {
-                    ctx.moveTo(12, 19); ctx.lineTo(4, 27); 
-                    ctx.moveTo(4, 27); ctx.lineTo(12, 27); 
-                    ctx.moveTo(4, 27); ctx.lineTo(4, 19);
-                } else {
-                    ctx.moveTo(20, 19); ctx.lineTo(28, 27); 
-                    ctx.moveTo(28, 27); ctx.lineTo(20, 27); 
-                    ctx.moveTo(28, 27); ctx.lineTo(28, 19);
-                }
-                ctx.stroke();
-                
-                let img = new Image(); 
-                img.src = canvas.toDataURL(); 
-                return img;
-            };
+        ctx.beginPath();
+        if (type === 'AC') {
+            if (isRight) { ctx.arc(16, 12, 6, 0, 2*Math.PI); }
+            else { ctx.moveTo(10,6); ctx.lineTo(22,18); ctx.moveTo(22,6); ctx.lineTo(10,18); }
+        } else if (type === 'BC') {
+            if (isRight) { ctx.moveTo(20,6); ctx.lineTo(10,12); ctx.lineTo(20,18); }
+            else { ctx.moveTo(12,6); ctx.lineTo(22,12); ctx.lineTo(12,18); }
+        }
+        ctx.stroke();
         
-            const imgSFRight = createIconPoint('S', '#dc2626');
-            const imgSFLeft = createIconPoint('S', '#0284c7');
-            
-            const imgNR_R_AC = createNRIcon('AC', '#dc2626', true);
-            const imgNR_L_AC = createNRIcon('AC', '#0284c7', false);
-            const imgNR_R_BC = createNRIcon('BC', '#dc2626', true);
-            const imgNR_L_BC = createNRIcon('BC', '#0284c7', false);
+        // Gambar Tanda Panah No Response ke Bawah Samping
+        ctx.beginPath();
+        if (isRight) {
+            ctx.moveTo(12, 19); ctx.lineTo(4, 27); 
+            ctx.moveTo(4, 27); ctx.lineTo(12, 27); 
+            ctx.moveTo(4, 27); ctx.lineTo(4, 19);
+        } else {
+            ctx.moveTo(20, 19); ctx.lineTo(28, 27); 
+            ctx.moveTo(28, 27); ctx.lineTo(20, 27); 
+            ctx.moveTo(28, 27); ctx.lineTo(28, 19);
+        }
+        ctx.stroke();
         
-            const createChart = (id, color, isRight) => new Chart(document.getElementById(id).getContext('2d'), {
-                type: 'line', 
-                data: { 
-                    labels: FREQUENCIES.map(f => f>=1000?(f%1000===0?(f/1000)+'k':(f/1000).toFixed(1)+'k'):f), 
-                    datasets: [
-                        { 
-                            label: 'AC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, borderWidth: 2.5, fill: false, spanGaps: true,
-                            // 🌟 LOGIKA PENDETEKSI NO RESPONSE
-                            pointStyle: (ctx) => {
-                                let f = FREQUENCIES[ctx.dataIndex];
-                                let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
-                                if (el && String(el.value).includes('NR')) return isRight ? imgNR_R_AC : imgNR_L_AC;
-                                return isRight ? 'circle' : 'crossRot';
-                            },
-                            pointRadius: (ctx) => {
-                                let f = FREQUENCIES[ctx.dataIndex];
-                                let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
-                                return (el && String(el.value).includes('NR')) ? 10 : 6;
-                            }
-                        }, 
-                        { 
-                            label: 'BC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], borderWidth:2.5, fill:false, spanGaps:true,
-                            pointStyle: (ctx) => {
-                                let f = FREQUENCIES[ctx.dataIndex];
-                                let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
-                                if (el && String(el.value).includes('NR')) return isRight ? imgNR_R_BC : imgNR_L_BC;
-                                return 'triangle';
-                            },
-                            pointRadius: (ctx) => {
-                                let f = FREQUENCIES[ctx.dataIndex];
-                                let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
-                                return (el && String(el.value).includes('NR')) ? 10 : 6;
-                            }
-                        },
-                        { label: 'FFT', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[3,3], pointStyle: isRight ? imgSFRight : imgSFLeft, pointRadius: 7, borderWidth: 2, fill: false, spanGaps: true },
-                        // 🌟 DATASET KE-4: GHOST CURSOR
-                        {
-                            label: 'GhostCursor',
-                            data: Array(FREQUENCIES.length).fill(null),
-                            borderColor: 'rgba(100, 116, 139, 0.4)',
-                            backgroundColor: 'rgba(100, 116, 139, 0.4)',
-                            pointStyle: 'cross',
-                            pointRadius: 12,
-                            borderWidth: 2,
-                            showLine: false,
-                            animation: false
+        let img = new Image(); 
+        img.src = canvas.toDataURL(); 
+        cachedNRIcons[key] = img; // Simpan ke cache
+        return img;
+    };
+
+    const imgSFRight = createIconPoint('S', '#dc2626');
+    const imgSFLeft = createIconPoint('S', '#0284c7');
+    
+    const imgNR_R_AC = getOrCreateModelNRIcon('AC', '#dc2626', true);
+    const imgNR_L_AC = getOrCreateModelNRIcon('AC', '#0284c7', false);
+    const imgNR_R_BC = getOrCreateModelNRIcon('BC', '#dc2626', true);
+    const imgNR_L_BC = getOrCreateModelNRIcon('BC', '#0284c7', false);
+
+    const createChart = (id, color, isRight) => new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'line', 
+        data: { 
+            labels: FREQUENCIES.map(f => f>=1000?(f%1000===0?(f/1000)+'k':(f/1000).toFixed(1)+'k'):f), 
+            datasets: [
+                { 
+                    label: 'AC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: isRight?'#ffffff':color, borderWidth: 2.5, fill: false, spanGaps: true,
+                    // 🌟 PENDETEKSI NO RESPONSE YANG AMAN DENGAN CACHE IMAGE
+                    pointStyle: (ctx) => {
+                        let f = FREQUENCIES[ctx.dataIndex];
+                        let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
+                        if (el && String(el.value).toUpperCase().includes('NR')) {
+                            return isRight ? imgNR_R_AC : imgNR_L_AC;
                         }
-                    ] 
+                        return isRight ? 'circle' : 'crossRot';
+                    },
+                    pointRadius: (ctx) => {
+                        let f = FREQUENCIES[ctx.dataIndex];
+                        let el = document.getElementById(`${isRight ? 'R' : 'L'}_AC_${f}`);
+                        return (el && String(el.value).toUpperCase().includes('NR')) ? 10 : 6;
+                    }
+                }, 
+                { 
+                    label: 'BC', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[4,4], borderWidth:2.5, fill:false, spanGaps:true,
+                    pointStyle: (ctx) => {
+                        let f = FREQUENCIES[ctx.dataIndex];
+                        let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
+                        if (el && String(el.value).toUpperCase().includes('NR')) {
+                            return isRight ? imgNR_R_BC : imgNR_L_BC;
+                        }
+                        return 'triangle';
+                    },
+                    pointRadius: (ctx) => {
+                        let f = FREQUENCIES[ctx.dataIndex];
+                        let el = document.getElementById(`${isRight ? 'R' : 'L'}_BC_${f}`);
+                        return (el && String(el.value).toUpperCase().includes('NR')) ? 10 : 6;
+                    }
                 },
-                options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.4, plugins: { legend: { display: false } }, scales: { y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, x: { grid: { color: '#e2e8f0' } } } }
-            });
-            
-            rightChartInstance = createChart('rightChart', '#dc2626', true);
-            leftChartInstance = createChart('leftChart', '#0284c7', false);
+                { label: 'FFT', data: Array(FREQUENCIES.length).fill(null), borderColor: color, backgroundColor: color, borderDash:[3,3], pointStyle: isRight ? imgSFRight : imgSFLeft, pointRadius: 7, borderWidth: 2, fill: false, spanGaps: true },
+                {
+                    label: 'GhostCursor',
+                    data: Array(FREQUENCIES.length).fill(null),
+                    borderColor: 'rgba(100, 116, 139, 0.4)',
+                    backgroundColor: 'rgba(100, 116, 139, 0.4)',
+                    pointStyle: 'cross',
+                    pointRadius: 12,
+                    borderWidth: 2,
+                    showLine: false,
+                    animation: false
+                }
+            ] 
+        },
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.4, plugins: { legend: { display: false } }, scales: { y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, x: { grid: { color: '#e2e8f0' } } } }
+    });
+    
+    rightChartInstance = createChart('rightChart', '#dc2626', true);
+    leftChartInstance = createChart('leftChart', '#0284c7', false);
         
        speechChartInstance = new Chart(document.getElementById('speechChart').getContext('2d'), { 
         type: 'line', 
