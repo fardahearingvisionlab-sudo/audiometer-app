@@ -4725,6 +4725,25 @@ function sendDataToGoogleSheet(patientData) {
     
     function updatePatientDropdown() { let sel = document.getElementById('patientSelectDropdown'); sel.innerHTML = ""; patients.forEach((p, idx) => { let opt = document.createElement('option'); opt.value = idx; opt.text = `${p.namaLengkap} (${p.id})`; if(idx === activePatientIndex) opt.selected = true; sel.appendChild(opt); }); }
     function switchPatient(idx) { activePatientIndex = parseInt(idx); activeSessionIndex = 0; loadPatientData(activePatientIndex); }
+
+        
+    // Tambahkan fungsi format waktu ini (bisa taruh tepat di atas loadPatientData)
+    function formatWaktuHistory(isoString) {
+        if (!isoString) return "-";
+        
+        // Cek jika formatnya cuma tanggal pendek "YYYY-MM-DD"
+        if (isoString.length <= 10) return isoString; 
+
+        let d = new Date(isoString);
+        return d.toLocaleString('id-ID', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).replace(':', '.');
+    }
+
     function loadPatientData(idx) {
         if (!patients || patients.length === 0 || !patients[idx]) {
             document.getElementById('wsId').innerText = '-';
@@ -4740,11 +4759,18 @@ function sendDataToGoogleSheet(patientData) {
         hSel.innerHTML = "";
         
         if (!p.sessions || !Array.isArray(p.sessions) || p.sessions.length === 0) {
-            p.sessions = [{ date: new Date().toISOString().split('T')[0], data: {} }];
+            p.sessions = [{ date: new Date().toISOString(), data: {} }];
         }
         
         p.sessions.forEach((s, sIdx) => { 
-            let opt = document.createElement('option'); opt.value = sIdx; opt.text = s.date; if (sIdx === activeSessionIndex) opt.selected = true; hSel.appendChild(opt); 
+            let opt = document.createElement('option'); 
+            opt.value = sIdx; 
+            
+            // 🌟 PERBAIKAN: Bungkus s.date dengan fungsi format waktu
+            opt.text = formatWaktuHistory(s.date); 
+            
+            if (sIdx === activeSessionIndex) opt.selected = true; 
+            hSel.appendChild(opt); 
         });
         
         if (p.sessions[activeSessionIndex]) {
