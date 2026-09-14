@@ -4229,74 +4229,76 @@ function generateDetailedCalibrationReport() {
     }
 
     function updateTympCharts() {
-        let rComp = parseFloat(document.getElementById('tymp_r_compliance')?.value) || 0; 
-        let rPres = parseFloat(document.getElementById('tymp_r_pressure')?.value) || 0;
-        let rEcv  = parseFloat(document.getElementById('tymp_r_ecv')?.value) || 1.2;
-        
-        let lComp = parseFloat(document.getElementById('tymp_l_compliance')?.value) || 0; 
-        let lPres = parseFloat(document.getElementById('tymp_l_pressure')?.value) || 0;
-        let lEcv  = parseFloat(document.getElementById('tymp_l_ecv')?.value) || 1.2;
-        
-        // Penentuan Tipe Otomatis Berdasarkan Nilai Input
-        let getAutoType = (comp, pres) => {
-            if (comp <= 0.1) return 'B';
-            if (comp < 0.3) return 'As';
-            if (comp > 1.8) return 'Ad';
-            if (pres < -100) return 'C';
-            return 'A';
-        };
+    let rComp = parseFloat(document.getElementById('tymp_r_compliance')?.value) || 0; 
+    let rPres = parseFloat(document.getElementById('tymp_r_pressure')?.value) || 0;
+    let rEcv  = parseFloat(document.getElementById('tymp_r_ecv')?.value) || 1.2;
+    
+    let lComp = parseFloat(document.getElementById('tymp_l_compliance')?.value) || 0; 
+    let lPres = parseFloat(document.getElementById('tymp_l_pressure')?.value) || 0;
+    let lEcv  = parseFloat(document.getElementById('tymp_l_ecv')?.value) || 1.2;
+    
+    // Penentuan Tipe Otomatis Berdasarkan Nilai Input
+    let getAutoType = (comp, pres) => {
+        if (comp <= 0.1) return 'B';
+        if (comp < 0.3) return 'As';
+        if (comp > 1.8) return 'Ad';
+        if (pres < -100) return 'C';
+        return 'A';
+    };
 
-        let rType = getAutoType(rComp, rPres);
-        let lType = getAutoType(lComp, lPres);
+    let rType = getAutoType(rComp, rPres);
+    let lType = getAutoType(lComp, lPres);
 
-        let xPoints = []; 
-        for (let p = -400; p <= 200; p += 10) xPoints.push(p);
-        
-        let getDynamicCurve = (type, comp, peakPres, ecv) => { 
-            let baselineOffset = Math.max(0.1, ecv * 0.25); 
+    let xPoints = []; 
+    for (let p = -400; p <= 200; p += 10) xPoints.push(p);
+    
+    let getDynamicCurve = (type, comp, peakPres, ecv) => { 
+        let baselineOffset = Math.max(0.1, ecv * 0.25); 
 
-            if (comp <= 0 || type === 'B') { 
-                return xPoints.map(p => ({ x: p, y: parseFloat(baselineOffset.toFixed(2)) })); 
+        if (comp <= 0 || type === 'B') { 
+            return xPoints.map(p => ({ x: p, y: parseFloat(baselineOffset.toFixed(2)) })); 
+        }
+
+        return xPoints.map(p => { 
+            let base = comp * Math.exp(-Math.pow(p - peakPres, 2) / 4500); 
+            if (type === 'As') { 
+                base = Math.min(base, 0.35 * comp); 
+            } else if (type === 'Ad') { 
+                base = base * 1.6; 
             }
+            let totalY = baselineOffset + base;
+            return { x: p, y: Math.max(0, parseFloat(totalY.toFixed(2))) }; 
+        }); 
+    };
 
-            return xPoints.map(p => { 
-                let base = comp * Math.exp(-Math.pow(p - peakPres, 2) / 4500); 
-                if (type === 'As') { 
-                    base = Math.min(base, 0.35 * comp); 
-                } else if (type === 'Ad') { 
-                    base = base * 1.6; 
-                }
-                let totalY = baselineOffset + base;
-                return { x: p, y: Math.max(0, parseFloat(totalY.toFixed(2))) }; 
-            }); 
-        };
+    let rCurveData = getDynamicCurve(rType, rComp, rPres, rEcv);
+    let lCurveData = getDynamicCurve(lType, lComp, lPres, lEcv);
 
-        let rCurveData = getDynamicCurve(rType, rComp, rPres, rEcv);
-        let lCurveData = getDynamicCurve(lType, lComp, lPres, lEcv);
-
-        if (typeof tympRightChart !== 'undefined' && tympRightChart) { 
-            tympRightChart.data.datasets[0].data = rCurveData; 
-            tympRightChart.update(); 
-        }
-        if (typeof tympLeftChart !== 'undefined' && tympLeftChart) { 
-            tympLeftChart.data.datasets[0].data = lCurveData; 
-            tympLeftChart.update(); 
-        }
-
-        // Sinkronisasi otomatis ke halaman cetak (Print Preview) jika chart cetak aktif
-        if (typeof printTympRight !== 'undefined' && printTympRight) {
-            printTympRight.data.datasets[0].data = rCurveData;
-            printTympRight.update();
-        }
-        if (typeof printTympLeft !== 'undefined' && printTympLeft) {
-            printTympLeft.data.datasets[0].data = lCurveData;
-            printTympLeft.update();
-        }
-
-        // Panggil fungsi teks laporan AI otomatis
-        updateTympAiReport(rType, rComp, rPres, lType, lComp, lPres);
+    if (typeof tympRightChart !== 'undefined' && tympRightChart) { 
+        tympRightChart.data.datasets[0].data = rCurveData; 
+        tympRightChart.update(); 
+    }
+    if (typeof tympLeftChart !== 'undefined' && tympLeftChart) { 
+        tympLeftChart.data.datasets[0].data = lCurveData; 
+        tympLeftChart.update(); 
     }
 
+    // Sinkronisasi otomatis ke halaman cetak (Print Preview) dengan instance chart yang benar
+    if (typeof printTympRightChartInstance !== 'undefined' && printTympRightChartInstance) {
+        printTympRightChartInstance.data.datasets[0].data = rCurveData;
+        printTympRightChartInstance.update();
+    }
+    if (typeof printTympLeftChartInstance !== 'undefined' && printTympLeftChartInstance) {
+        printTympLeftChartInstance.data.datasets[0].data = lCurveData;
+        printTympLeftChartInstance.update();
+    }
+
+    // Panggil fungsi teks laporan AI otomatis
+    if (typeof updateTympAiReport === 'function') {
+        updateTympAiReport(rType, rComp, rPres, lType, lComp, lPres);
+    }
+}
+        
     function updateTympAiReport(rType, rComp, rPres, lType, lComp, lPres) {
         let aiBox = document.getElementById('tympAiReport');
         if (!aiBox) return;
@@ -6454,6 +6456,17 @@ window.addEventListener('keyup', e => {
         stopTone(); 
     } 
 });
+
+function adjustDb(delta) {
+    let newVal = currentDb + delta;
+    if (newVal >= -10 && newVal <= 120) {
+        currentDb = newVal;
+        updateDisplayStatus();
+        if (isStimulusActive) {
+            startTone(); // Perbarui suara jika sedang menyala
+        }
+    }
+}        
         
 
 function highlightActiveTableColumn(activeFreq) {
