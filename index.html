@@ -6503,39 +6503,30 @@ window.addEventListener('keyup', e => {
 function adjustDb(delta) {
     let newVal = currentDb + delta;
     
-    // Tentukan batas maksimal berdasarkan mode dan frekuensi aktif saat ini
-    let maxLimit = 120; // Default batas tertinggi
-    if (typeof FREQUENCIES !== 'undefined' && typeof currentFreqIndex !== 'undefined') {
-        let f = FREQUENCIES[currentFreqIndex];
-        let type = (currentMode === 'VRA' || currentMode === 'FFT') ? 'FFT' : currentMode;
-        
-        if (type === 'BC') {
-            if (f <= 250) maxLimit = 45;
-            else if (f === 500) maxLimit = 65;
-            else if (f >= 750 && f <= 4000) maxLimit = 80;
-            else maxLimit = 50; 
-        } else if (type === 'AC') {
-            if (f === 125) maxLimit = 90;
-            else if (f === 250) maxLimit = 105;
-            else maxLimit = 120; 
-        } else if (type === 'FFT') {
-            maxLimit = 90; 
-        }
+    // Ambil frekuensi dan mode aktif saat ini
+    let f = (typeof FREQUENCIES !== 'undefined' && typeof currentFreqIndex !== 'undefined') ? FREQUENCIES[currentFreqIndex] : 1000;
+    let mode = (typeof currentMode !== 'undefined') ? currentMode : 'AC';
+    if (mode === 'VRA' || mode === 'FFT') mode = 'FFT'; // Sesuaikan jika mode FFT/VRA menggunakan aturan AC
+
+    // Panggil langsung fungsi getMaximumLimit yang sudah ada di file Anda
+    let maxLimit = 120; // Default fallback
+    if (typeof getMaximumLimit === 'function') {
+        maxLimit = getMaximumLimit(mode, f);
     }
 
-    // Batasi nilai agar tidak kurang dari -10 dan tidak melebihi maxLimit frekuensi tersebut
+    // Terapkan pembatasan ketat sesuai batas maksimal klinis
     if (newVal >= -10 && newVal <= maxLimit) {
         currentDb = newVal;
         updateDisplayStatus();
         if (typeof updateGhostCursor === 'function') {
-            updateGhostCursor(); // Perbarui posisi kursor secara instan
+            updateGhostCursor();
         }
         if (isStimulusActive) {
-            startTone(); // Perbarui suara jika sedang menyala
+            startTone(); 
         }
     } else if (newVal > maxLimit) {
         if (typeof showToast === 'function') {
-            showToast(`⚠️ Batas maksimal intensitas untuk frekuensi ini adalah ${maxLimit} dB`);
+            showToast(`⚠️ Batas maksimal intensitas pada ${f}Hz adalah ${maxLimit} dB`);
         }
     }
 }
