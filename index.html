@@ -459,10 +459,16 @@ canvas#rightChart, canvas#leftChart {
                     <button type="button" class="win-btn" onmousedown="triggerVRAReward('right')" onmouseup="stopVRAReward('right')" onmouseleave="stopVRAReward('right')" style="flex: 1; background: #fee2e2; color: #b91c1c; font-weight: bold; padding: 8px 4px; font-size: 12px; cursor: pointer;">🧸 KANAN</button>
                 </div>
             </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- BAGIAN BAWAH: TERKUNCI (FIXED) AGAR TIDAK TENGGELAM -->
+        <!-- ============================================================== -->
+        <div style="flex-shrink: 0; border-top: 1px solid var(--win-border); padding-top: 4px; background: #f8fafc; display: flex; flex-direction: column;">
             
             <!-- KOTAK CURRENT STATUS LENGKAP -->
             <div class="box-title" style="margin-top: 4px; background: #e0f2fe; color: #0369a1; border-color: #0284c7;">Current Status</div>
-            <div class="status-display-box">
+            <div class="status-display-box" style="background: white; padding: 4px;">
                 <div class="status-metric">
                     <span>Frequency:</span>
                     <span class="val" id="lblFreqSide" style="color: #38bdf8;">1000 Hz</span>
@@ -493,17 +499,14 @@ canvas#rightChart, canvas#leftChart {
             </div>
 
             <div class="box-title" style="margin-top: 4px;">Contralateral Masking [M]</div>
-            <div class="masking-panel-box" style="padding: 6px;">
+            <div class="masking-panel-box" style="padding: 4px; background: white;">
                 <button type="button" id="btnMaskingToggle" class="win-btn" onclick="toggleMaskingBtn()" style="width: 100%; font-weight: bold; padding: 6px; font-size: 11.5px; border: 2px solid #cbd5e1; background: #f1f5f9; color: #475569; cursor: pointer; border-radius: 3px;">
                     ⚪ MASKING: OFF [M]
                 </button>
                 <input type="checkbox" id="chkMasking" onchange="toggleMasking()" style="display: none;">
             </div>
-        </div>
 
-            <!-- ========================================== -->
-            <!-- PANEL KONEKSI USB (2 TOMBOL KOMPAK)        -->
-            <!-- ========================================== -->
+            <!-- PANEL KONEKSI USB -->
             <div style="margin-top: 4px; padding: 4px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; gap: 4px;">
                 <button type="button" id="btnConnectAudio" class="win-btn" style="flex: 1; font-weight: bold; background: #f59e0b; color: white; border: none; padding: 6px 4px; font-size: 10.5px; border-radius: 3px; cursor: pointer; transition: 0.2s;">
                     🔌 Connect
@@ -512,11 +515,9 @@ canvas#rightChart, canvas#leftChart {
                     ❌ Disconnect
                 </button>
             </div>
-            <!-- ========================================== -->
 
-        <!-- 3. BAGIAN BAWAH: Quick Actions -->
-        <div style="flex-shrink: 0; border-top: 1px solid var(--win-border); padding-top: 4px; background: #f8fafc;">
-            <div class="box-title">Quick Actions</div>
+            <!-- QUICK ACTIONS -->
+            <div class="box-title" style="margin-top: 4px;">Quick Actions</div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 2px;">
                 <button class="store-btn" onclick="saveCurrentExamination()" style="background: #16a34a; border: 1px solid #15803d; width: 100%; padding: 6px; font-size: 11px;">
                     💾 Simpan Hasil (All Tests)
@@ -526,9 +527,10 @@ canvas#rightChart, canvas#leftChart {
                     <button type="button" class="win-btn" onclick="cetakDanBridging()" style="background: #dcfce7; font-weight: bold; color: #166534; border: 1px solid #166534; padding: 6px 10px; font-size: 11px; text-align: center; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">🖨️ Cetak PDF</button>
                 </div>
             </div>
+            
         </div>
     </div>
-
+            
 
         <!-- Area Utama Workspace -->
         <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; overflow: hidden;">
