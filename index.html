@@ -5423,7 +5423,12 @@ function updateDisplayStatus() {
     // 1. Update Teks Frekuensi & Intensitas
     let lblFreq = document.getElementById('lblFreqSide');
     if (lblFreq) {
-        lblFreq.innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
+        // 🌟 PEMBARUAN SPEECH: Ubah tulisan frekuensi menjadi Broadband saat di mode Speech
+        if (modeLabel === 'Speech') {
+            lblFreq.innerText = 'Broadband';
+        } else {
+            lblFreq.innerText = (f >= 1000 ? (f%1000===0 ? (f/1000)+'k' : (f/1000).toFixed(1)+'k') : f) + ' Hz'; 
+        }
     }
     
     let lblIntensity = document.getElementById('lblIntensitySide');
@@ -5448,6 +5453,11 @@ function updateDisplayStatus() {
 
     // 4. DETEKSI STIMULUS / NADA AKTIF
     let stim = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus.toUpperCase() : 'PURE';
+    
+    // 🌟 PEMBARUAN SPEECH: Paksa label stimulus menjadi SPEECH
+    if (modeLabel === 'Speech') {
+        stim = 'SPEECH';
+    }
     
     // 5. CETAK KE LABEL STATUS DETIL POJOK KANAN ATAS
     let lblDetail = document.getElementById('lblDetailStatus');
