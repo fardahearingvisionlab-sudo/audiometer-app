@@ -5151,15 +5151,14 @@ function initGsiCharts() {
             plugins: { 
                 legend: { display: false },
                 
-                // 🌟 PEMBARUAN TOOLTIP (WARNA DINAMIS & TEKS DIRAPIKAN)
-                // 🌟 PEMBARUAN TOOLTIP (UKURAN DIPERKECIL)
+                // 🌟 PEMBARUAN TOOLTIP (UKURAN SAMA & SANGAT KECIL)
                 tooltip: {
                     backgroundColor: color, 
-                    titleFont: { size: 11 },                  // Ukuran font judul (Frekuensi) diperkecil
-                    bodyFont: { size: 12, weight: 'bold' },   // Ukuran font isi (Intensitas) diperkecil
-                    padding: { top: 4, right: 8, bottom: 4, left: 8 }, // Memperkecil jarak ruang dalam kotak
-                    caretSize: 4,                             // Memperkecil ukuran panah kecil penunjuk
-                    cornerRadius: 4,                          // Membuat sudut kotak sedikit lebih tajam/rapi
+                    titleFont: { size: 10, weight: 'normal' }, 
+                    bodyFont: { size: 10, weight: 'normal' },  
+                    padding: { top: 3, right: 6, bottom: 3, left: 6 }, 
+                    caretSize: 3,                             
+                    cornerRadius: 3,
                     displayColors: false, 
                     callbacks: {
                         title: function(context) {
@@ -5176,9 +5175,9 @@ function initGsiCharts() {
                             return `${context.dataset.label}: ${value} dB HL`;
                         }
                     }
-                }
-                
+                }    
             }, 
+            
             scales: { 
                 y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, 
                 x: { grid: { color: '#e2e8f0' } } 
