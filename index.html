@@ -170,204 +170,212 @@
         .toast { background: #1e293b; color: #ffffff; padding: 8px 14px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); font-weight: 500; border-radius: 4px; font-size: 11.5px; }
 
         .statusbar { 
-    display: flex; 
-    justify-content: space-between; 
-    padding: 3px 10px; 
-    background: #e2e8f0; 
-    border-top: 1px solid var(--win-border); 
-    color: #475569; 
-    font-size: 11px; 
-    
-    /* KUNCI: Mencegah status bar terdorong ke luar layar utama */
-    flex-shrink: 0; 
-    position: relative;
-    z-index: 100;
-}
+        display: flex; 
+        justify-content: space-between; 
+        padding: 3px 10px; 
+        background: #e2e8f0; 
+        border-top: 1px solid var(--win-border); 
+        color: #475569; 
+        font-size: 11px; 
+        
+        /* KUNCI: Mencegah status bar terdorong ke luar layar utama */
+        flex-shrink: 0; 
+        position: relative;
+        z-index: 100;
+    }
         .ai-recommendation-panel { background: #f8fafc; border: 1px solid var(--win-border); border-radius: 6px; padding: 10px; margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
         .ai-title { font-weight: bold; color: #0369a1; display: flex; align-items: center; gap: 5px; font-size: 11.5px; }
         .ai-content { background: #ffffff; border: 1px solid var(--win-border-light); padding: 8px; border-radius: 4px; font-size: 10.5px; line-height: 1.4; color: #334155; }
 
         
     /* Styling Modal Pratinjau Cetak yang Diperbaiki */
-#printPreviewModal {
-    display: none;
-    position: fixed;
-    z-index: 99999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    overflow-y: auto;
-    padding-top: 50px;
-    padding-bottom: 50px;
-}
-
-.print-modal-content {
-    background-color: transparent;
-    margin: 0 auto;
-    width: 210mm;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-.print-page {
-    background: #ffffff;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto 20px auto;
-    padding: 12mm 15mm;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    box-sizing: border-box;
-    page-break-after: always;
-    break-after: page;
-    position: relative;
-    display: block; /* DIUBAH DARI FLEX KE BLOCK AGAR TIDAK BERTUMPUK/MEREGANG */
-}
-
-.print-controls-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #1e293b;
-    padding: 8px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 10000;
-    box-sizing: border-box;
-    color: #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
-.print-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-    margin-bottom: 8px;
-    font-size: 10px;
-}
-
-.print-table th, .print-table td {
-    border: 1px solid #000;
-    padding: 3px 5px;
-    text-align: center;
-}
-
-.header-pasien {
-    border: 1px solid #000;
-    padding: 6px;
-    margin-bottom: 10px;
-    font-size: 11px;
-}
-
-/* ==========================================================
-   PERBAIKAN KOTAK GRAFIK (AGAR PERSEGI & TIDAK GEPENG)
-   ========================================================== */
-.print-chart-container, .chart-container, div[style*="position: relative"] {
-    position: relative;
-    width: 100%;
-    max-width: 480px; /* Batasi lebar maksimal agar kotaknya ideal */
-    margin: 0 auto;   /* Posisi di tengah */
-}
-
-/* Memastikan elemen canvas di dalam preview proporsional */
-.print-page canvas {
-    width: 100% !important;
-    display: block;
-    margin: 0 auto;
-}
-
-/* Pengaturan khusus saat tombol cetak browser dijalankan */
-@media print {
-    /* 1. KUNCI UTAMA: Sembunyikan status bar dan UI aplikasi di belakang layar agar tidak ikut ter-print */
-    .statusbar, .view-section, .vra-reward, #toastContainer {
-        display: none !important;
-    }
-
-    /* 2. Menghapus margin default printer agar pas dengan ukuran kertas */
-    @page {
-        size: A4 portrait;
-        margin: 0; 
-    }
-
-    body {
-        margin: 0;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    #printPreviewModal {
+        display: none;
+        position: fixed;
+        z-index: 99999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        overflow-y: auto;
+        padding-top: 50px;
+        padding-bottom: 50px;
     }
     
-    .print-controls-bar { display: none !important; }
-    
-    #printPreviewModal { 
-        background: none !important; 
-        padding: 0 !important; 
-        position: static !important; 
-        overflow: visible !important; 
+    .print-modal-content {
+        background-color: transparent;
+        margin: 0 auto;
+        width: 210mm;
+        padding: 0;
+        box-sizing: border-box;
     }
     
-    .print-modal-content { 
-        box-shadow: none !important; 
-        margin: 0 !important; 
-        width: 100% !important; 
-        padding: 0 !important; 
+    .print-page {
+        background: #ffffff;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto 20px auto;
+        padding: 12mm 15mm;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        box-sizing: border-box;
+        page-break-after: always;
+        break-after: page;
+        position: relative;
+        display: block; /* DIUBAH DARI FLEX KE BLOCK AGAR TIDAK BERTUMPUK/MEREGANG */
     }
     
-    .print-page { 
-        box-shadow: none !important;
-        margin: 0 !important;
+    .print-controls-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #1e293b;
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10000;
+        box-sizing: border-box;
+        color: #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 4px;
+        margin-bottom: 8px;
+        font-size: 10px;
+    }
+    
+    .print-table th, .print-table td {
+        border: 1px solid #000;
+        padding: 3px 5px;
+        text-align: center;
+    }
+    
+    .header-pasien {
+        border: 1px solid #000;
+        padding: 6px;
+        margin-bottom: 10px;
+        font-size: 11px;
+    }
+    
+    /* ==========================================================
+       PERBAIKAN KOTAK GRAFIK (AGAR PERSEGI & TIDAK GEPENG)
+       ========================================================== */
+    .print-chart-container, .chart-container, div[style*="position: relative"] {
+        position: relative;
+        width: 100%;
+        max-width: 480px; /* Batasi lebar maksimal agar kotaknya ideal */
+        margin: 0 auto;   /* Posisi di tengah */
+    }
+    
+    /* Memastikan elemen canvas di dalam preview proporsional */
+    .print-page canvas {
         width: 100% !important;
-        height: auto !important;
-        min-height: auto !important;
-        page-break-after: always !important;
-        break-after: page !important;
-        border: none !important;
-        display: block !important; 
+        display: block;
+        margin: 0 auto;
     }
     
-    canvas {
-        max-width: 100% !important;
-        page-break-inside: avoid !important;
+    /* Pengaturan khusus saat tombol cetak browser dijalankan */
+    @media print {
+        /* 1. KUNCI UTAMA: Sembunyikan status bar dan UI aplikasi di belakang layar agar tidak ikut ter-print */
+        .statusbar, .view-section, .vra-reward, #toastContainer {
+            display: none !important;
+        }
+    
+        /* 2. Menghapus margin default printer agar pas dengan ukuran kertas */
+        @page {
+            size: A4 portrait;
+            margin: 0; 
+        }
+    
+        body {
+            margin: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .print-controls-bar { display: none !important; }
+        
+        #printPreviewModal { 
+            background: none !important; 
+            padding: 0 !important; 
+            position: static !important; 
+            overflow: visible !important; 
+        }
+        
+        .print-modal-content { 
+            box-shadow: none !important; 
+            margin: 0 !important; 
+            width: 100% !important; 
+            padding: 0 !important; 
+        }
+        
+        .print-page { 
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            border: none !important;
+            display: block !important; 
+        }
+        
+        canvas {
+            max-width: 100% !important;
+            page-break-inside: avoid !important;
+        }
     }
-}
+    
+    /* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
+    .printClinicLogoBox {
+        max-height: 60px;       /* Batasi tinggi maksimum agar tidak merusak kop surat */
+        width: auto !important;  /* Lebar otomatis menyesuaikan bentuk logo (persegi/panjang) */
+        min-width: 50px;
+        border: none !important; /* Hilangkan border kotak jika tidak diinginkan */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: transparent !important;
+    }
+    
+    .printClinicLogoImg {
+        max-height: 58px !important; /* Menyesuaikan tinggi kontainer cetak */
+        width: auto !important;      /* Menjaga rasio Asli logo agar tidak gepeng */
+        object-fit: contain;
+    }
 
-/* Perbaikan CSS untuk Kotak Logo yang Fleksibel */
-.printClinicLogoBox {
-    max-height: 60px;       /* Batasi tinggi maksimum agar tidak merusak kop surat */
-    width: auto !important;  /* Lebar otomatis menyesuaikan bentuk logo (persegi/panjang) */
-    min-width: 50px;
-    border: none !important; /* Hilangkan border kotak jika tidak diinginkan */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: transparent !important;
-}
-
-.printClinicLogoImg {
-    max-height: 58px !important; /* Menyesuaikan tinggi kontainer cetak */
-    width: auto !important;      /* Menjaga rasio Asli logo agar tidak gepeng */
-    object-fit: contain;
-}
-
-.ear-panel.flash-right { animation: flashRedBg 0.2s ease infinite alternate !important; }
-.ear-panel.flash-left { animation: flashBlueBg 0.2s ease infinite alternate !important; }
-
-@keyframes flashRedBg { from { background-color: rgba(239, 68, 68, 0.02); } to { background-color: rgba(239, 68, 68, 0.22); } }
-@keyframes flashBlueBg { from { background-color: rgba(2, 132, 199, 0.02); } to { background-color: rgba(2, 132, 199, 0.22); } }
-
-#maskingDb::-webkit-outer-spin-button, #maskingDb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-#maskingDb { -moz-appearance: textfield; }
-
-@keyframes pulseVra { 0% { transform: scale(1); box-shadow: 0 0 20px #facc15; } 100% { transform: scale(1.15); box-shadow: 0 0 50px #eab308, 0 0 80px #f59e0b; } }
-.vra-reward { display: none; position: fixed; top: 35%; width: 250px; height: 250px; background: #fef08a; border: 8px solid #eab308; border-radius: 20px; z-index: 99999; text-align: center; line-height: 230px; font-size: 110px; animation: pulseVra 0.4s infinite alternate; user-select: none; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-
-/* Khusus canvas utama (bukan preview) biarkan normal */
-canvas#rightChart, canvas#leftChart {
-    width: 100% !important;
-    height: 100% !important;
-}
+    #lblDetailStatus {
+    color: #0f172a !important;          /* Warna teks navy pekat (slate-900) */
+    background-color: #e2e8f0 !important; /* Latar belakang abu-abu yang kontras */
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}    
+    
+    .ear-panel.flash-right { animation: flashRedBg 0.2s ease infinite alternate !important; }
+    .ear-panel.flash-left { animation: flashBlueBg 0.2s ease infinite alternate !important; }
+    
+    @keyframes flashRedBg { from { background-color: rgba(239, 68, 68, 0.02); } to { background-color: rgba(239, 68, 68, 0.22); } }
+    @keyframes flashBlueBg { from { background-color: rgba(2, 132, 199, 0.02); } to { background-color: rgba(2, 132, 199, 0.22); } }
+    
+    #maskingDb::-webkit-outer-spin-button, #maskingDb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    #maskingDb { -moz-appearance: textfield; }
+    
+    @keyframes pulseVra { 0% { transform: scale(1); box-shadow: 0 0 20px #facc15; } 100% { transform: scale(1.15); box-shadow: 0 0 50px #eab308, 0 0 80px #f59e0b; } }
+    .vra-reward { display: none; position: fixed; top: 35%; width: 250px; height: 250px; background: #fef08a; border: 8px solid #eab308; border-radius: 20px; z-index: 99999; text-align: center; line-height: 230px; font-size: 110px; animation: pulseVra 0.4s infinite alternate; user-select: none; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    
+    /* Khusus canvas utama (bukan preview) biarkan normal */
+    canvas#rightChart, canvas#leftChart {
+        width: 100% !important;
+        height: 100% !important;
+    }
     </style>
 </head>
 <body>
