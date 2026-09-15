@@ -5154,10 +5154,10 @@ function initGsiCharts() {
                 // 🌟 PEMBARUAN TOOLTIP (UKURAN SAMA & SANGAT KECIL)
                 tooltip: {
                     backgroundColor: color, 
-                    titleFont: { size: 10, weight: 'normal' }, 
-                    bodyFont: { size: 10, weight: 'normal' },  
-                    padding: { top: 3, right: 6, bottom: 3, left: 6 }, 
-                    caretSize: 3,                             
+                    titleFont: { size: 10, weight: 'normal' }, // Font judul diperkecil
+                    bodyFont: { size: 10, weight: 'normal' },  // Font isi disamakan ukurannya dengan judul
+                    padding: { top: 3, right: 6, bottom: 3, left: 6 }, // Kotak diperketat lagi
+                    caretSize: 3,                             // Panah penunjuk dibuat lebih mungil
                     cornerRadius: 3,
                     displayColors: false, 
                     callbacks: {
@@ -5175,7 +5175,7 @@ function initGsiCharts() {
                             return `${context.dataset.label}: ${value} dB HL`;
                         }
                     }
-                }    
+                }
             }, 
             
             scales: { 
