@@ -5144,11 +5144,51 @@ function initGsiCharts() {
                 }
             ] 
         },
-        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1.4, plugins: { legend: { display: false } }, scales: { y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, x: { grid: { color: '#e2e8f0' } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            aspectRatio: 1.4, 
+            plugins: { 
+                legend: { display: false },
+                
+                // 🌟 PEMBARUAN TOOLTIP (WARNA DINAMIS & TEKS DIRAPIKAN)
+                tooltip: {
+                    backgroundColor: color, // Akan otomatis menjadi Merah untuk kanan, Biru untuk kiri
+                    titleFont: { size: 13 },
+                    bodyFont: { size: 14, weight: 'bold' },
+                    displayColors: false, // Menghilangkan kotak warna kecil di sebelah teks
+                    callbacks: {
+                        // Kustomisasi Judul (Menampilkan Frekuensi)
+                        title: function(context) {
+                            return `Frekuensi: ${context[0].label} Hz`;
+                        },
+                        // Kustomisasi Isi (Menampilkan Intensitas)
+                        label: function(context) {
+                            let value = context.parsed.y;
+                            if (value === null) return null;
+                            
+                            // Menghilangkan tulisan "GhostCursor" atau "MaxLimitZone"
+                            if (context.dataset.label === 'GhostCursor' || context.dataset.label === 'MaxLimitZone') {
+                                return `Intensitas: ${value} dB HL`;
+                            }
+                            
+                            // Untuk titik AC / BC / FFT
+                            return `${context.dataset.label}: ${value} dB HL`;
+                        }
+                    }
+                }
+                
+            }, 
+            scales: { 
+                y: { reverse: true, min: -10, max: 120, ticks: { stepSize: 20 }, grid: { color: '#e2e8f0' } }, 
+                x: { grid: { color: '#e2e8f0' } } 
+            } 
+        }
     });
     
     rightChartInstance = createChart('rightChart', '#dc2626', true);
     leftChartInstance = createChart('leftChart', '#0284c7', false);
+}
         
        speechChartInstance = new Chart(document.getElementById('speechChart').getContext('2d'), { 
         type: 'line', 
