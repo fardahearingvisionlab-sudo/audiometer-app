@@ -5152,27 +5152,27 @@ function initGsiCharts() {
                 legend: { display: false },
                 
                 // 🌟 PEMBARUAN TOOLTIP (WARNA DINAMIS & TEKS DIRAPIKAN)
+                // 🌟 PEMBARUAN TOOLTIP (UKURAN DIPERKECIL)
                 tooltip: {
-                    backgroundColor: color, // Akan otomatis menjadi Merah untuk kanan, Biru untuk kiri
-                    titleFont: { size: 13 },
-                    bodyFont: { size: 14, weight: 'bold' },
-                    displayColors: false, // Menghilangkan kotak warna kecil di sebelah teks
+                    backgroundColor: color, 
+                    titleFont: { size: 11 },                  // Ukuran font judul (Frekuensi) diperkecil
+                    bodyFont: { size: 12, weight: 'bold' },   // Ukuran font isi (Intensitas) diperkecil
+                    padding: { top: 4, right: 8, bottom: 4, left: 8 }, // Memperkecil jarak ruang dalam kotak
+                    caretSize: 4,                             // Memperkecil ukuran panah kecil penunjuk
+                    cornerRadius: 4,                          // Membuat sudut kotak sedikit lebih tajam/rapi
+                    displayColors: false, 
                     callbacks: {
-                        // Kustomisasi Judul (Menampilkan Frekuensi)
                         title: function(context) {
                             return `Frekuensi: ${context[0].label} Hz`;
                         },
-                        // Kustomisasi Isi (Menampilkan Intensitas)
                         label: function(context) {
                             let value = context.parsed.y;
                             if (value === null) return null;
                             
-                            // Menghilangkan tulisan "GhostCursor" atau "MaxLimitZone"
                             if (context.dataset.label === 'GhostCursor' || context.dataset.label === 'MaxLimitZone') {
                                 return `Intensitas: ${value} dB HL`;
                             }
                             
-                            // Untuk titik AC / BC / FFT
                             return `${context.dataset.label}: ${value} dB HL`;
                         }
                     }
