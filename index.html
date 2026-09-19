@@ -6002,6 +6002,10 @@ function startTone() {
     // 🌟 PERBAIKAN VOLUME (DIGITAL AMPLIFIER HACK & ANTI-BISU)
     // ==============================================================
     
+    // ==============================================================
+    // 🌟 PERBAIKAN SKALA DESIBEL PROPORSIONAL (35 dB TENANG, 120 dB KERAS)
+    // ==============================================================
+    
     // 1. Ekstrak angka intensitas (Aman dari huruf 'M' dll)
     let intensityHL = 40;
     if (typeof currentDb !== 'undefined' && currentDb !== null) {
@@ -6022,8 +6026,10 @@ function startTone() {
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     if (isNaN(actualSPL)) actualSPL = intensityHL; 
 
-    // 4. Perhitungan Gain 
-    const SYSTEM_MAX_SPL = 70; 
+    // 4. Perhitungan Gain dengan Standar Acuan 95 dB
+    // Dengan 95 dB, 35 dB akan menghasilkan gain yang sangat kecil (tenang/pelan), 
+    // dan 120 dB akan menghasilkan gain tinggi (~17.7) secara akurat.
+    const SYSTEM_MAX_SPL = 95; 
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
     // Perlindungan Anti-Bisu
@@ -6032,8 +6038,8 @@ function startTone() {
         if (isNaN(targetGain)) targetGain = 1.0; 
     }
 
-    // Batas maksimal volume digital
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 20.0);
+    // Batas maksimal digeser ke 25.0 agar 120 dB diizinkan keluar dengan tenaga penuh lewat relay
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 25.0);
 
     // 5. Eksekusi Web Audio API
     let now = audioCtx.currentTime;
