@@ -3692,12 +3692,12 @@ function executeCalibrationAudio() {
         targetBaseline = Number(standardData[freq]);
     }
 
-    // 🌟 PERBAIKAN UTAMA: Menyertakan jenis stimulus (stim) pada key penyimpanan
     let key = side + '_' + transId + '_' + stim; 
     let offset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][freq]) ? Number(calibrationData[key][freq]) : 0;
     if (isNaN(offset)) offset = 0;
     
     let targetOutput = targetBaseline + offset; 
+    if (isNaN(targetOutput)) targetOutput = 70.0; // 🌟 ANTI-BISU
     
     let modeArduino = calState.trans;
     if (modeArduino === 'SPKR') {
@@ -3724,14 +3724,14 @@ function executeCalibrationAudio() {
     // ============================================================
     // 4. PEMBANGKITAN AUDIO WEB (GLOBAL SCOPE ASSIGNMENT)
     // ============================================================
-    // 🌟 PERBAIKAN: Naikkan batas maksimal ke 120 dB
     const SYSTEM_MAX_SPL = 95;
     
-    let targetGainWn = Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20);
-    if (isNaN(targetGainWn)) targetGainWn = 0.0001;
+    // 🌟 PERBAIKAN VOLUME & ANTI-BISU
+    let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
+    if (isNaN(targetGain)) targetGain = 1.0; 
     
-    // 🌟 BUKA BATASAN MAKSIMAL KE 5.0
-    let gainVal = Math.min(Math.max(targetGainWn, 0.0001), 5.0);
+    // Batasi ke 1.5 agar sama kerasnya dengan startTone
+    let gainVal = Math.min(Math.max(targetGain, 0.0001), 1.5);
 
     window.calibGainNode = audioCtx.createGain(); 
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
@@ -3797,12 +3797,12 @@ function playCalibrationWhiteNoise(side) {
     let audioCtx = window.audioCtx;
     const now = audioCtx.currentTime;
     
-    // 🌟 Ambil Transduser dan Offset khusus White Noise
     let transId = (calState.trans === 'AC') ? (window.currentAcModel || 'SAEP1') : calState.trans;
     let key = side + '_' + transId + '_wn';
     
     let wnOffset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key]['overall']) ? Number(calibrationData[key]['overall']) : 0;
     let targetSplWn = 70.0 + wnOffset;
+    if (isNaN(targetSplWn)) targetSplWn = 70.0; // 🌟 ANTI-BISU
 
     let bufferSize = audioCtx.sampleRate * 2; 
     let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate); 
@@ -3819,7 +3819,12 @@ function playCalibrationWhiteNoise(side) {
     }
     
     const SYSTEM_MAX_SPL = 95;
-    let gainVal = Math.min(Math.max(Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
+    
+    // 🌟 PERBAIKAN VOLUME & ANTI-BISU
+    let targetGainWn = Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20);
+    if (isNaN(targetGainWn)) targetGainWn = 1.0; 
+    
+    let gainVal = Math.min(Math.max(targetGainWn, 0.0001), 1.5);
 
     window.calibGainNode = audioCtx.createGain(); 
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
