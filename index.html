@@ -5988,7 +5988,7 @@ function startTone() {
 
     let splAt70dB = 70.0; 
     if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
+        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) || 70.0;
     }
 
     // ==============================================================
@@ -6009,11 +6009,6 @@ function startTone() {
     let currentOffset = 0;
     if (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) {
         currentOffset = Number(calibrationData[calKey][freq]) || 0;
-    }
-    
-    let splAt70dB = 70.0; 
-    if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
-        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) || 70.0;
     }
 
     // 3. Hitung matematika utamanya
