@@ -6020,18 +6020,21 @@ function startTone() {
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     if (isNaN(actualSPL)) actualSPL = intensityHL; // 🌟 ANTI-BISU: Jika error, paksa pakai angka di layar
 
-    // 4. Perhitungan Gain persis seperti kode asli Anda yang berfungsi baik sebelumnya
-    const SYSTEM_MAX_SPL = 95; 
+    // 4. Perhitungan Gain (DIGITAL AMPLIFIER HACK)
+    // 🌟 TURUNKAN ANGKA INI: Semakin kecil angkanya, semakin KERAS volume keseluruhannya. 
+    // Sebelumnya 95, sekarang kita pakai 70 agar volume terpompa naik.
+    const SYSTEM_MAX_SPL = 70; 
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
-    // 🌟 PERLINDUNGAN UTAMA: Jika matematika gagal, jangan jadikan bisu!
+    // Perlindungan Anti-Bisu
     if (isNaN(targetGain)) {
         targetGain = Math.pow(10, (intensityHL - SYSTEM_MAX_SPL) / 20); 
         if (isNaN(targetGain)) targetGain = 1.0; 
     }
 
-    // Batas maksimal kita kembalikan ke 1.5 agar keras seperti dulu, namun tetap jernih
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.5);
+    // 🌟 BUKA BATAS MAKSIMAL KUNCI VOLUME!
+    // Sebelumnya mentok di 1.5. Sekarang kita paksa izinkan Web Audio "mengamuk" hingga 20.0
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 20.0);
 
     // 5. Eksekusi Web Audio API
     let now = audioCtx.currentTime;
