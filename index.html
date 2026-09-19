@@ -3726,12 +3726,13 @@ function executeCalibrationAudio() {
     // ============================================================
     const SYSTEM_MAX_SPL = 95;
     
-    // 🌟 PERBAIKAN VOLUME & ANTI-BISU
     let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
     if (isNaN(targetGain)) targetGain = 1.0; 
     
-    // Batasi ke 1.5 agar sama kerasnya dengan startTone
-    let gainVal = Math.min(Math.max(targetGain, 0.0001), 1.5);
+    // 🌟 PENGAMAN DISTORSI FREKUENSI RENDAH PADA KALIBRASI
+    // Membatasi gain ekstra ketat untuk 125 Hz & 250 Hz agar suaranya tidak pecah/tidak bulat
+    let maxAllowedGain = (freq <= 250) ? 5.0 : 12.0;
+    let gainVal = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
 
     window.calibGainNode = audioCtx.createGain(); 
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
@@ -3739,7 +3740,8 @@ function executeCalibrationAudio() {
 
     let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     if (panner) {
-        panner.pan.setValueAtTime((side === 'R') ? 1 : -1, now);
+        // 🌟 PAKSA PANNER KE 0 (TENGAH) AGAR MASUK KE RELAY
+        panner.pan.setValueAtTime(0, now);
     }
 
     if (stim === 'tone') {
@@ -3815,16 +3817,19 @@ function playCalibrationWhiteNoise(side) {
     
     let panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; 
     if (panner) {
-        panner.pan.setValueAtTime((side === 'R') ? 1 : -1, now);
+        // 🌟 PERBAIKAN UTAMA RELAY: Paksa panner ke 0 (Tengah)
+        panner.pan.setValueAtTime(0, now);
     }
     
-    const SYSTEM_MAX_SPL = 95;
-    
-    // 🌟 PERBAIKAN VOLUME & ANTI-BISU
-    let targetGainWn = Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20);
-    if (isNaN(targetGainWn)) targetGainWn = 1.0; 
-    
-    let gainVal = Math.min(Math.max(targetGainWn, 0.0001), 1.5);
+    // ==========================================================
+    // 🌟 PERHITUNGAN GAIN KHUSUS WHITE NOISE (BERSIH DARI ERROR)
+    // ==========================================================
+    const SYSTEM_MAX_SPL = 95; 
+    let targetGain = Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20);
+    if (isNaN(targetGain)) targetGain = 1.0; 
+
+    // Batas aman untuk white noise agar tidak pecah di relay (maksimal 8.0)
+    let gainVal = Math.min(Math.max(targetGain, 0.0001), 8.0);
 
     window.calibGainNode = audioCtx.createGain(); 
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
@@ -6001,11 +6006,6 @@ function startTone() {
     // ==============================================================
     // 🌟 PERBAIKAN VOLUME (DIGITAL AMPLIFIER HACK & ANTI-BISU)
     // ==============================================================
-    
-    // ==============================================================
-    // 🌟 PERBAIKAN SKALA DESIBEL PROPORSIONAL (35 dB TENANG, 120 dB KERAS)
-    // ==============================================================
-    
     // 1. Ekstrak angka intensitas (Aman dari huruf 'M' dll)
     let intensityHL = 40;
     if (typeof currentDb !== 'undefined' && currentDb !== null) {
@@ -6026,17 +6026,20 @@ function startTone() {
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     if (isNaN(actualSPL)) actualSPL = intensityHL; 
 
-    // 4. Perhitungan Gain dengan Standar Acuan 95 dB
-    // Dengan 95 dB, 35 dB akan menghasilkan gain yang sangat kecil (tenang/pelan), 
-    // dan 120 dB akan menghasilkan gain tinggi (~17.7) secara akurat.
+   // 4. Perhitungan Gain dengan Pengaman Distorsi Frekuensi Rendah
     const SYSTEM_MAX_SPL = 95; 
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
-    // Perlindungan Anti-Bisu
     if (isNaN(targetGain)) {
         targetGain = Math.pow(10, (intensityHL - SYSTEM_MAX_SPL) / 20); 
         if (isNaN(targetGain)) targetGain = 1.0; 
     }
+
+    // 🌟 ATUR BATAS MAKSIMAL LEBIH AMAN (DITURUNKAN DARI 25.0 KE 8.0)
+    // Angka 25.0 terlalu besar untuk frekuensi rendah dan menyebabkan clipping.
+    // Angka 8.0 sudah lebih dari cukup untuk membuat suara keras lewat relay tanpa merusak kebulatan suara.
+    let maxAllowedGain = (freq <= 250) ? 5.0 : 12.0; // Batasi ekstra ketat untuk 125Hz & 250Hz
+    targetGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
 
     // Batas maksimal digeser ke 25.0 agar 120 dB diizinkan keluar dengan tenaga penuh lewat relay
     targetGain = Math.min(Math.max(targetGain, 0.0001), 25.0);
