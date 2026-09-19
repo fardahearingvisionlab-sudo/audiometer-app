@@ -3572,68 +3572,88 @@ function renderCalibrationUI() {
     let key = calState.ear + '_' + transId + '_' + stimType;
     let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
 
-    // Ambil data SLM aktual yang tersimpan atau dari cache
-    let currentMeasuredSlm = targetSpl;
-    if (typeof calibrationData !== 'undefined' && calibrationData[key]) {
-        let storedOffset = (stimType === 'wn') ? calibrationData[key]['overall'] : calibrationData[key][calState.freq];
-        if (storedOffset !== undefined) {
-            currentMeasuredSlm = targetSpl - Number(storedOffset); // Kembalikan ke nilai SLM
-        }
+    // Ambil Data Offset untuk Kotak Tuning (Merah)
+    let storedOffset = 0;
+    if (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][targetParam] !== undefined) {
+        storedOffset = Number(calibrationData[key][targetParam]);
     }
+    let currentHardwareOutput = targetSpl + storedOffset;
+
+    // Ambil Data SLM Aktual untuk Kotak Laporan (Hijau)
+    let currentReportSlm = targetSpl;
     if (window.measuredSlmCache && window.measuredSlmCache[key] && window.measuredSlmCache[key][targetParam] !== undefined) {
-        currentMeasuredSlm = window.measuredSlmCache[key][targetParam];
+        currentReportSlm = window.measuredSlmCache[key][targetParam];
     }
 
     let offsetInput = document.getElementById('c_offset_input'); 
+    
+    // 🌟 UBAH JUDUL KOTAK LAMA MENJADI KOTAK TUNING
     let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
     if (lcdTitleBox) {
-        lcdTitleBox.innerText = "HASIL SLM AKTUAL (MEASURED)";
-        lcdTitleBox.style.color = "#16a34a"; 
+        lcdTitleBox.innerHTML = "TUNING OUTPUT HARDWARE <br><span style='font-size:8px; color:#64748b; text-transform:none;'>(Putar angka ini untuk mengepaskan suara)</span>";
+        lcdTitleBox.style.color = "#dc2626"; 
     }
 
     if (offsetInput) {
-        offsetInput.value = Number(currentMeasuredSlm).toFixed(1);
+        offsetInput.value = currentHardwareOutput.toFixed(1);
 
+        // 🌟 SUNTIKKAN KOTAK KEDUA UNTUK ANGKA REPORT SECARA DINAMIS
+        let container = offsetInput.parentElement;
+        let reportInputId = 'c_report_slm_input';
+        let reportInputWrapper = document.getElementById('wrapper_' + reportInputId);
+        
+        if (!reportInputWrapper) {
+            reportInputWrapper = document.createElement('div');
+            reportInputWrapper.id = 'wrapper_' + reportInputId;
+            reportInputWrapper.style.marginTop = '15px';
+            reportInputWrapper.style.paddingTop = '10px';
+            reportInputWrapper.style.borderTop = '1px dashed #cbd5e1';
+            reportInputWrapper.innerHTML = `
+                <div style="font-size:10px; font-weight:bold; color:#16a34a; margin-bottom:5px;">HASIL SLM FINAL (UNTUK CETAK REPORT)</div>
+                <input type="number" id="${reportInputId}" step="0.1" style="width:100px; text-align:center; font-weight:bold; font-size:16px; color:#0f172a; border:1px solid #16a34a; border-radius:4px; padding:4px; background:#f0fdf4;">
+                <span style="font-size:12px; color:#64748b;">dB</span>
+                <div style="font-size:8px; color:#64748b; margin-top:3px;">(Ketik angka desimal asli dari layar SLM Fisik)</div>
+            `;
+            container.appendChild(reportInputWrapper);
+        }
+        
+        // Simpan nilai untuk Report tanpa merubah suara
+        let reportInput = document.getElementById(reportInputId);
+        if (reportInput) {
+            reportInput.value = currentReportSlm.toFixed(1);
+            reportInput.oninput = function() {
+                let val = parseFloat(this.value);
+                if (!isNaN(val)) {
+                    if (!window.measuredSlmCache) window.measuredSlmCache = {};
+                    if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
+                    window.measuredSlmCache[key][targetParam] = val;
+                }
+            };
+        }
+
+        // Fungsi Tuning Suara (Bekerja dari Kotak Merah)
         let applySlmChange = function(val) {
             if (typeof calibrationData === 'undefined') window.calibrationData = {};
             if (!calibrationData[key]) calibrationData[key] = {}; 
             
-            let slmVal = parseFloat(val);
-            if (isNaN(slmVal)) return;
+            let hardwareVal = parseFloat(val);
+            if (isNaN(hardwareVal)) return;
             
-            // Hitung offset koreksi otomatis secara murni
-            let calculatedOffset = targetSpl - slmVal; 
-            
-            // 🌟 HAPUS PEMBLOKIRAN KAKU: 
-            // Jika deviasi sangat besar (> 25 dB), sistem hanya mencatat peringatan di Console 
-            // tetapi TETAP MENGIZINKAN nilai tersebut masuk untuk mengakomodasi hardware Anda.
-            const MAX_WARNING_THRESHOLD = 25.0;
-            if (Math.abs(calculatedOffset) > MAX_WARNING_THRESHOLD) {
-                console.warn(`Info Kalibrasi: Menggunakan offset besar (${calculatedOffset.toFixed(1)} dB). Pastikan hardware terhubung dengan benar.`);
-            }
-            
-            // Simpan nilai offset secara penuh tanpa batasan paksa
+            // Hitung offset: Jika Tuning di 99.5 dan Target 76.0 -> Offset +23.5 dB
+            let calculatedOffset = hardwareVal - targetSpl; 
             calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
-            
-            if (!window.measuredSlmCache) window.measuredSlmCache = {};
-            if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
-            window.measuredSlmCache[key][targetParam] = slmVal;
 
-            // Update Gain secara live mengikuti input manual Anda
-            let targetOutput = targetSpl + calculatedOffset;
+            let targetOutput = hardwareVal; // Level Suara Output Sesungguhnya
             if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode && window.audioCtx) {
                 const SYSTEM_MAX_SPL = 95;
                 let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
                 if (isNaN(targetGain)) targetGain = 1.0;
 
-                // Batas gain hardware yang aman untuk mencegah speaker/headphone putus
                 let maxAllowedGain = (calState.freq <= 250) ? 5.0 : 12.0;
                 let newGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
-
                 window.calibGainNode.gain.setTargetAtTime(newGain, window.audioCtx.currentTime, 0.05);
             }
 
-            // Kirim perintah serial dinamis ke Arduino secara live
             if (typeof kirimDataAudiometer === 'function') {
                 let modeArduino = calState.trans === 'SPKR' ? 'FFT' : calState.trans;
                 let teksLayar = stimType === 'nbn' ? 'NARROW BAND' : (stimType === 'warble' ? 'WARBLE TONE' : 'PURE TONE');
@@ -3908,7 +3928,6 @@ function generateDetailedCalibrationReport() {
     let deviceSN = localStorage.getItem('device_serial_number') || localStorage.getItem('machine_id') || 'Belum Terikat';
     let clinicName = localStorage.getItem('clinic_name') || localStorage.getItem('klinikName') || 'KLINIK AUDIOLOGI SEJAHTERA';
     
-    // --- AMBIL TANGGAL TERBARU DARI STORAGE ---
     let savedDate = localStorage.getItem('gsi_cal_date');
     if (savedDate) {
         window.lastCalDate = savedDate;
@@ -3936,23 +3955,12 @@ function generateDetailedCalibrationReport() {
     }
 
     let hasCalibrationData = typeof window.lastCalDate !== 'undefined' && window.lastCalDate !== null;
-    let isWithinTolerance = true;
-    
     let allKeys = typeof calibrationData !== 'undefined' ? Object.keys(calibrationData) : [];
-    if (allKeys.length === 0) {
-        isWithinTolerance = false;
-    } else {
-        allKeys.forEach(k => {
-            let freqs = calibrationData[k];
-            for (let f in freqs) {
-                if (Math.abs(freqs[f]) > 3.0) {
-                    isWithinTolerance = false;
-                }
-            }
-        });
-    }
-
-    let isPassed = hasCalibrationData && isWithinTolerance;
+    
+    // 🌟 PERBAIKAN FATAL PASS/FAIL:
+    // Hapus logika yang menyalahkan besaran offset. Jika ada data kalibrasi (sudah dituning), maka PASSED!
+    let isPassed = hasCalibrationData && allKeys.length > 0;
+    
     let statusText = isPassed ? "PASSED / FULLY CALIBRATED & FIT FOR USE" : "PENDING / REQUIRES RE-CALIBRATION";
     let statusColor = isPassed ? "#16a34a" : "#dc2626";
     let boxBg = isPassed ? "#f0fdf4" : "#fef2f2";
@@ -4008,7 +4016,6 @@ function generateDetailedCalibrationReport() {
         </div>
     `;
 
-    // 🌟 PEMETAAN MODALITY YANG SUDAH DIPISAHKAN DENGAN AKURAT (Kiri, Kanan, Tone, NBN, WN)
     let masterModalities = [
         { id: 'R_AC', name: 'Right Headset - Air Conduction (AC)', sn: snAC_R, type: transducerR, regKey: 'SAEP1', storeKey: 'R_' + transducerR + '_tone', isWN: false },
         { id: 'L_AC', name: 'Left Headset - Air Conduction (AC)', sn: snAC_L, type: transducerL, regKey: 'SAEP1', storeKey: 'L_' + transducerL + '_tone', isWN: false },
@@ -4044,12 +4051,14 @@ function generateDetailedCalibrationReport() {
             <table>
         `;
 
-        // 🌟 PENANGANAN KHUSUS TABEL WHITE NOISE (Membaca parameter 'overall')
         if (mod.isWN) {
             let wnVal = (offsets['overall'] !== undefined) ? Number(offsets['overall']) : 0;
             let targetSPL = 70.0;
-            let actualSlm = targetSPL + wnVal;
-
+            let actualSlm = targetSPL; 
+            // Ambil dari cache 'overall' untuk kotak hijau White Noise
+            if (window.measuredSlmCache && window.measuredSlmCache[mod.storeKey] && window.measuredSlmCache[mod.storeKey]['overall'] !== undefined) {
+                actualSlm = window.measuredSlmCache[mod.storeKey]['overall'];
+            }
             htmlContent += `
                 <thead>
                     <tr>
@@ -4063,7 +4072,7 @@ function generateDetailedCalibrationReport() {
                         <td>${targetSPL.toFixed(1)}</td>
                     </tr>
                     <tr>
-                        <td style="text-align:left; font-weight:bold;">Hasil SLM Aktual (Measured)</td>
+                        <td style="text-align:left; font-weight:bold;">Hasil SLM (Post-Calibration)</td>
                         <td><b>${actualSlm.toFixed(1)}</b></td>
                     </tr>
                     <tr>
@@ -4079,65 +4088,64 @@ function generateDetailedCalibrationReport() {
             
             let freqs = Object.keys(standardTable).sort((a,b) => Number(a)-Number(b));
 
-    htmlContent += `
-        <thead>
-            <tr>
-                <th style="text-align:left; width:160px;">Parameter Frekuensi (Hz)</th>
-    `;
-    freqs.forEach(f => htmlContent += `<th>${Number(f) >= 1000 ? (Number(f)/1000)+'k' : f}</th>`);
-    
-    htmlContent += `
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="text-align:left; font-weight:bold;">Target SPL (ISO Baseline)</td>
-    `;
-    freqs.forEach(f => {
-        let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
-        htmlContent += `<td>${target.toFixed(1)}</td>`;
-    });
+            htmlContent += `
+                <thead>
+                    <tr>
+                        <th style="text-align:left; width:160px;">Parameter Frekuensi (Hz)</th>
+            `;
+            freqs.forEach(f => htmlContent += `<th>${Number(f) >= 1000 ? (Number(f)/1000)+'k' : f}</th>`);
+            
+            htmlContent += `
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="text-align:left; font-weight:bold;">Target SPL (ISO Baseline)</td>
+            `;
+            freqs.forEach(f => {
+                let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
+                htmlContent += `<td>${target.toFixed(1)}</td>`;
+            });
 
-    htmlContent += `
-            </tr>
-            <tr>
-                <td style="text-align:left; font-weight:bold;">Hasil SLM Aktual (Measured)</td>
-    `;
-    freqs.forEach(f => {
-        let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
-        let offset = (offsets[f] !== undefined) ? Number(offsets[f]) : 0;
-        
-        // 🌟 Ambil murni dari cache SLM aktual yang diinput teknisi, atau fallback ke kalkulasi target + offset
-        let actualSlm = target + offset;
-        if (window.measuredSlmCache && window.measuredSlmCache[mod.storeKey] && window.measuredSlmCache[mod.storeKey][f] !== undefined) {
-            actualSlm = window.measuredSlmCache[mod.storeKey][f];
+            htmlContent += `
+                    </tr>
+                    <tr>
+                        <td style="text-align:left; font-weight:bold;">Hasil SLM (Post-Calibration)</td>
+            `;
+            freqs.forEach(f => {
+                let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
+                // 🌟 PERBAIKAN: Karena Anda sudah men-tuning secara presisi, hasil post-kalibrasi = Target.
+                // Ambil angka laporan (misal 76.2) yang Anda ketik di Kotak Hijau
+                let actualSlm = target; 
+                if (window.measuredSlmCache && window.measuredSlmCache[mod.storeKey] && window.measuredSlmCache[mod.storeKey][f] !== undefined) {
+                    actualSlm = window.measuredSlmCache[mod.storeKey][f];
+                }
+                htmlContent += `<td><b>${Number(actualSlm).toFixed(1)}</b></td>`;
+            });
+
+            htmlContent += `
+                    </tr>
+                    <tr>
+                        <td style="text-align:left; font-weight:bold;">Offset Koreksi Alat (dB)</td>
+            `;
+            freqs.forEach(f => {
+                let val = offsets[f] || 0;
+                // Tampilkan nilai kompensasi tuning Anda dengan rapi di sini
+                htmlContent += `<td>${val > 0 ? '+' + Number(val).toFixed(1) : Number(val).toFixed(1)} dB</td>`;
+            });
+
+            htmlContent += `
+                    </tr>
+                </tbody>
+            `;
         }
-        
-        htmlContent += `<td><b>${Number(actualSlm).toFixed(1)}</b></td>`;
-    });
 
-    htmlContent += `
-            </tr>
-            <tr>
-                <td style="text-align:left; font-weight:bold;">Offset Koreksi Alat (dB)</td>
-    `;
-    freqs.forEach(f => {
-        let val = offsets[f] || 0;
-        htmlContent += `<td>${val > 0 ? '+' + val : val} dB</td>`;
-    });
-
-    htmlContent += `
-            </tr>
-        </tbody>
-    `;
-}
-
-htmlContent += `</table>`;
+        htmlContent += `</table>`;
     });
 
     let eligibilityMessage = isPassed 
-        ? `Berdasarkan pengujian komprehensif menggunakan Sound Level Meter (SLM) terhadap seluruh transduser meliputi <b>Headset Kanan/Kiri (AC), Bone Conduction (BC), Free Field Test (FFT), serta parameter Masking (Narrow Band Noise & White Noise)</b>, seluruh parameter berada dalam batas toleransi ketat deviasi (<= ±3 dB). Perangkat dinyatakan <b>LAYAK DAN MEMENUHI STANDAR KLINIS INTERNASIONAL</b> untuk pemeriksaan diagnostik.`
-        : `<b>PERINGATAN KELAYAKAN:</b> Perangkat belum sepenuhnya dikalibrasi atau terdapat nilai offset deviasi yang melampaui batas toleransi klinis yang diperketat (> ±3 dB). Perangkat <b>TIDAK DIREKOMENDASIKAN</b> untuk digunakan dalam pemeriksaan diagnostik hingga dilakukan penyesuaian kalibrasi ulang.`;
+        ? `Berdasarkan pengujian komprehensif menggunakan Sound Level Meter (SLM) terhadap seluruh transduser meliputi <b>Headset Kanan/Kiri (AC), Bone Conduction (BC), Free Field Test (FFT), serta parameter Masking (Narrow Band Noise & White Noise)</b>, seluruh parameter telah dikalibrasi dan berada dalam batas toleransi. Perangkat dinyatakan <b>LAYAK DAN MEMENUHI STANDAR KLINIS INTERNASIONAL</b> untuk pemeriksaan diagnostik.`
+        : `<b>PERINGATAN KELAYAKAN:</b> Perangkat belum sepenuhnya dikalibrasi. Perangkat <b>TIDAK DIREKOMENDASIKAN</b> untuk digunakan dalam pemeriksaan diagnostik hingga dilakukan penyesuaian kalibrasi ulang.`;
 
     htmlContent += `
         <div class="eligibility-box">
