@@ -3603,18 +3603,20 @@ function renderCalibrationUI() {
             let slmVal = parseFloat(val);
             if (isNaN(slmVal)) return;
             
-            // Hitung offset koreksi otomatis dari selisih SLM Aktual dengan Target ISO
-            let calculatedOffset = slmVal - targetSpl;
+            // 🌟 RUMUS KOREKSI OTOMATIS: 
+            // Jika SLM fisik lebih rendah dari target, offset bernilai POSITIF (menaikkan gain/volume).
+            // Jika SLM fisik lebih tinggi dari target, offset bernilai NEGATIF (menurunkan gain/volume).
+            let calculatedOffset = targetSpl - slmVal; 
             
             let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
             calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
             
-            // Simpan juga nilai SLM aktual jika ingin dibaca langsung oleh laporan
+            // Simpan cache nilai SLM murni untuk dicetak di sertifikat
             if (!window.measuredSlmCache) window.measuredSlmCache = {};
             if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
             window.measuredSlmCache[key][targetParam] = slmVal;
 
-            // Jalankan ulang suara agar perangkat keras merespons seketika
+            // 🌟 Regenerasi suara seketika agar volume hardware langsung merespons
             if (typeof startCalibrationSound === 'function') {
                 startCalibrationSound();
             }
