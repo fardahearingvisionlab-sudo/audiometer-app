@@ -3724,8 +3724,12 @@ function executeCalibrationAudio() {
     // ============================================================
     // 4. PEMBANGKITAN AUDIO WEB (GLOBAL SCOPE ASSIGNMENT)
     // ============================================================
-    const SYSTEM_MAX_SPL = 95; 
-    let gainVal = Math.min(Math.max(Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20), 0.0001), 1.0);
+    // 🌟 PERBAIKAN: Naikkan batas maksimal ke 120 dB
+    const SYSTEM_MAX_SPL = 120; 
+    
+    let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
+    if (isNaN(targetGain)) targetGain = 0.0001;
+    let gainVal = Math.min(Math.max(targetGain, 0.0001), 1.0);
     
     window.calibGainNode = audioCtx.createGain(); 
     
@@ -5986,7 +5990,9 @@ function startTone() {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
 
-    let intensityHL = typeof currentDb !== 'undefined' ? Number(currentDb) : 40;
+    // 🌟 PERBAIKAN 1: Gunakan parseFloat agar aman dari sisipan huruf masking (misal "120M" tetap terbaca 120)
+    let intensityHL = (typeof currentDb !== 'undefined' && currentDb !== null) ? parseFloat(currentDb) : 40;
+    if (isNaN(intensityHL)) intensityHL = 40;
     
     let stimType = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus : 'tone';
     let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer + '_' + stimType;
@@ -5994,20 +6000,27 @@ function startTone() {
     let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
     
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-    const SYSTEM_MAX_SPL = 95; 
+    
+    // 🌟 PERBAIKAN 2: Naikkan batas acuan dari 95 menjadi 120 agar rentang suara atas tidak terpotong (clamped)
+    const SYSTEM_MAX_SPL = 120; 
     
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
+    
+    // Pastikan nilai gain tidak rusak (NaN) sebelum diterapkan
+    if (isNaN(targetGain)) targetGain = 0.0001;
     targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
 
-    currentGainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime); 
-    currentGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.035);
+    // 🌟 PERBAIKAN 3: Gunakan variabel waktu yang presisi agar linearRamp tidak gagal tereksekusi
+    let now = audioCtx.currentTime;
+    currentGainNode.gain.setValueAtTime(0.0001, now); 
+    currentGainNode.gain.linearRampToValueAtTime(targetGain, now + 0.035);
     
     if (panner) {
         osc.connect(currentGainNode).connect(panner).connect(audioCtx.destination); 
     } else {
         osc.connect(currentGainNode).connect(audioCtx.destination);
     }
-    osc.start(); 
+    osc.start();
 
     isPlaying = true;
     document.getElementById('signalIndicatorBox')?.classList.add('active');
