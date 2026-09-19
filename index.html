@@ -3558,9 +3558,9 @@ function renderCalibrationUI() {
     let transId = calState.trans === 'AC' ? window.currentAcModel : calState.trans;
     let targetSpl = 70.0;
     
-    if (stimType !== 'wn') {
-        let tableSet = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
-        targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0; 
+    let standardData = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
+    if (stimType !== 'wn' && standardData && standardData[calState.freq] !== undefined) {
+        targetSpl = Number(standardData[calState.freq]);
     }
     
     let targetDisplayEl = document.getElementById('c_target_display');
@@ -3570,23 +3570,21 @@ function renderCalibrationUI() {
     }
 
     let key = calState.ear + '_' + transId + '_' + stimType;
-    
-    // Ambil data SLM aktual yang pernah disimpan (jika belum ada, default ke targetSpl agar selisih 0)
+    let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
+
+    // Ambil data SLM aktual yang tersimpan atau dari cache
     let currentMeasuredSlm = targetSpl;
     if (typeof calibrationData !== 'undefined' && calibrationData[key]) {
-        let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
-        if (calibrationData[key][targetParam] !== undefined) {
-            // Jika data tersimpan berupa nilai SLM atau Offset, kita konversi ke SLM aktual
-            let storedVal = calibrationData[key][targetParam];
-            // Asumsi: jika nilai tersimpan kecil (-30 s/d 30), itu adalah offset lama. Kita ubah ke SLM.
-            currentMeasuredSlm = (Math.abs(storedVal) <= 40 && storedVal !== 0) ? (targetSpl + storedVal) : storedVal;
-            if (isNaN(currentMeasuredSlm) || currentMeasuredSlm === 0) currentMeasuredSlm = targetSpl;
+        let storedOffset = (stimType === 'wn') ? calibrationData[key]['overall'] : calibrationData[key][calState.freq];
+        if (storedOffset !== undefined) {
+            currentMeasuredSlm = targetSpl - Number(storedOffset); // Kembalikan ke nilai SLM
         }
+    }
+    if (window.measuredSlmCache && window.measuredSlmCache[key] && window.measuredSlmCache[key][targetParam] !== undefined) {
+        currentMeasuredSlm = window.measuredSlmCache[key][targetParam];
     }
 
     let offsetInput = document.getElementById('c_offset_input'); 
-    
-    // Ubah label judul LCD agar teknisi tahu sekarang menginput Hasil SLM Fisik
     let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
     if (lcdTitleBox) {
         lcdTitleBox.innerText = "HASIL SLM AKTUAL (MEASURED)";
@@ -3594,7 +3592,7 @@ function renderCalibrationUI() {
     }
 
     if (offsetInput) {
-        offsetInput.value = currentMeasuredSlm.toFixed(1);
+        offsetInput.value = Number(currentMeasuredSlm).toFixed(1);
 
         let applySlmChange = function(val) {
             if (typeof calibrationData === 'undefined') window.calibrationData = {};
@@ -3603,22 +3601,41 @@ function renderCalibrationUI() {
             let slmVal = parseFloat(val);
             if (isNaN(slmVal)) return;
             
-            // 🌟 RUMUS KOREKSI OTOMATIS: 
-            // Jika SLM fisik lebih rendah dari target, offset bernilai POSITIF (menaikkan gain/volume).
-            // Jika SLM fisik lebih tinggi dari target, offset bernilai NEGATIF (menurunkan gain/volume).
+            // 🌟 RUMUS KOREKSI MUTLAK (Wajib Negatif jika SLM > Target)
+            // Contoh: Target (76.0) - SLM Aktual (96.8) = -20.8 dB (Meredam suara)
             let calculatedOffset = targetSpl - slmVal; 
             
-            let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
             calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
             
-            // Simpan cache nilai SLM murni untuk dicetak di sertifikat
             if (!window.measuredSlmCache) window.measuredSlmCache = {};
             if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
             window.measuredSlmCache[key][targetParam] = slmVal;
 
-            // 🌟 Regenerasi suara seketika agar volume hardware langsung merespons
-            if (typeof startCalibrationSound === 'function') {
-                startCalibrationSound();
+            // 🌟 1. UPDATE GAIN SECARA LIVE TANPA MEMATIKAN OSILATOR (MENGHINDARI BUG BISU & LONJAKAN)
+            let targetOutput = targetSpl + calculatedOffset; // Ini sama dengan slmVal yang dikoreksi menuju target
+            if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode && window.audioCtx) {
+                const SYSTEM_MAX_SPL = 95;
+                let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
+                if (isNaN(targetGain)) targetGain = 1.0;
+
+                let maxAllowedGain = (calState.freq <= 250) ? 5.0 : 12.0;
+                let newGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
+
+                window.calibGainNode.gain.setTargetAtTime(newGain, window.audioCtx.currentTime, 0.05);
+            }
+
+            // 2. Kirim perintah serial dinamis ke Arduino secara live
+            if (typeof kirimDataAudiometer === 'function') {
+                let modeArduino = calState.trans === 'SPKR' ? 'FFT' : calState.trans;
+                let teksLayar = stimType === 'nbn' ? 'NARROW BAND' : (stimType === 'warble' ? 'WARBLE TONE' : 'PURE TONE');
+                
+                let perintahDinamik = "C" + modeArduino + "\n" +
+                                      "E" + calState.ear + "\n" +
+                                      "F" + calState.freq + "\n" +
+                                      "I" + Math.max(0, Math.round(targetOutput)) + "\n" +
+                                      "W" + teksLayar + "\n" + 
+                                      "S1\n";
+                kirimDataAudiometer(perintahDinamik);
             }
         };
 
