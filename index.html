@@ -3554,28 +3554,38 @@ function renderCalibrationUI() {
     let transDisplayEl = document.getElementById('c_trans_display');
     if (transDisplayEl) transDisplayEl.innerText = transLabel;
     
-    // Ambil Target SPL standar ISO
+    let stimType = calState.stimType || 'tone';
     let transId = calState.trans === 'AC' ? window.currentAcModel : calState.trans;
-    let tableSet = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
-    let targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0; 
+    let targetSpl = 70.0;
+    
+    if (stimType !== 'wn') {
+        let tableSet = window.TRANSDUCER_REGISTRY[transId] || window.TRANSDUCER_REGISTRY['SAEP1'];
+        targetSpl = tableSet[calState.freq] !== undefined ? tableSet[calState.freq] : 70.0; 
+    }
     
     let targetDisplayEl = document.getElementById('c_target_display');
     if (targetDisplayEl) {
-        targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:7.5px; font-weight:normal; color:#64748b;">(70 HL)</span>`;
+        let subText = (stimType === 'wn') ? '(Broadband)' : '(70 HL)';
+        targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:7.5px; font-weight:normal; color:#64748b;">${subText}</span>`;
     }
 
-    let stimType = calState.stimType || 'tone';
+    // 🌟 Tentukan key memori (White Noise menggunakan 'overall', Tone/NBN/Warble menggunakan frekuensi)
     let key = calState.ear + '_' + transId + '_' + stimType;
     
-    // Ambil offset yang tersimpan di memori (default 0)
-    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][calState.freq] !== undefined) ? calibrationData[key][calState.freq] : 0;
+    let currentOffset = 0;
+    if (typeof calibrationData !== 'undefined' && calibrationData[key]) {
+        if (stimType === 'wn') {
+            currentOffset = calibrationData[key]['overall'] !== undefined ? calibrationData[key]['overall'] : 0;
+        } else {
+            currentOffset = calibrationData[key][calState.freq] !== undefined ? calibrationData[key][calState.freq] : 0;
+        }
+    }
 
     let offsetInput = document.getElementById('c_offset_input'); 
     
     if (offsetInput) {
         offsetInput.value = currentOffset.toFixed(1);
 
-        // Fungsi internal untuk memproses perubahan offset
         let applyOffsetChange = function(val) {
             if (typeof calibrationData === 'undefined') window.calibrationData = {};
             if (!calibrationData[key]) calibrationData[key] = {}; 
@@ -3583,22 +3593,27 @@ function renderCalibrationUI() {
             let offsetVal = parseFloat(val);
             if (isNaN(offsetVal)) return;
             
-            // Simpan ke memori global
-            calibrationData[key][calState.freq] = parseFloat(offsetVal.toFixed(2)); 
+            // 🌟 Simpan berdasarkan tipe stimulus (overall untuk WN, frekuensi untuk lainnya)
+            if (stimType === 'wn') {
+                calibrationData[key]['overall'] = parseFloat(offsetVal.toFixed(2));
+            } else {
+                calibrationData[key][calState.freq] = parseFloat(offsetVal.toFixed(2)); 
+            }
             
-            // 🌟 Jalankan ulang suara dan kirim perintah serial terbaru ke Arduino
+            // Jalankan ulang suara agar SLM dan Arduino merespons seketika
             if (typeof startCalibrationSound === 'function') {
                 startCalibrationSound();
             }
         };
 
-        // Tangkap event ketika diketik atau diubah via panah input number
-        offsetInput.oninput = function() {
-            applyOffsetChange(this.value);
-        };
+        offsetInput.oninput = function() { applyOffsetChange(this.value); };
+        offsetInput.onchange = function() { applyOffsetChange(this.value); };
         
-        offsetInput.onchange = function() {
-            applyOffsetChange(this.value);
+        window.adjustCalibrationSpl = function(amount) {
+            let currentVal = parseFloat(offsetInput.value) || 0;
+            let newVal = currentVal + amount;
+            offsetInput.value = newVal.toFixed(1);
+            applyOffsetChange(newVal);
         };
     }
 }
@@ -3856,7 +3871,6 @@ function generateDetailedCalibrationReport() {
     if (savedDate) {
         window.lastCalDate = savedDate;
     } else {
-        // Fallback jika belum tersimpan
         window.lastCalDate = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' });
     }
     
@@ -3952,28 +3966,26 @@ function generateDetailedCalibrationReport() {
         </div>
     `;
 
-    // Pemetaan key ke calibrationData sesuai dengan saat input diset (Ear + ModelTransduser)
+    // 🌟 PEMETAAN MODALITY YANG SUDAH DIPISAHKAN DENGAN AKURAT (Kiri, Kanan, Tone, NBN, WN)
     let masterModalities = [
-        { id: 'R_AC', name: 'Right Headset - Air Conduction (AC)', sn: snAC_R, type: transducerR, regKey: 'SAEP1', storeKey: 'R_' + transducerR },
-        { id: 'L_AC', name: 'Left Headset - Air Conduction (AC)', sn: snAC_L, type: transducerL, regKey: 'SAEP1', storeKey: 'L_' + transducerL },
-        { id: 'R_BC', name: 'Right Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'R_BC' },
-        { id: 'L_BC', name: 'Left Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'L_BC' },
-        { id: 'SPKR', name: 'Free Field Test (FFT / Speaker)', sn: snFFT, type: 'Sound Field Speaker', regKey: 'SPKR', storeKey: 'R_SPKR' },
-        { id: 'NBN',  name: 'Narrow Band Noise (Masking NBN)', sn: 'Internal Generator', type: 'Electronic Noise Generator', regKey: 'SAEP1', storeKey: 'R_' + transducerR },
-        { id: 'WN',   name: 'White Noise (Masking WN)', sn: 'Internal Generator', type: 'Broadband Noise Generator', regKey: 'SPKR', storeKey: 'R_SPKR' }
+        { id: 'R_AC', name: 'Right Headset - Air Conduction (AC)', sn: snAC_R, type: transducerR, regKey: 'SAEP1', storeKey: 'R_' + transducerR + '_tone', isWN: false },
+        { id: 'L_AC', name: 'Left Headset - Air Conduction (AC)', sn: snAC_L, type: transducerL, regKey: 'SAEP1', storeKey: 'L_' + transducerL + '_tone', isWN: false },
+        { id: 'R_BC', name: 'Right Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'R_BC_tone', isWN: false },
+        { id: 'L_BC', name: 'Left Bone Conduction (BC)', sn: snBC, type: 'Bone Vibrator (B71)', regKey: 'BC', storeKey: 'L_BC_tone', isWN: false },
+        { id: 'SPKR', name: 'Free Field Test (FFT / Speaker)', sn: snFFT, type: 'Sound Field Speaker', regKey: 'SPKR', storeKey: 'R_SPKR_tone', isWN: false },
+        { id: 'R_NBN', name: 'Right Narrow Band Noise (Masking NBN)', sn: 'Internal Generator', type: 'Electronic Noise Generator', regKey: 'SAEP1', storeKey: 'R_' + transducerR + '_nbn', isWN: false },
+        { id: 'L_NBN', name: 'Left Narrow Band Noise (Masking NBN)', sn: 'Internal Generator', type: 'Electronic Noise Generator', regKey: 'SAEP1', storeKey: 'L_' + transducerL + '_nbn', isWN: false },
+        { id: 'R_WN',  name: 'Right White Noise (Masking WN)', sn: 'Internal Generator', type: 'Broadband Noise Generator', regKey: 'SPKR', storeKey: 'R_SPKR_wn', isWN: true },
+        { id: 'L_WN',  name: 'Left White Noise (Masking WN)', sn: 'Internal Generator', type: 'Broadband Noise Generator', regKey: 'SPKR', storeKey: 'L_SPKR_wn', isWN: true }
     ];
 
     masterModalities.forEach(mod => {
-        // Ambil data offset berdasarkan key penyimpanan yang benar
         let offsets = {};
         if (typeof calibrationData !== 'undefined') {
             if (calibrationData[mod.storeKey]) {
                 offsets = calibrationData[mod.storeKey];
-            } else if (calibrationData[mod.id]) {
-                offsets = calibrationData[mod.id];
             } else {
-                // Cari key fleksibel jika tersimpan dengan format lain
-                let foundKey = Object.keys(calibrationData).find(k => k.includes(mod.regKey) || k.includes(mod.id));
+                let foundKey = Object.keys(calibrationData).find(k => k === mod.storeKey || k.includes(mod.id));
                 if (foundKey) offsets = calibrationData[foundKey];
             }
         }
@@ -3990,9 +4002,9 @@ function generateDetailedCalibrationReport() {
             <table>
         `;
 
-        if (mod.id === 'WN') {
-            let wnOffsetKeys = Object.keys(offsets);
-            let wnVal = wnOffsetKeys.length > 0 ? offsets[wnOffsetKeys[0]] : 0;
+        // 🌟 PENANGANAN KHUSUS TABEL WHITE NOISE (Membaca parameter 'overall')
+        if (mod.isWN) {
+            let wnVal = (offsets['overall'] !== undefined) ? Number(offsets['overall']) : 0;
             let targetSPL = 70.0;
             let actualSlm = targetSPL + wnVal;
 
@@ -4089,10 +4101,10 @@ function generateDetailedCalibrationReport() {
 
         <div class="footer">
             <div>
-                <p><b>Catatan Validasi Teknis:</b><br>
+                <b>Catatan Validasi Teknis:</b><br>
                     • No. Dokumen Unik: <b>${docSerialNo}</b><br>
                     • Pengujian mengacu pada batas toleransi deviasi ketat maksimum ±3 dB.<br>
-                    • Masa berlaku sertifikat ini adalah 1 (satu) tahun sejak tanggal terbit.</p>
+                    • Masa berlaku sertifikat ini adalah 1 (satu) tahun sejak tanggal terbit.
             </div>
             <div class="signature-box">
                 <p>Disahkan Oleh,</p>
@@ -4112,7 +4124,6 @@ function generateDetailedCalibrationReport() {
         showToast("✔ Master Sertifikat berhasil dibuat dengan No. Dokumen: " + docSerialNo);
     }
 }
-
     
 
     function exportPatientsCsv() { showToast("✔ Patients CSV exported."); }
@@ -5996,9 +6007,8 @@ function startTone() {
     }
 
     // ==============================================================
-    // 🌟 PERBAIKAN VOLUME (DIGITAL AMPLIFIER HACK & ANTI-BISU)
+    // 🌟 PERBAIKAN VOLUME & PENGAMAN ANTI-DISTORSI (CLIPPING GUARD)
     // ==============================================================
-    // 1. Ekstrak angka intensitas (Aman dari huruf 'M' dll)
     let intensityHL = 40;
     if (typeof currentDb !== 'undefined' && currentDb !== null) {
         intensityHL = parseFloat(currentDb);
@@ -6008,17 +6018,14 @@ function startTone() {
     let stimType = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus : 'tone';
     let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer + '_' + stimType;
     
-    // 2. Ambil nilai kalibrasi
     let currentOffset = 0;
     if (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) {
         currentOffset = Number(calibrationData[calKey][freq]) || 0;
     }
 
-    // 3. Hitung matematika utamanya
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     if (isNaN(actualSPL)) actualSPL = intensityHL; 
 
-   // 4. Perhitungan Gain dengan Pengaman Distorsi Frekuensi Rendah
     const SYSTEM_MAX_SPL = 95; 
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
@@ -6027,14 +6034,25 @@ function startTone() {
         if (isNaN(targetGain)) targetGain = 1.0; 
     }
 
-    // 🌟 ATUR BATAS MAKSIMAL LEBIH AMAN (DITURUNKAN DARI 25.0 KE 8.0)
-    // Angka 25.0 terlalu besar untuk frekuensi rendah dan menyebabkan clipping.
-    // Angka 8.0 sudah lebih dari cukup untuk membuat suara keras lewat relay tanpa merusak kebulatan suara.
-    let maxAllowedGain = (freq <= 250) ? 5.0 : 12.0; // Batasi ekstra ketat untuk 125Hz & 250Hz
-    targetGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
+    // 🌟 BATAS GAIN DINAMIS BERDASARKAN AMBANG BATAS PECAH FREKUENSI RENDAH
+    let maxAllowedGain = 20.0; // Standar aman untuk frekuensi 1000 Hz ke atas
 
-    // Batas maksimal digeser ke 25.0 agar 120 dB diizinkan keluar dengan tenaga penuh lewat relay
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 25.0);
+    if (freq === 125) {
+        // Mencegah pecah di atas 65 dB HL
+        maxAllowedGain = (intensityHL > 65) ? 2.0 : 3.5;
+    } else if (freq === 250) {
+        // Mencegah pecah di atas 75 dB HL
+        maxAllowedGain = (intensityHL > 75) ? 3.0 : 5.0;
+    } else if (freq === 500) {
+        // Mencegah pecah di atas 85 dB HL
+        maxAllowedGain = (intensityHL > 85) ? 5.0 : 8.0;
+    } else {
+        // Batas umum untuk frekuensi menengah/tinggi
+        maxAllowedGain = 20.0;
+    }
+
+    // Terapkan batas aman mutlak TANPA ada baris penimpa di bawahnya
+    targetGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
 
     // 5. Eksekusi Web Audio API
     let now = audioCtx.currentTime;
