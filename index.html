@@ -5968,9 +5968,11 @@ function startTone() {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime); 
     
+    // ==============================================================
+    // 🌟 PERBAIKAN UTAMA RELAY: PAKSA PANNER KE 0 (TENGAH)
+    // ==============================================================
     if (panner) {
-        let isFreeField = (typeof currentMode !== 'undefined' && (currentMode === 'FFT' || currentMode === 'BC'));
-        panner.pan.value = isFreeField ? 0 : (isLeftEar ? -1 : 1);
+        panner.pan.setValueAtTime(0, audioCtx.currentTime);
     }
 
     if (typeof currentStimulus !== 'undefined' && currentStimulus === 'warble') {
@@ -5997,7 +5999,7 @@ function startTone() {
     }
 
     // ==============================================================
-    // 🌟 PERBAIKAN VOLUME (KEMBALI KE VERSI STABIL MINGGU LALU)
+    // 🌟 PERBAIKAN VOLUME (DIGITAL AMPLIFIER HACK & ANTI-BISU)
     // ==============================================================
     
     // 1. Ekstrak angka intensitas (Aman dari huruf 'M' dll)
@@ -6010,7 +6012,7 @@ function startTone() {
     let stimType = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus : 'tone';
     let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer + '_' + stimType;
     
-    // 2. Ambil nilai kalibrasi (Gunakan 0 atau 70 jika data kosong, JANGAN biarkan jadi NaN)
+    // 2. Ambil nilai kalibrasi
     let currentOffset = 0;
     if (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) {
         currentOffset = Number(calibrationData[calKey][freq]) || 0;
@@ -6018,11 +6020,9 @@ function startTone() {
 
     // 3. Hitung matematika utamanya
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-    if (isNaN(actualSPL)) actualSPL = intensityHL; // 🌟 ANTI-BISU: Jika error, paksa pakai angka di layar
+    if (isNaN(actualSPL)) actualSPL = intensityHL; 
 
-    // 4. Perhitungan Gain (DIGITAL AMPLIFIER HACK)
-    // 🌟 TURUNKAN ANGKA INI: Semakin kecil angkanya, semakin KERAS volume keseluruhannya. 
-    // Sebelumnya 95, sekarang kita pakai 70 agar volume terpompa naik.
+    // 4. Perhitungan Gain 
     const SYSTEM_MAX_SPL = 70; 
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
@@ -6032,8 +6032,7 @@ function startTone() {
         if (isNaN(targetGain)) targetGain = 1.0; 
     }
 
-    // 🌟 BUKA BATAS MAKSIMAL KUNCI VOLUME!
-    // Sebelumnya mentok di 1.5. Sekarang kita paksa izinkan Web Audio "mengamuk" hingga 20.0
+    // Batas maksimal volume digital
     targetGain = Math.min(Math.max(targetGain, 0.0001), 20.0);
 
     // 5. Eksekusi Web Audio API
