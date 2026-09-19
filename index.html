@@ -3561,70 +3561,44 @@ function renderCalibrationUI() {
     
     let targetDisplayEl = document.getElementById('c_target_display');
     if (targetDisplayEl) {
-        targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:10px; font-weight:normal; color:#64748b;">(70 HL)</span>`;
+        targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:7.5px; font-weight:normal; color:#64748b;">(70 HL)</span>`;
     }
 
     let stimType = calState.stimType || 'tone';
     let key = calState.ear + '_' + transId + '_' + stimType;
     
     // Ambil offset yang tersimpan di memori (default 0)
-    let currentOffset = (calibrationData[key] && calibrationData[key][calState.freq] !== undefined) ? calibrationData[key][calState.freq] : 0;
+    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[key] && calibrationData[key][calState.freq] !== undefined) ? calibrationData[key][calState.freq] : 0;
 
     let offsetInput = document.getElementById('c_offset_input'); 
     
     if (offsetInput) {
-        // Masukkan nilai offset langsung ke input
         offsetInput.value = currentOffset.toFixed(1);
 
-        // Fungsi pemroses perubahan nilai Offset secara interaktif & real-time
-        let processOffsetChange = function(val) {
-            if(!calibrationData[key]) calibrationData[key] = {}; 
+        // Fungsi internal untuk memproses perubahan offset
+        let applyOffsetChange = function(val) {
+            if (typeof calibrationData === 'undefined') window.calibrationData = {};
+            if (!calibrationData[key]) calibrationData[key] = {}; 
+            
             let offsetVal = parseFloat(val);
             if (isNaN(offsetVal)) return;
             
-            // 1. Simpan nilai offset langsung ke calibrationData
+            // Simpan ke memori global
             calibrationData[key][calState.freq] = parseFloat(offsetVal.toFixed(2)); 
             
-            // 2. Hitung target output baru (Target ISO Baseline + Offset)
-            let newTarget = targetSpl + offsetVal;
-
-            // 3. Update Gain Audio secara Real-Time
-            if (typeof calibGainNode !== 'undefined' && calibGainNode && window.audioCtx) {
-                const SYSTEM_MAX_SPL = 95;
-                let targetGain = Math.pow(10, (newTarget - SYSTEM_MAX_SPL) / 20);
-                if (isNaN(targetGain)) targetGain = 1.0;
-                
-                // Berikan batas aman gain agar frekuensi rendah tidak distorsi
-                let maxAllowedGain = (calState.freq <= 250) ? 12.0 : 20.0;
-                let newGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
-
-                calibGainNode.gain.setTargetAtTime(newGain, window.audioCtx.currentTime, 0.05);
-            }
-
-            // 4. Kirim perintah desibel baru (I...) ke Arduino dan kotak relay
-            if (typeof kirimDataAudiometer === 'function') {
-                let modeArduino = calState.trans === 'SPKR' ? 'FFT' : calState.trans;
-                let teksLayar = stimType === 'nbn' ? 'NARROW BAND' : (stimType === 'warble' ? 'WARBLE TONE' : 'PURE TONE');
-                
-                let perintahDinamik = "C" + modeArduino + "\n" +
-                                      "E" + calState.ear + "\n" +
-                                      "F" + calState.freq + "\n" +
-                                      "I" + Math.round(newTarget) + "\n" +
-                                      "W" + teksLayar + "\n" + 
-                                      "S1\n";
-                kirimDataAudiometer(perintahDinamik);
+            // 🌟 Jalankan ulang suara dan kirim perintah serial terbaru ke Arduino
+            if (typeof startCalibrationSound === 'function') {
+                startCalibrationSound();
             }
         };
 
-        offsetInput.oninput = function() { processOffsetChange(this.value); };
-        offsetInput.onchange = function() { processOffsetChange(this.value); };
+        // Tangkap event ketika diketik atau diubah via panah input number
+        offsetInput.oninput = function() {
+            applyOffsetChange(this.value);
+        };
         
-        // Fungsi global untuk tombol tambah/kurang (+ / -) di antarmuka
-        window.adjustCalibrationSpl = function(amount) {
-            let currentVal = parseFloat(offsetInput.value) || 0;
-            let newVal = currentVal + amount;
-            offsetInput.value = newVal.toFixed(1);
-            processOffsetChange(newVal);
+        offsetInput.onchange = function() {
+            applyOffsetChange(this.value);
         };
     }
 }
