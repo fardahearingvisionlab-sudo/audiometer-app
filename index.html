@@ -3601,30 +3601,39 @@ function renderCalibrationUI() {
             let slmVal = parseFloat(val);
             if (isNaN(slmVal)) return;
             
-            // 🌟 RUMUS KOREKSI MUTLAK (Wajib Negatif jika SLM > Target)
-            // Contoh: Target (76.0) - SLM Aktual (96.8) = -20.8 dB (Meredam suara)
+            // Hitung offset koreksi otomatis secara murni
             let calculatedOffset = targetSpl - slmVal; 
             
+            // 🌟 HAPUS PEMBLOKIRAN KAKU: 
+            // Jika deviasi sangat besar (> 25 dB), sistem hanya mencatat peringatan di Console 
+            // tetapi TETAP MENGIZINKAN nilai tersebut masuk untuk mengakomodasi hardware Anda.
+            const MAX_WARNING_THRESHOLD = 25.0;
+            if (Math.abs(calculatedOffset) > MAX_WARNING_THRESHOLD) {
+                console.warn(`Info Kalibrasi: Menggunakan offset besar (${calculatedOffset.toFixed(1)} dB). Pastikan hardware terhubung dengan benar.`);
+            }
+            
+            // Simpan nilai offset secara penuh tanpa batasan paksa
             calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
             
             if (!window.measuredSlmCache) window.measuredSlmCache = {};
             if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
             window.measuredSlmCache[key][targetParam] = slmVal;
 
-            // 🌟 1. UPDATE GAIN SECARA LIVE TANPA MEMATIKAN OSILATOR (MENGHINDARI BUG BISU & LONJAKAN)
-            let targetOutput = targetSpl + calculatedOffset; // Ini sama dengan slmVal yang dikoreksi menuju target
+            // Update Gain secara live mengikuti input manual Anda
+            let targetOutput = targetSpl + calculatedOffset;
             if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode && window.audioCtx) {
                 const SYSTEM_MAX_SPL = 95;
                 let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
                 if (isNaN(targetGain)) targetGain = 1.0;
 
+                // Batas gain hardware yang aman untuk mencegah speaker/headphone putus
                 let maxAllowedGain = (calState.freq <= 250) ? 5.0 : 12.0;
                 let newGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
 
                 window.calibGainNode.gain.setTargetAtTime(newGain, window.audioCtx.currentTime, 0.05);
             }
 
-            // 2. Kirim perintah serial dinamis ke Arduino secara live
+            // Kirim perintah serial dinamis ke Arduino secara live
             if (typeof kirimDataAudiometer === 'function') {
                 let modeArduino = calState.trans === 'SPKR' ? 'FFT' : calState.trans;
                 let teksLayar = stimType === 'nbn' ? 'NARROW BAND' : (stimType === 'warble' ? 'WARBLE TONE' : 'PURE TONE');
