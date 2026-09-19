@@ -3725,14 +3725,15 @@ function executeCalibrationAudio() {
     // 4. PEMBANGKITAN AUDIO WEB (GLOBAL SCOPE ASSIGNMENT)
     // ============================================================
     // 🌟 PERBAIKAN: Naikkan batas maksimal ke 120 dB
-    const SYSTEM_MAX_SPL = 120; 
+    const SYSTEM_MAX_SPL = 95;
     
-    let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
-    if (isNaN(targetGain)) targetGain = 0.0001;
-    let gainVal = Math.min(Math.max(targetGain, 0.0001), 1.0);
+    let targetGainWn = Math.pow(10, (targetSplWn - SYSTEM_MAX_SPL) / 20);
+    if (isNaN(targetGainWn)) targetGainWn = 0.0001;
     
+    // 🌟 BUKA BATASAN MAKSIMAL KE 5.0
+    let gainVal = Math.min(Math.max(targetGainWn, 0.0001), 5.0);
+
     window.calibGainNode = audioCtx.createGain(); 
-    
     window.calibGainNode.gain.setValueAtTime(0.0001, now);
     window.calibGainNode.gain.linearRampToValueAtTime(gainVal, now + 0.035);
 
@@ -5990,7 +5991,7 @@ function startTone() {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
 
-    // 🌟 PERBAIKAN 1: Gunakan parseFloat agar aman dari sisipan huruf masking (misal "120M" tetap terbaca 120)
+    // Menggunakan parseFloat agar aman dari sisipan huruf masking (misal "120M" tetap terbaca 120)
     let intensityHL = (typeof currentDb !== 'undefined' && currentDb !== null) ? parseFloat(currentDb) : 40;
     if (isNaN(intensityHL)) intensityHL = 40;
     
@@ -6001,16 +6002,16 @@ function startTone() {
     
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
     
-    // 🌟 PERBAIKAN 2: Naikkan batas acuan dari 95 menjadi 120 agar rentang suara atas tidak terpotong (clamped)
-    const SYSTEM_MAX_SPL = 120; 
+    // 🌟 PERBAIKAN 1: Kembalikan acuan ke 95 agar perhitungan linear sejajar dengan volume normal PC
+    const SYSTEM_MAX_SPL = 95; 
     
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
-    // Pastikan nilai gain tidak rusak (NaN) sebelum diterapkan
     if (isNaN(targetGain)) targetGain = 0.0001;
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.0);
+    
+    // 🌟 PERBAIKAN 2: Buka batasan maksimal dari 1.0 menjadi 5.0 (mengizinkan volume sangat keras tanpa terpotong)
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 5.0);
 
-    // 🌟 PERBAIKAN 3: Gunakan variabel waktu yang presisi agar linearRamp tidak gagal tereksekusi
     let now = audioCtx.currentTime;
     currentGainNode.gain.setValueAtTime(0.0001, now); 
     currentGainNode.gain.linearRampToValueAtTime(targetGain, now + 0.035);
@@ -6038,7 +6039,7 @@ function startTone() {
         kirimDataAudiometer(command);
     }
 }
-
+        
 // ============================================================
 // 2. FUNGSI STOP TONE (Pemutus Sinyal Audio & Hardware S0)
 // ============================================================
