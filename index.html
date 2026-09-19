@@ -3579,6 +3579,16 @@ function renderCalibrationUI() {
     }
     let currentHardwareOutput = targetSpl + storedOffset;
 
+    // 🌟 1. LOAD MEMORI PERMANEN (AUTO-SAVE) UNTUK KOTAK HIJAU
+    if (!window.measuredSlmCache) {
+        try {
+            let savedCache = localStorage.getItem('measuredSlmCache_V2');
+            window.measuredSlmCache = savedCache ? JSON.parse(savedCache) : {};
+        } catch(e) {
+            window.measuredSlmCache = {};
+        }
+    }
+
     // Ambil Data SLM Aktual untuk Kotak Laporan (Hijau)
     let currentReportSlm = targetSpl;
     if (window.measuredSlmCache && window.measuredSlmCache[key] && window.measuredSlmCache[key][targetParam] !== undefined) {
@@ -3587,7 +3597,7 @@ function renderCalibrationUI() {
 
     let offsetInput = document.getElementById('c_offset_input'); 
     
-    // 🌟 UBAH JUDUL KOTAK LAMA MENJADI KOTAK TUNING
+    // UBAH JUDUL KOTAK LAMA MENJADI KOTAK TUNING
     let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
     if (lcdTitleBox) {
         lcdTitleBox.innerHTML = "TUNING OUTPUT HARDWARE <br><span style='font-size:8px; color:#64748b; text-transform:none;'>(Putar angka ini untuk mengepaskan suara)</span>";
@@ -3597,7 +3607,7 @@ function renderCalibrationUI() {
     if (offsetInput) {
         offsetInput.value = currentHardwareOutput.toFixed(1);
 
-        // 🌟 SUNTIKKAN KOTAK KEDUA UNTUK ANGKA REPORT SECARA DINAMIS
+        // SUNTIKKAN KOTAK KEDUA (HIJAU) SECARA DINAMIS
         let container = offsetInput.parentElement;
         let reportInputId = 'c_report_slm_input';
         let reportInputWrapper = document.getElementById('wrapper_' + reportInputId);
@@ -3606,7 +3616,7 @@ function renderCalibrationUI() {
             reportInputWrapper = document.createElement('div');
             reportInputWrapper.id = 'wrapper_' + reportInputId;
             
-            // 🌟 PERBAIKAN TAMPILAN: Memaksa kotak hijau turun ke baris baru dan berada di tengah
+            // Layout merapikan kotak hijau agar turun ke bawah (baris baru)
             reportInputWrapper.style.display = 'block';
             reportInputWrapper.style.width = '100%';
             reportInputWrapper.style.clear = 'both';
@@ -3622,7 +3632,7 @@ function renderCalibrationUI() {
                 <div style="font-size:8.5px; color:#64748b; margin-top:4px;">(Ketik angka desimal asli dari layar SLM Fisik)</div>
             `;
             
-            // Mengatur parent (kontainer LCD) agar fleksibel menampung susunan atas-bawah
+            // Flexbox layout agar rapi
             container.style.display = 'flex';
             container.style.flexDirection = 'column';
             container.style.alignItems = 'center';
@@ -3630,18 +3640,26 @@ function renderCalibrationUI() {
             container.appendChild(reportInputWrapper);
         }
         
-        // Simpan nilai untuk Report tanpa merubah suara
+        // 🌟 2. EVENT PENYIMPANAN OTOMATIS KE BROWSER
         let reportInput = document.getElementById(reportInputId);
         if (reportInput) {
             reportInput.value = currentReportSlm.toFixed(1);
-            reportInput.oninput = function() {
-                let val = parseFloat(this.value);
-                if (!isNaN(val)) {
+            
+            let saveReportData = function(val) {
+                let num = parseFloat(val);
+                if (!isNaN(num)) {
                     if (!window.measuredSlmCache) window.measuredSlmCache = {};
                     if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
-                    window.measuredSlmCache[key][targetParam] = val;
+                    window.measuredSlmCache[key][targetParam] = num;
+                    
+                    // SIMPAN PERMANEN KE LOCALSTORAGE (Mengunci Data)
+                    localStorage.setItem('measuredSlmCache_V2', JSON.stringify(window.measuredSlmCache));
                 }
             };
+            
+            // onchange menjamin data tersimpan meskipun diklik via panah naik/turun
+            reportInput.oninput = function() { saveReportData(this.value); };
+            reportInput.onchange = function() { saveReportData(this.value); };
         }
 
         // Fungsi Tuning Suara (Bekerja dari Kotak Merah)
@@ -3652,11 +3670,11 @@ function renderCalibrationUI() {
             let hardwareVal = parseFloat(val);
             if (isNaN(hardwareVal)) return;
             
-            // Hitung offset: Jika Tuning di 99.5 dan Target 76.0 -> Offset +23.5 dB
+            // Hitung offset kompensasi
             let calculatedOffset = hardwareVal - targetSpl; 
             calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
 
-            let targetOutput = hardwareVal; // Level Suara Output Sesungguhnya
+            let targetOutput = hardwareVal;
             if (typeof window.calibGainNode !== 'undefined' && window.calibGainNode && window.audioCtx) {
                 const SYSTEM_MAX_SPL = 95;
                 let targetGain = Math.pow(10, (targetOutput - SYSTEM_MAX_SPL) / 20);
@@ -7879,15 +7897,23 @@ async function activateLicense() {
 // ==========================================
 function backupCalibrationToCloud() {
     let machineId = localStorage.getItem('device_serial_number');
-    let calDataStr = localStorage.getItem('gsi_audiology_calibration');
     
-    // Jangan lakukan backup jika Machine ID atau data kalibrasi belum ada
+    // 1. Ambil data kalibrasi (Tuning Merah)
+    let calDataStr = localStorage.getItem('gsi_audiology_calibration');
     if (!machineId || !calDataStr) return; 
+    let calDataObj = JSON.parse(calDataStr);
+
+    // 2. Ambil data Kotak Hijau (Laporan SLM Aktual)
+    let slmDataStr = localStorage.getItem('measuredSlmCache_V2');
+    let slmDataObj = slmDataStr ? JSON.parse(slmDataStr) : {};
+
+    // 🌟 3. SISIPKAN data SLM ke dalam objek kalibrasi utama dengan kunci khusus
+    calDataObj['_slm_report_data'] = slmDataObj;
 
     let payload = {
         action: "saveCalibration",
         machineId: machineId,
-        calibrationData: calDataStr
+        calibrationData: JSON.stringify(calDataObj) // Kirim gabungan datanya
     };
 
     fetch(CENTRAL_LICENSE_URL, {
@@ -7898,12 +7924,15 @@ function backupCalibrationToCloud() {
     .then(res => res.json())
     .then(data => {
         if (data.status === 'success') {
-            console.log("☁️ Backup kalibrasi ke Master Lisensi sukses.");
+            console.log("☁️ Backup Kalibrasi & Data Laporan SLM ke Master Lisensi sukses.");
         }
     })
     .catch(err => console.warn("⚠️ Gagal backup kalibrasi ke Cloud (Mode Offline).", err));
 }
 
+// ==========================================
+// FUNGSI RESTORE DARI CLOUD
+// ==========================================
 function restoreCalibrationFromCloud() {
     let machineId = localStorage.getItem('device_serial_number');
     if (!machineId) {
@@ -7917,11 +7946,29 @@ function restoreCalibrationFromCloud() {
     .then(res => res.json())
     .then(data => {
         if (data.status === 'success' && data.calibrationData) {
-            // Timpa data di lokal dengan data dari cloud
-            localStorage.setItem('gsi_audiology_calibration', JSON.stringify(data.calibrationData));
-            calibrationData = data.calibrationData; 
+            let cloudData = data.calibrationData;
             
-            showToast(`✅ Kalibrasi Berhasil Dipulihkan!\nTerakhir update: ${data.lastUpdated}`);
+            // Antisipasi jika data dari server masih berupa string, kita parse ke Object
+            if (typeof cloudData === 'string') {
+                try { cloudData = JSON.parse(cloudData); } catch(e) {}
+            }
+
+            // 🌟 EKSTRAK DAN PISAHKAN DATA KOTAK HIJAU JIKA ADA
+            if (cloudData['_slm_report_data']) {
+                let slmData = cloudData['_slm_report_data'];
+                // Simpan ke memori lokal khusus kotak hijau
+                localStorage.setItem('measuredSlmCache_V2', JSON.stringify(slmData));
+                window.measuredSlmCache = slmData;
+                
+                // Hapus data sisipan ini agar tidak mengotori tabel kalibrasi utama
+                delete cloudData['_slm_report_data'];
+            }
+
+            // Timpa data kalibrasi (tuning) di lokal dengan data murni dari cloud
+            localStorage.setItem('gsi_audiology_calibration', JSON.stringify(cloudData));
+            window.calibrationData = cloudData; 
+            
+            showToast(`✅ Kalibrasi & Data SLM Berhasil Dipulihkan!\nTerakhir update: ${data.lastUpdated}`);
             
             // Refresh tampilan tabel/UI kalibrasi
             if (typeof renderCalibrationUI === 'function') renderCalibrationUI();
@@ -7931,7 +7978,6 @@ function restoreCalibrationFromCloud() {
     })
     .catch(err => showToast("❌ Gagal terhubung ke server Master Lisensi."));
 }
-
 
 
 
