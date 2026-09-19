@@ -3569,51 +3569,65 @@ function renderCalibrationUI() {
         targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:7.5px; font-weight:normal; color:#64748b;">${subText}</span>`;
     }
 
-    // 🌟 Tentukan key memori (White Noise menggunakan 'overall', Tone/NBN/Warble menggunakan frekuensi)
     let key = calState.ear + '_' + transId + '_' + stimType;
     
-    let currentOffset = 0;
+    // Ambil data SLM aktual yang pernah disimpan (jika belum ada, default ke targetSpl agar selisih 0)
+    let currentMeasuredSlm = targetSpl;
     if (typeof calibrationData !== 'undefined' && calibrationData[key]) {
-        if (stimType === 'wn') {
-            currentOffset = calibrationData[key]['overall'] !== undefined ? calibrationData[key]['overall'] : 0;
-        } else {
-            currentOffset = calibrationData[key][calState.freq] !== undefined ? calibrationData[key][calState.freq] : 0;
+        let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
+        if (calibrationData[key][targetParam] !== undefined) {
+            // Jika data tersimpan berupa nilai SLM atau Offset, kita konversi ke SLM aktual
+            let storedVal = calibrationData[key][targetParam];
+            // Asumsi: jika nilai tersimpan kecil (-30 s/d 30), itu adalah offset lama. Kita ubah ke SLM.
+            currentMeasuredSlm = (Math.abs(storedVal) <= 40 && storedVal !== 0) ? (targetSpl + storedVal) : storedVal;
+            if (isNaN(currentMeasuredSlm) || currentMeasuredSlm === 0) currentMeasuredSlm = targetSpl;
         }
     }
 
     let offsetInput = document.getElementById('c_offset_input'); 
     
-    if (offsetInput) {
-        offsetInput.value = currentOffset.toFixed(1);
+    // Ubah label judul LCD agar teknisi tahu sekarang menginput Hasil SLM Fisik
+    let lcdTitleBox = offsetInput ? offsetInput.closest('.hw-lcd')?.querySelector('.hw-lcd-title') : null;
+    if (lcdTitleBox) {
+        lcdTitleBox.innerText = "HASIL SLM AKTUAL (MEASURED)";
+        lcdTitleBox.style.color = "#16a34a"; 
+    }
 
-        let applyOffsetChange = function(val) {
+    if (offsetInput) {
+        offsetInput.value = currentMeasuredSlm.toFixed(1);
+
+        let applySlmChange = function(val) {
             if (typeof calibrationData === 'undefined') window.calibrationData = {};
             if (!calibrationData[key]) calibrationData[key] = {}; 
             
-            let offsetVal = parseFloat(val);
-            if (isNaN(offsetVal)) return;
+            let slmVal = parseFloat(val);
+            if (isNaN(slmVal)) return;
             
-            // 🌟 Simpan berdasarkan tipe stimulus (overall untuk WN, frekuensi untuk lainnya)
-            if (stimType === 'wn') {
-                calibrationData[key]['overall'] = parseFloat(offsetVal.toFixed(2));
-            } else {
-                calibrationData[key][calState.freq] = parseFloat(offsetVal.toFixed(2)); 
-            }
+            // Hitung offset koreksi otomatis dari selisih SLM Aktual dengan Target ISO
+            let calculatedOffset = slmVal - targetSpl;
             
-            // Jalankan ulang suara agar SLM dan Arduino merespons seketika
+            let targetParam = (stimType === 'wn') ? 'overall' : calState.freq;
+            calibrationData[key][targetParam] = parseFloat(calculatedOffset.toFixed(2)); 
+            
+            // Simpan juga nilai SLM aktual jika ingin dibaca langsung oleh laporan
+            if (!window.measuredSlmCache) window.measuredSlmCache = {};
+            if (!window.measuredSlmCache[key]) window.measuredSlmCache[key] = {};
+            window.measuredSlmCache[key][targetParam] = slmVal;
+
+            // Jalankan ulang suara agar perangkat keras merespons seketika
             if (typeof startCalibrationSound === 'function') {
                 startCalibrationSound();
             }
         };
 
-        offsetInput.oninput = function() { applyOffsetChange(this.value); };
-        offsetInput.onchange = function() { applyOffsetChange(this.value); };
+        offsetInput.oninput = function() { applySlmChange(this.value); };
+        offsetInput.onchange = function() { applySlmChange(this.value); };
         
         window.adjustCalibrationSpl = function(amount) {
-            let currentVal = parseFloat(offsetInput.value) || 0;
+            let currentVal = parseFloat(offsetInput.value) || targetSpl;
             let newVal = currentVal + amount;
             offsetInput.value = newVal.toFixed(1);
-            applyOffsetChange(newVal);
+            applySlmChange(newVal);
         };
     }
 }
@@ -4037,54 +4051,60 @@ function generateDetailedCalibrationReport() {
             
             let freqs = Object.keys(standardTable).sort((a,b) => Number(a)-Number(b));
 
-            htmlContent += `
-                <thead>
-                    <tr>
-                        <th style="text-align:left; width:160px;">Parameter Frekuensi (Hz)</th>
-            `;
-            freqs.forEach(f => htmlContent += `<th>${Number(f) >= 1000 ? (Number(f)/1000)+'k' : f}</th>`);
-            
-            htmlContent += `
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="text-align:left; font-weight:bold;">Target SPL (ISO Baseline)</td>
-            `;
-            freqs.forEach(f => {
-                let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
-                htmlContent += `<td>${target.toFixed(1)}</td>`;
-            });
+    htmlContent += `
+        <thead>
+            <tr>
+                <th style="text-align:left; width:160px;">Parameter Frekuensi (Hz)</th>
+    `;
+    freqs.forEach(f => htmlContent += `<th>${Number(f) >= 1000 ? (Number(f)/1000)+'k' : f}</th>`);
+    
+    htmlContent += `
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="text-align:left; font-weight:bold;">Target SPL (ISO Baseline)</td>
+    `;
+    freqs.forEach(f => {
+        let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
+        htmlContent += `<td>${target.toFixed(1)}</td>`;
+    });
 
-            htmlContent += `
-                    </tr>
-                    <tr>
-                        <td style="text-align:left; font-weight:bold;">Hasil SLM Aktual (Measured)</td>
-            `;
-            freqs.forEach(f => {
-                let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
-                let offset = offsets[f] || 0;
-                let actualSlm = target + offset;
-                htmlContent += `<td><b>${actualSlm.toFixed(1)}</b></td>`;
-            });
-
-            htmlContent += `
-                    </tr>
-                    <tr>
-                        <td style="text-align:left; font-weight:bold;">Offset Koreksi Alat (dB)</td>
-            `;
-            freqs.forEach(f => {
-                let val = offsets[f] || 0;
-                htmlContent += `<td>${val > 0 ? '+' + val : val} dB</td>`;
-            });
-
-            htmlContent += `
-                    </tr>
-                </tbody>
-            `;
+    htmlContent += `
+            </tr>
+            <tr>
+                <td style="text-align:left; font-weight:bold;">Hasil SLM Aktual (Measured)</td>
+    `;
+    freqs.forEach(f => {
+        let target = standardTable[f] !== undefined ? standardTable[f] : 70.0;
+        let offset = (offsets[f] !== undefined) ? Number(offsets[f]) : 0;
+        
+        // 🌟 Ambil murni dari cache SLM aktual yang diinput teknisi, atau fallback ke kalkulasi target + offset
+        let actualSlm = target + offset;
+        if (window.measuredSlmCache && window.measuredSlmCache[mod.storeKey] && window.measuredSlmCache[mod.storeKey][f] !== undefined) {
+            actualSlm = window.measuredSlmCache[mod.storeKey][f];
         }
+        
+        htmlContent += `<td><b>${Number(actualSlm).toFixed(1)}</b></td>`;
+    });
 
-        htmlContent += `</table>`;
+    htmlContent += `
+            </tr>
+            <tr>
+                <td style="text-align:left; font-weight:bold;">Offset Koreksi Alat (dB)</td>
+    `;
+    freqs.forEach(f => {
+        let val = offsets[f] || 0;
+        htmlContent += `<td>${val > 0 ? '+' + val : val} dB</td>`;
+    });
+
+    htmlContent += `
+            </tr>
+        </tbody>
+    `;
+}
+
+htmlContent += `</table>`;
     });
 
     let eligibilityMessage = isPassed 
