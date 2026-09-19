@@ -3564,13 +3564,10 @@ function renderCalibrationUI() {
         targetDisplayEl.innerHTML = `${targetSpl.toFixed(1)} dB<br><span style="font-size:10px; font-weight:normal; color:#64748b;">(70 HL)</span>`;
     }
 
-    // Sertakan stimType pada key agar nilai tidak saling menimpa
     let stimType = calState.stimType || 'tone';
     let key = calState.ear + '_' + transId + '_' + stimType;
     
     let currentOffset = (calibrationData[key] && calibrationData[key][calState.freq]) ? calibrationData[key][calState.freq] : 0;
-    
-    // Hitung nilai aktual SLM berdasarkan offset tersimpan
     let currentActualSlm = targetSpl - currentOffset; 
 
     let offsetInput = document.getElementById('c_offset_input'); 
@@ -3582,7 +3579,6 @@ function renderCalibrationUI() {
     }
 
     if (offsetInput) {
-        // 🌟 Jadikan input bertipe 'number' agar tombol spinner / panah (+/-) berfungsi aktif
         offsetInput.type = "number";
         offsetInput.step = "0.5";
         offsetInput.value = currentActualSlm.toFixed(1);
@@ -3593,32 +3589,30 @@ function renderCalibrationUI() {
             parentLcd.style.background = "#f0f9ff";
         }
 
-        // 🌟 Penanganan Real-Time saat tombol + / - ditekan atau nilai diketik
-        offsetInput.oninput = function() { 
+        // Fungsi pemroses perubahan nilai (digunakan bersama oleh input dan tombol)
+        let processSplChange = function(val) {
             if(!calibrationData[key]) calibrationData[key] = {}; 
-            let slmVal = parseFloat(this.value);
+            let slmVal = parseFloat(val);
             if (isNaN(slmVal)) return;
             
-            // Otomatis hitung offset baru
             let calculatedOffset = targetSpl - slmVal;
             calibrationData[key][calState.freq] = parseFloat(calculatedOffset.toFixed(2)); 
             
             let newTarget = targetSpl + calculatedOffset;
 
-            // 1. Sesuaikan Web Audio Gain secara mulus (Real-Time)
+            // 1. Update Gain Audio secara Real-Time
             if (typeof calibGainNode !== 'undefined' && calibGainNode && window.audioCtx) {
                 const SYSTEM_MAX_SPL = 95;
                 let targetGain = Math.pow(10, (newTarget - SYSTEM_MAX_SPL) / 20);
                 if (isNaN(targetGain)) targetGain = 1.0;
                 
-                // Terapkan pengaman frekuensi rendah agar tidak distorsi/pecah
                 let maxAllowedGain = (calState.freq <= 250) ? 5.0 : 12.0;
                 let newGain = Math.min(Math.max(targetGain, 0.0001), maxAllowedGain);
 
                 calibGainNode.gain.setTargetAtTime(newGain, window.audioCtx.currentTime, 0.05);
             }
 
-            // 2. 🌟 Kirim pembaruan perintah desibel (I...) secara langsung ke Arduino/Relay
+            // 2. Kirim perintah desibel baru ke Arduino/Relay
             if (typeof kirimDataAudiometer === 'function') {
                 let modeArduino = calState.trans === 'SPKR' ? 'FFT' : calState.trans;
                 let teksLayar = stimType === 'nbn' ? 'NARROW BAND' : (stimType === 'warble' ? 'WARBLE TONE' : 'PURE TONE');
@@ -3631,6 +3625,18 @@ function renderCalibrationUI() {
                                       "S1\n";
                 kirimDataAudiometer(perintahDinamik);
             }
+        };
+
+        // Pasang event input dan change
+        offsetInput.oninput = function() { processSplChange(this.value); };
+        offsetInput.onchange = function() { processSplChange(this.value); };
+        
+        // 🌟 Buat fungsi global agar jika tombol HTML +/- Anda memanggil fungsi ini, nilainya pasti merespons
+        window.adjustCalibrationSpl = function(amount) {
+            let currentVal = parseFloat(offsetInput.value) || targetSpl;
+            let newVal = currentVal + amount;
+            offsetInput.value = newVal.toFixed(1);
+            processSplChange(newVal);
         };
     }
 }
