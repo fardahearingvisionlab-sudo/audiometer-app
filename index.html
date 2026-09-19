@@ -5991,27 +5991,49 @@ function startTone() {
         splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]);
     }
 
-    // Menggunakan parseFloat agar aman dari sisipan huruf masking (misal "120M" tetap terbaca 120)
-    let intensityHL = (typeof currentDb !== 'undefined' && currentDb !== null) ? parseFloat(currentDb) : 40;
-    if (isNaN(intensityHL)) intensityHL = 40;
+    // ==============================================================
+    // 🌟 PERBAIKAN VOLUME (KEMBALI KE VERSI STABIL MINGGU LALU)
+    // ==============================================================
     
+    // 1. Ekstrak angka intensitas (Aman dari huruf 'M' dll)
+    let intensityHL = 40;
+    if (typeof currentDb !== 'undefined' && currentDb !== null) {
+        intensityHL = parseFloat(currentDb);
+    }
+    if (isNaN(intensityHL)) intensityHL = 40;
+
     let stimType = (typeof currentStimulus !== 'undefined' && currentStimulus) ? currentStimulus : 'tone';
     let calKey = ((activeEar === 'right' ? 'R' : 'L')) + '_' + selectedTransducer + '_' + stimType;
     
-    let currentOffset = (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) ? Number(calibrationData[calKey][freq]) : 0;
+    // 2. Ambil nilai kalibrasi (Gunakan 0 atau 70 jika data kosong, JANGAN biarkan jadi NaN)
+    let currentOffset = 0;
+    if (typeof calibrationData !== 'undefined' && calibrationData[calKey] && calibrationData[calKey][freq]) {
+        currentOffset = Number(calibrationData[calKey][freq]) || 0;
+    }
     
+    let splAt70dB = 70.0; 
+    if (window.TRANSDUCER_REGISTRY && window.TRANSDUCER_REGISTRY[selectedTransducer] && window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) {
+        splAt70dB = Number(window.TRANSDUCER_REGISTRY[selectedTransducer][freq]) || 70.0;
+    }
+
+    // 3. Hitung matematika utamanya
     let actualSPL = splAt70dB + (intensityHL - 70) + currentOffset;
-    
-    // 🌟 PERBAIKAN 1: Kembalikan acuan ke 95 agar perhitungan linear sejajar dengan volume normal PC
+    if (isNaN(actualSPL)) actualSPL = intensityHL; // 🌟 ANTI-BISU: Jika error, paksa pakai angka di layar
+
+    // 4. Perhitungan Gain persis seperti kode asli Anda yang berfungsi baik sebelumnya
     const SYSTEM_MAX_SPL = 95; 
-    
     let targetGain = Math.pow(10, (actualSPL - SYSTEM_MAX_SPL) / 20);
     
-    if (isNaN(targetGain)) targetGain = 0.0001;
-    
-    // 🌟 PERBAIKAN 2: Buka batasan maksimal dari 1.0 menjadi 5.0 (mengizinkan volume sangat keras tanpa terpotong)
-    targetGain = Math.min(Math.max(targetGain, 0.0001), 5.0);
+    // 🌟 PERLINDUNGAN UTAMA: Jika matematika gagal, jangan jadikan bisu!
+    if (isNaN(targetGain)) {
+        targetGain = Math.pow(10, (intensityHL - SYSTEM_MAX_SPL) / 20); 
+        if (isNaN(targetGain)) targetGain = 1.0; 
+    }
 
+    // Batas maksimal kita kembalikan ke 1.5 agar keras seperti dulu, namun tetap jernih
+    targetGain = Math.min(Math.max(targetGain, 0.0001), 1.5);
+
+    // 5. Eksekusi Web Audio API
     let now = audioCtx.currentTime;
     currentGainNode.gain.setValueAtTime(0.0001, now); 
     currentGainNode.gain.linearRampToValueAtTime(targetGain, now + 0.035);
@@ -6022,6 +6044,7 @@ function startTone() {
         osc.connect(currentGainNode).connect(audioCtx.destination);
     }
     osc.start();
+    // ==============================================================
 
     isPlaying = true;
     document.getElementById('signalIndicatorBox')?.classList.add('active');
