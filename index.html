@@ -3605,15 +3605,28 @@ function renderCalibrationUI() {
         if (!reportInputWrapper) {
             reportInputWrapper = document.createElement('div');
             reportInputWrapper.id = 'wrapper_' + reportInputId;
-            reportInputWrapper.style.marginTop = '15px';
-            reportInputWrapper.style.paddingTop = '10px';
+            
+            // 🌟 PERBAIKAN TAMPILAN: Memaksa kotak hijau turun ke baris baru dan berada di tengah
+            reportInputWrapper.style.display = 'block';
+            reportInputWrapper.style.width = '100%';
+            reportInputWrapper.style.clear = 'both';
+            reportInputWrapper.style.marginTop = '12px';
+            reportInputWrapper.style.paddingTop = '12px';
             reportInputWrapper.style.borderTop = '1px dashed #cbd5e1';
+            reportInputWrapper.style.textAlign = 'center';
+            
             reportInputWrapper.innerHTML = `
                 <div style="font-size:10px; font-weight:bold; color:#16a34a; margin-bottom:5px;">HASIL SLM FINAL (UNTUK CETAK REPORT)</div>
-                <input type="number" id="${reportInputId}" step="0.1" style="width:100px; text-align:center; font-weight:bold; font-size:16px; color:#0f172a; border:1px solid #16a34a; border-radius:4px; padding:4px; background:#f0fdf4;">
-                <span style="font-size:12px; color:#64748b;">dB</span>
-                <div style="font-size:8px; color:#64748b; margin-top:3px;">(Ketik angka desimal asli dari layar SLM Fisik)</div>
+                <input type="number" id="${reportInputId}" step="0.1" style="width:100px; text-align:center; font-weight:bold; font-size:16px; color:#0f172a; border:2px solid #16a34a; border-radius:4px; padding:4px; background:#f0fdf4;">
+                <span style="font-size:12px; color:#64748b; font-weight:bold;"> dB</span>
+                <div style="font-size:8.5px; color:#64748b; margin-top:4px;">(Ketik angka desimal asli dari layar SLM Fisik)</div>
             `;
+            
+            // Mengatur parent (kontainer LCD) agar fleksibel menampung susunan atas-bawah
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.alignItems = 'center';
+            
             container.appendChild(reportInputWrapper);
         }
         
